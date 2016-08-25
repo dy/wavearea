@@ -1,0 +1,25 @@
+{
+  "name": "wavearea",
+  "version": "1.0.0",
+  "description": "Edit audio in textarea",
+  "main": "index.js",
+  "scripts": {
+    "test": "budo test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/audio-lab/wavearea.git"
+  },
+  "keywords": [
+    "audio",
+    "web-audio",
+    "waveform",
+    "dsp"
+  ],
+  "author": "ΔY <dfcreative@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/audio-lab/wavearea/issues"
+  },
+  "homepage": "https://github.com/audio-lab/wavearea#readme"
+}
