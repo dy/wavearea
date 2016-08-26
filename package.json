@@ -4,7 +4,13 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "test": "budo test.js"
+    "test": "budo test.js",
+    "build": "browserify test.js -t bubleify -o demo/index.js"
+  },
+  "browserify": {
+    "transform": [
+      "urify/transform"
+    ]
   },
   "repository": {
     "type": "git",
@@ -21,5 +27,16 @@
   "bugs": {
     "url": "https://github.com/audio-lab/wavearea/issues"
   },
-  "homepage": "https://github.com/audio-lab/wavearea#readme"
+  "homepage": "https://github.com/audio-lab/wavearea#readme",
+  "dependencies": {
+    "insert-styles": "^1.2.1",
+    "is-plain-obj": "^1.1.0",
+    "just-extend": "^1.1.21",
+    "urify": "github:dfcreative/urify",
+    "wavefont": "^1.1.4"
+  },
+  "devDependencies": {
+    "app-audio": "^1.1.5",
+    "enable-mobile": "^1.0.4"
+  }
 }
