@@ -29,14 +29,20 @@
   },
   "homepage": "https://github.com/audio-lab/wavearea#readme",
   "dependencies": {
+    "autosize": "^3.0.17",
+    "caret-position2": "^1.0.2",
     "insert-styles": "^1.2.1",
     "is-plain-obj": "^1.1.0",
     "just-extend": "^1.1.21",
+    "sliced": "^1.0.1",
     "urify": "github:dfcreative/urify",
     "wavefont": "^1.1.4"
   },
   "devDependencies": {
     "app-audio": "^1.1.5",
-    "enable-mobile": "^1.0.4"
+    "enable-mobile": "^1.0.4",
+    "fps-indicator": "^1.0.2",
+    "settings-panel": "^1.8.16",
+    "web-audio-stream": "^2.0.2"
   }
 }

@@ -55,5 +55,5 @@ reflected: false
 
 ## Related
 
-> [wavefont](https://github.com/audio-lab/wavefont) — typeface for rendering data.
-> [gl-waveform](https://github.com/audio-lab/gl-waveform) — wavearea used to paint waveform color based of spectral contents.
+> [wavefont](https://github.com/audio-lab/wavefont) — typeface for rendering data.<br/>
+> [gl-waveform](https://github.com/audio-lab/gl-waveform) — wavearea used to paint waveform color based of spectral contents.<br/>
