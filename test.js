@@ -40,7 +40,7 @@ for (let i = 0; i < 1e4; i++) {
 //create editor
 let textarea = document.body.appendChild(document.createElement('textarea'));
 let wavearea = Wavearea(textarea, {
-	samples: data
+	// samples: data
 });
 
 // setTimeout(() => {
@@ -49,8 +49,9 @@ let wavearea = Wavearea(textarea, {
 
 //create audio source
 let audio = new AppAudio({
+	source: 'https://soundcloud.com/grrreat-recordings/sets/grrreat-night'
 	// source: 'https://soundcloud.com/rafa-pineda/sets/rafa-pineda-mixes',
-	soundcloud: false
+	// soundcloud: false
 }).on('ready', (node) => {
 	WAAStream(node).on('data', (chunk) => {
 		let data = chunk.getChannelData(0);
@@ -66,7 +67,7 @@ let panel = Panel({
 	group: {
 		type: 'range',
 		label: 'Group',
-		value: 44100/200,
+		value: 256,
 		// log: true,
 		// precision: 0,
 		step: 1,
@@ -76,7 +77,16 @@ let panel = Panel({
 				group: Math.round(v)
 			});
 		}
-	}
+	},
+	// size: {
+	// 	type: 'range',
+	// 	label: 'Size',
+	// 	value: wavearea.size,
+	// 	step: 1,
+	// 	min: Math.pow(2, 8),
+	// 	max: Math.pow(2, 16),
+	// 	change: v => wavearea.update({ size: v })
+	// }
 }, {
 	theme: require('settings-panel/theme/flat'),
 	palette: ['black', 'white'],

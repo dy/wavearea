@@ -75,7 +75,7 @@ Wavearea.prototype.group = 64;
 Wavearea.prototype.reduce = (prev, curr) => Math.max(prev, curr);
 Wavearea.prototype.style = 'bars';
 Wavearea.prototype.reflected = true;
-Wavearea.prototype.size = 44100/64;
+Wavearea.prototype.size = 44100/64 * 5;
 
 
 Wavearea.prototype.set = function (offset, samples) {
@@ -101,33 +101,7 @@ Wavearea.prototype.set = function (offset, samples) {
 		this.samples[offset + i] = samples[i];
 	}
 
-	//FIXME: recalc bars from the last offset
-	// this.tail = [];
-
-	//collect grouped data for bars
-	// this.bars = [];
-
-	// this.plannedBars = [];
-
-	// let group = this.group;
-	// offset = 0;
-	// for (; offset < samples.length; offset+=group) {
-	// 	let v = samples.slice(offset, offset+group).reduce(this.reduce, samples[offset]);
-	// 	this.bars.push(v);
-	// }
-	// this.tail = samples.slice(offset - group);
-
-	// //translate bars into characters
-	// let str = ``;
-	// this.bars.slice(-this.size).forEach(v => {
-	// 	str += fromAmp(v);
-	// });
-
-	// this.element.innerHTML = str;
-
-	// //move caret to the end
-	// caret.set(this.element, this.bars.length);
-	// this.element.scrollTop = this.element.scrollHeight;
+	this.recalcBars(offset, offset + samples.length);
 
 	return this;
 }
@@ -148,7 +122,7 @@ Wavearea.prototype.push = function (samples) {
 
 	//ensure length of storage
 	if (this.samples.length < samples.length + this.last) {
-		this.samples = this.samples.concat(Array(44100*600).fill(0));
+		this.samples = this.samples.concat(Array(44100*60).fill(0));
 	}
 
 	//put new samples
@@ -166,24 +140,24 @@ Wavearea.prototype.push = function (samples) {
 
 //recalculate bars
 Wavearea.prototype.recalcBars = function (start, end) {
+	if (start == null) start = 0;
+	if (end == null) end = this.samples.length - 1;
+
 	let group = this.group;
 	start = start - (start % group);
 	end = end - (end % group);
 
+	if (start >= end) return this;
+
 	//collect grouped data for bars
-	let offset = 0;
+	let offset = 0, str = '';
 	for (offset = start; offset < end; offset+=group) {
 		let bar = offset/group;
 		this.bars[bar] = this.samples.slice(offset, offset+group).reduce(this.reduce, this.samples[offset]);
-		if (this.string.length <= bar) this.string += fromAmp(this.bars[bar]);
-		else this.string[bar] = fromAmp(this.bars[bar]);
+		str += fromAmp(this.bars[bar]);
 	}
 
-	this.update();
-}
-
-
-Wavearea.prototype.update = function () {
+	this.string = this.string.slice(0, start/group) + str + this.string.slice(end/group);
 	//ignore planned raf
 	if (this.planned) return this;
 
@@ -191,10 +165,16 @@ Wavearea.prototype.update = function () {
 
 	raf(() => {
 		this.planned = false;
-		this.element.textContent = this.string;
+		this.element.textContent = this.string.slice(-this.size);
+
 		caret.set(this.element, this.bars.length);
 		this.element.scrollTop = this.element.scrollHeight;
 	});
+}
+
+
+Wavearea.prototype.update = function (opts) {
+	extend(this, opts);
 }
 
 
