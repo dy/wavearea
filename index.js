@@ -19,7 +19,7 @@ const raf = require('raf');
 module.exports = Wavearea;
 
 //TODO: if user wants to reuse font... Ideally - provide font by requiring it...
-const fontUri = urify(require.resolve('../wavefont/font/wavefont-bars-200.otf'));
+const fontUri = urify(require.resolve('../wavefont/font/wavefont-bars-reflected-200.otf'));
 
 css(`
 	@font-face {
@@ -71,8 +71,10 @@ function Wavearea (el, options) {
 
 Wavearea.prototype.samples;
 Wavearea.prototype.barSize = 64;
-Wavearea.prototype.reduce = (prev, curr, idx, all) => {
-	// Math.max(prev, curr)
+Wavearea.prototype.reduceMax = (prev, curr, idx, all) => {
+	return Math.max(Math.abs(prev), Math.abs(curr));
+};
+Wavearea.prototype.reduceAverage = (prev, curr, idx, all) => {
 	return prev + curr / all.length
 };
 Wavearea.prototype.style = 'bars';
@@ -157,7 +159,14 @@ Wavearea.prototype.recalcBars = function (start, end) {
 	let offset = 0, str = '';
 	for (offset = start; offset < end; offset+=group) {
 		let bar = offset/group;
-		this.bars[bar] = this.samples.slice(offset, offset+group).reduce(this.reduce, 0);
+		let max = this.samples.slice(offset, offset+group).reduce(this.reduceMax, 0);
+		let avg = this.samples.slice(offset, offset+group).reduce(this.reduceAverage, 0);
+		let diff = max - Math.abs(avg);
+
+		//for small scales diff is small and result → avg
+		//for large scales diff is big and result → max
+		this.bars[bar] = max * diff + avg * (1 - diff);
+
 		str += fromAmp(this.bars[bar]);
 	}
 
