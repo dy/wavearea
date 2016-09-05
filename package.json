@@ -6,7 +6,7 @@
   "scripts": {
     "test": "budo test.js",
     "test:browser": "budo test.js -- -g bubleify",
-    "build": "browserify test.js -t bubleify -o demo/index.js"
+    "build": "browserify test.js -g bubleify | ccjs - > demo/index.js"
   },
   "browserify": {
     "transform": [
