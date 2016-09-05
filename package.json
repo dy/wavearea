@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "budo test.js",
+    "test:browser": "budo test.js -- -g bubleify",
     "build": "browserify test.js -t bubleify -o demo/index.js"
   },
   "browserify": {
@@ -40,8 +41,10 @@
   },
   "devDependencies": {
     "app-audio": "^1.1.5",
+    "bubleify": "^0.5.1",
     "enable-mobile": "^1.0.4",
     "fps-indicator": "^1.0.2",
+    "is-mobile": "^0.2.2",
     "settings-panel": "^1.8.16",
     "urify": "^2.1.0",
     "web-audio-stream": "^2.0.2"

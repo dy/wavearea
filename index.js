@@ -35,7 +35,7 @@ css(`
 		-moz-osx-font-smoothing: unset;
 		font-smoothing: none;
 		font-smooth: never;
-		min-width: 40rem;
+		min-width: 0;
 		font-size: 64px;
 	}
 `, {id: 'wavearea'});
@@ -60,6 +60,11 @@ function Wavearea (el, options) {
 	if (!this.element) this.element = el;
 	this.element.classList.add('wavearea');
 
+
+	window.addEventListener('resize', () => {
+		this.recalcCols().renderBars();
+	});
+
 	// this.audio = Audio(options.source);
 
 	this.samples = Array(44100*60).fill(0);
@@ -80,12 +85,14 @@ Wavearea.prototype.reduceAverage = (prev, curr, idx, all) => {
 };
 Wavearea.prototype.style = 'bars';
 Wavearea.prototype.reflected = true;
-// Wavearea.prototype.maxBars = 44100/64 * 5;
 Wavearea.prototype.cols = 800;
 Wavearea.prototype.rows = 7;
 Wavearea.prototype.log = false;
 Wavearea.prototype.maxDecibels = 0;
 Wavearea.prototype.minDecibels = -60;
+
+//font ratio
+Wavearea.prototype.fontRatio = 1;
 
 Wavearea.prototype.set = function (offset, samples) {
 	// this.audio = Audio(samples);
@@ -147,7 +154,7 @@ Wavearea.prototype.push = function (samples) {
 }
 
 
-//recalculate bars
+//recalculate bars for the range (in samples)
 Wavearea.prototype.recalcBars = function (start, end) {
 	if (start == null) start = 0;
 	if (end == null) end = this.last;
@@ -185,6 +192,14 @@ Wavearea.prototype.recalcBars = function (start, end) {
 	}
 
 	this.string = this.string.slice(0, start/group) + str + this.string.slice(end/group);
+
+	this.renderBars();
+
+	return this;
+}
+
+//put string to textarea from cached string
+Wavearea.prototype.renderBars = function () {
 	//ignore planned raf
 	if (this.planned) return this;
 
@@ -205,14 +220,31 @@ Wavearea.prototype.recalcBars = function (start, end) {
 		// caret.set(this.element, this.bars.length);
 		this.element.scrollTop = this.element.scrollHeight;
 	});
+
+	return this;
 }
 
 
+//calculate size of cols based off fontRatio
+Wavearea.prototype.recalcCols = function () {
+	let s = window.getComputedStyle(this.element);
+	let pl = parseInt(s.paddingLeft) || 0;
+	let pr = parseInt(s.paddingRight) || 0;
+	this.cols = (this.element.offsetWidth - pl - pr) / this.fontRatio;
+
+	return this;
+}
+
+//update everything, quite slow
 Wavearea.prototype.update = function (opts) {
 	extend(this, opts);
 
+	this.recalcCols();
+
 	this.string = '';
-	this.recalcBars(Math.max(0, this.last - this.cols * (this.rows+1) * this.barSize ), this.last);
+	this.recalcBars(Math.max(0, this.last - this.cols * (this.rows + .1) * this.barSize ), this.last);
+
+	return this;
 }
 
 

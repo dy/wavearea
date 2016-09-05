@@ -1,12 +1,15 @@
 'use strict';
 
-require('enable-mobile');
+require('../enable-mobile');
+
+
 const Wavearea = require('./');
 const AppAudio = require('../app-audio');
 const css = require('insert-styles');
 const WAAStream = require('web-audio-stream/readable');
 const Panel = require('settings-panel');
 const fps = require('fps-indicator')();
+const isMobile = require('is-mobile')();
 
 css(`
 	* {
@@ -26,14 +29,17 @@ css(`
 		overflow: hidden;
 	}
 	.app-audio {
+		font-family: Roboto;
+		font-size: .8rem;
 		background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 120%);
 	}
 
 	.fps {
-		top: auto!important;
+		font-size: .8rem;
+		top: 0;
 		bottom: 0;
-		margin-bottom: 1.75em;
-		margin-right: 1em;
+		margin-top: 1rem;
+		margin-right: 1rem;
 	}
 `);
 
@@ -49,6 +55,10 @@ for (let i = 0; i < 1e4; i++) {
 //create editor
 let textarea = document.body.appendChild(document.createElement('textarea'));
 let wavearea = Wavearea(textarea, {
+	log: true,
+	minDecibels: -40,
+	fontRatio: isMobile ? 1.05 : 1,
+	rows: isMobile ? 4 : 7
 	// samples: data
 });
 
@@ -58,7 +68,8 @@ let wavearea = Wavearea(textarea, {
 
 //create audio source
 let audio = new AppAudio({
-	source: 'https://soundcloud.com/grrreat-recordings/sets/grrreat-night'
+	source: isMobile ? './sample.mp3' : 'https://soundcloud.com/deep-house-london/ellie-cocks-dhl-mix-104'
+	// source: 'https://soundcloud.com/danyarmaros/dany-armaros-wanderer-original-mix'
 	// source: 'https://soundcloud.com/rafa-pineda/sets/rafa-pineda-mixes',
 	// soundcloud: false
 }).on('ready', (node) => {
@@ -97,15 +108,15 @@ let panel = Panel({
 	// 	change: v => wavearea.update({ maxBars: v })
 	// }
 
-	cols: {
-		type: 'range',
-		label: 'Cols',
-		value: wavearea.cols,
-		step: 1,
-		min: 100,
-		max: 2000,
-		change: v => wavearea.update({ cols: v })
-	},
+	// cols: {
+	// 	type: 'range',
+	// 	label: 'Cols',
+	// 	value: wavearea.cols,
+	// 	step: 1,
+	// 	min: 100,
+	// 	max: 2000,
+	// 	change: v => wavearea.update({ cols: v })
+	// },
 
 	rows: {
 		type: 'range',
@@ -119,6 +130,7 @@ let panel = Panel({
 }, {
 	theme: require('settings-panel/theme/flat'),
 	palette: ['black', 'white'],
+	title: '<a href="https://github.com/audio-lab/wavearea">Wavearea</a>',
 	css: `
 	:host {
 		position: fixed;
@@ -126,10 +138,19 @@ let panel = Panel({
 		left: 0;
 		right: 0;
 		width: 100%;
+		font-size: .8rem;
 		background: linear-gradient(to top, rgba(255,255,255,1) 20%, rgba(255,255,255,0) 140%);
+	}
+	.settings-panel-title {
+		display: inline-block;
+		vertical-align: middle;
+		margin-top: -2px;
+		margin-right: 1.5em;
+		font-size: .9rem;
 	}
 	.settings-panel-field {
 		width: auto;
+		vertical-align: middle;
 		display: inline-block;
 	}
 	.settings-panel-label {
@@ -143,4 +164,5 @@ let panel = Panel({
 	}
 	`
 });
+
 
