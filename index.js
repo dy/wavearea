@@ -13,6 +13,7 @@ const extend = require('just-extend');
 const sliced = require('sliced');
 const caret = require('caret-position2');
 const raf = require('raf');
+const db = require('decibels');
 // const Audio = require('audio');
 
 
@@ -82,7 +83,9 @@ Wavearea.prototype.reflected = true;
 // Wavearea.prototype.maxBars = 44100/64 * 5;
 Wavearea.prototype.cols = 800;
 Wavearea.prototype.rows = 7;
-
+Wavearea.prototype.log = false;
+Wavearea.prototype.maxDecibels = 0;
+Wavearea.prototype.minDecibels = -60;
 
 Wavearea.prototype.set = function (offset, samples) {
 	// this.audio = Audio(samples);
@@ -149,6 +152,8 @@ Wavearea.prototype.recalcBars = function (start, end) {
 	if (start == null) start = 0;
 	if (end == null) end = this.last;
 
+	start = Math.max(start, 0);
+
 	let group = this.barSize;
 	start = start - (start % group);
 	end = end - (end % group);
@@ -166,6 +171,15 @@ Wavearea.prototype.recalcBars = function (start, end) {
 		//for small scales diff is small and result → avg
 		//for large scales diff is big and result → max
 		this.bars[bar] = max * diff + avg * (1 - diff);
+
+		if (this.log) {
+			let amp = this.bars[bar];
+			let v = db.fromGain(Math.abs(amp));
+			v = Math.max(Math.min(v, this.maxDecibels), this.minDecibels);
+			v = (v - this.minDecibels) / (this.maxDecibels - this.minDecibels);
+			if (amp < 0) v = -v;
+			this.bars[bar] = v;
+		};
 
 		str += fromAmp(this.bars[bar]);
 	}
@@ -186,7 +200,7 @@ Wavearea.prototype.recalcBars = function (start, end) {
 			str += this.string.slice(lineOffset, lineOffset + this.cols) + '\n';
 		}
 
-		this.element.textContent = str;
+		this.element.textContent = str.trim();
 
 		// caret.set(this.element, this.bars.length);
 		this.element.scrollTop = this.element.scrollHeight;
