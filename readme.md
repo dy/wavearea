@@ -2,7 +2,7 @@
 
 Edit waveform/audio/other data in textarea.
 
-[![wavearea](https://raw.githubusercontent.com/dfcreative/wavearea/gh-pages/preview.png "wavearea")](http://dfcreative.github.io/wavearea/)
+[![wavearea](https://raw.githubusercontent.com/audio-lab/wavearea/gh-pages/preview.png "wavearea")](http://audio-lab.github.io/wavearea/)
 
 
 ## Usage
@@ -16,7 +16,7 @@ const autosize = require('autosize');
 let inputEl = document.body.appendChild(document.createElement('textarea'));
 
 autosize(inputEl);
-let wavearea = Wavearea(inputEl, data);
+let wavearea = Wavearea(inputEl, options);
 
 wavearea.push(newData);
 wavearea.set(data);
