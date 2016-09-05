@@ -16,15 +16,24 @@ css(`
 		display: block;
 		width: 100%;
 		height: 100vh;
-		overflow-x: hidden;
 		border: 0;
 		margin: 0;
 		padding-top: 1em;
 		outline: none;
-		padding-bottom: 1em;
+		padding-left: 1rem;
+		padding-right: 1rem;
+		overflow-x: hidden;
+		overflow: hidden;
 	}
 	.app-audio {
 		background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 120%);
+	}
+
+	.fps {
+		top: auto!important;
+		bottom: 0;
+		margin-bottom: 1.75em;
+		margin-right: 1em;
 	}
 `);
 
@@ -66,27 +75,47 @@ let audio = new AppAudio({
 let panel = Panel({
 	group: {
 		type: 'range',
-		label: 'Group',
+		label: 'Bar size',
 		value: 256,
-		// log: true,
-		// precision: 0,
-		step: 1,
+		log: true,
+		precision: 0,
+		// step: 1,
 		min: 1, max: Math.pow(2, 16),
 		change: v => {
 			wavearea.update({
-				group: Math.round(v)
+				barSize: Math.round(v)
 			});
 		}
 	},
 	// size: {
 	// 	type: 'range',
-	// 	label: 'Size',
-	// 	value: wavearea.size,
+	// 	label: 'Max bars',
+	// 	value: wavearea.maxBars,
 	// 	step: 1,
-	// 	min: Math.pow(2, 8),
-	// 	max: Math.pow(2, 16),
-	// 	change: v => wavearea.update({ size: v })
+	// 	min: Math.pow(2, 4),
+	// 	max: Math.pow(2, 13),
+	// 	change: v => wavearea.update({ maxBars: v })
 	// }
+
+	cols: {
+		type: 'range',
+		label: 'Cols',
+		value: wavearea.cols,
+		step: 1,
+		min: 100,
+		max: 2000,
+		change: v => wavearea.update({ cols: v })
+	},
+
+	rows: {
+		type: 'range',
+		label: 'Rows',
+		value: wavearea.rows,
+		step: 1,
+		min: 1,
+		max: 10,
+		change: v => wavearea.update({ rows: v })
+	}
 }, {
 	theme: require('settings-panel/theme/flat'),
 	palette: ['black', 'white'],
@@ -101,6 +130,16 @@ let panel = Panel({
 	}
 	.settings-panel-field {
 		width: auto;
+		display: inline-block;
+	}
+	.settings-panel-label {
+		width: auto!important;
+	}
+	.settings-panel-value {
+		width: 4em!important;
+	}
+	.settings-panel-range {
+		max-width: 8em;
 	}
 	`
 });
