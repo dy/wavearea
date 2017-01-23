@@ -6,7 +6,7 @@
 'use strict';
 
 const isPlainObj = require('is-plain-obj');
-const fromAmp = require('../wavefont');
+const fromAmp = require('wavefont');
 const css = require('insert-styles');
 const urify = require('urify');
 const extend = require('just-extend');

@@ -36,7 +36,9 @@
     "insert-styles": "^1.2.1",
     "is-plain-obj": "^1.1.0",
     "just-extend": "^1.1.21",
+    "raf": "^3.3.0",
     "sliced": "^1.0.1",
+    "urify": "^2.1.0",
     "wavefont": "^1.1.4"
   },
   "devDependencies": {
@@ -46,7 +48,6 @@
     "fps-indicator": "^1.0.2",
     "is-mobile": "^0.2.2",
     "settings-panel": "^1.8.16",
-    "urify": "^2.1.0",
     "web-audio-stream": "^2.0.2"
   }
 }

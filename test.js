@@ -4,7 +4,7 @@ require('../enable-mobile');
 
 
 const Wavearea = require('./');
-const AppAudio = require('../app-audio');
+const AppAudio = require('app-audio');
 const css = require('insert-styles');
 const WAAStream = require('web-audio-stream/readable');
 const Panel = require('settings-panel');
