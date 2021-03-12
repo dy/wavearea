@@ -40,23 +40,45 @@ a {
 	}
 	.wavefont {
 		font-family: wavefont;
-    font-size: 50px;
-    letter-spacing: 1px;
-		--wdth: 5;
+    font-size: 5rem;
+    letter-spacing: .0108ex;
+		--wdth: 4;
 		font-variation-settings: 'wdth' var(--wdth), 'algn' 0.5, 'radi' 50;
 	}
 </style>
 <style id="wavearea-style">
 #wavearea {
   position: absolute;
-  top: 0;
+  top: 2rem;
   left: 0;
   padding: 0; width: 100vw; height:100vh;
   resize: none;
 }
+#playback {
+  position: absolute;
+  top: 0;
+  height: 2rem;
+  width: 100vw;
+}
+/* #playback::-webkit-media-controls-panel */
+/* #playback::-webkit-media-controls-mute-button { display: none;} */
+/* #playback::-webkit-media-controls-play-button */
+#playback::-webkit-media-controls-timeline-container {display: none;}
+#playback::-webkit-media-controls-current-time-display {display: none;}
+#playback::-webkit-media-controls-time-remaining-display {display: none;}
+#playback::-webkit-media-controls-timeline {display: none;}
+/* #playback::-webkit-media-controls-volume-slider-container */
+/* #playback::-webkit-media-controls-volume-slider */
+/* #playback::-webkit-media-controls-seek-back-button */
+/* #playback::-webkit-media-controls-seek-forward-button */
+/* #playback::-webkit-media-controls-fullscreen-button */
+/* #playback::-webkit-media-controls-rewind-button */
+/* #playback::-webkit-media-controls-return-to-realtime-button */
+/* #playback::-webkit-media-controls-toggle-closed-captions-button */
 </style>
 
-<textarea id="wavearea" class="wavefont"></textarea>
+<textarea id="wavearea" class="wavefont" spellcheck="false"></textarea>
+<audio id="playback" controls></audio>
 <script>
 </script>
 
