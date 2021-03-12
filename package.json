@@ -4,9 +4,7 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "test": "budo test.js",
-    "test:browser": "budo test.js -- -g bubleify",
-    "build": "browserify test.js -g bubleify | ccjs - > demo/index.js"
+    "start": "esbuild index.js --bundle --minify --sourcemap --watch --outfile=bundle.js"
   },
   "browserify": {
     "transform": [
@@ -30,6 +28,7 @@
   },
   "homepage": "https://github.com/audio-lab/wavearea#readme",
   "dependencies": {
+    "audioworklet-polyfill": "^1.1.2",
     "autosize": "^3.0.17",
     "caret-position2": "^1.0.2",
     "decibels": "^1.0.1",
@@ -45,6 +44,7 @@
     "app-audio": "^1.1.5",
     "bubleify": "^0.5.1",
     "enable-mobile": "^1.0.4",
+    "esbuild": "^0.9.1",
     "fps-indicator": "^1.0.2",
     "is-mobile": "^0.2.2",
     "settings-panel": "^1.8.16",
