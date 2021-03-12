@@ -15,3 +15,4 @@ node_modules
 
 demo
 *.mp3
+*.map
