@@ -19,7 +19,15 @@ export default class Wavearea {
   constructor (textarea, o={}) {
     // DOM
     this.textarea = textarea
-    this.textarea.style.lineHeight = 1
+    this.textarea.style.setProperty('--size', 100)
+    Object.assign(this.textarea.style, {
+      lineHeight: 1,
+      paddingTop: 0,
+      fontSize: `calc(var(--size) * 1px)`,
+      backgroundSize: `10px calc(var(--size) * 1px)`,
+      backgroundPosition: `0 calc(var(--size) * 0.5px)`,
+      backgroundImage: `linear-gradient(to bottom, rgb(230, 245, 255) 1px, transparent 1px)`,
+    })
 
     ;(this.primaryControls = document.createElement('div'))
     .innerHTML = `
@@ -97,6 +105,7 @@ export default class Wavearea {
         for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
         const rms = Math.sqrt(ssum / dataArray.length)
         this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)))
+        this.textarea.selectionStart = this.textarea.textContent.length
       }
     }
   }
