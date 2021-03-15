@@ -19,14 +19,14 @@ export default class Wavearea {
   constructor (textarea, o={}) {
     // DOM
     this.textarea = textarea
-    this.textarea.style.setProperty('--size', 100)
+    // this.textarea.style.setProperty('--size', 100)
     Object.assign(this.textarea.style, {
       lineHeight: 1,
-      paddingTop: 0,
-      fontSize: `calc(var(--size) * 1px)`,
-      backgroundSize: `10px calc(var(--size) * 1px)`,
-      backgroundPosition: `0 calc(var(--size) * 0.5px)`,
-      backgroundImage: `linear-gradient(to bottom, rgb(230, 245, 255) 1px, transparent 1px)`,
+      // paddingTop: 0,
+      // fontSize: `calc(var(--size) * 1px)`,
+      // backgroundSize: `10px calc(var(--size) * 1px)`,
+      // backgroundPosition: `0 calc(var(--size) * 0.5px)`,
+      // backgroundImage: `linear-gradient(to bottom, rgb(230, 245, 255) 1px, transparent 1px)`,
     })
 
     ;(this.primaryControls = document.createElement('div'))
@@ -92,12 +92,14 @@ export default class Wavearea {
     this.timeslice = analyser.fftSize/audioContext.sampleRate
 
     this.recorder = new MediaRecorder(stream);
+    this.timestamps = []
     this.recorder.ondataavailable = (e) => {
       // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
       // FIXME: capture header, initial 2 chunks are required for playback source validity
       if (this.header.length < 2) this.header.push(e.data)
       else {
         this.chunks.push(e.data)
+        this.timestamps.push(Date.now()*.001)
 
         // FIXME: is that possible to read data from audio chunks?
         analyser.getFloatTimeDomainData(dataArray);
@@ -137,14 +139,18 @@ export default class Wavearea {
     this.playback.play()
 
     // FIXME: make a separate method when (if) full-playback method is implemented
+    // FIXME: playback duration is detected wrong, since we slice chunks
+    let startTime
     const updateCaret = () => {
-      this.textarea.selectionStart = from + Math.floor(frag.length * this.playback.currentTime / this.playback.duration)
+      const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
+      this.textarea.selectionStart = from + framesPlayed
       if (!this.paused) requestAnimationFrame(updateCaret)
     }
     const {playback} = this
-    playback.addEventListener('loadeddata', function o() {
+    playback.addEventListener('canplay', function o() {
+      startTime = Date.now()
       updateCaret()
-      playback.removeEventListener('loadeddata', o)
+      playback.removeEventListener('canplay', o)
     })
 
     // FIXME: chrome is picky for min chunk length, it disregards short chunks, that's why we can only do playback.src
