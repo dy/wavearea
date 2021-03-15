@@ -10,7 +10,11 @@ import settingsIcon from './asset/settings.svg';
 export default class Wavearea {
   paused = true
   chunks = []
+  header = []
   timeslice = null
+
+  get recording () {return this.recorder?.state === 'recording'}
+  get playing () {return !this.playback?.paused}
 
   constructor (textarea, o={}) {
     // DOM
@@ -48,11 +52,22 @@ export default class Wavearea {
     [this.downloadButton, this.settingsButton] = this.secondaryControls.children;
 
     // interactions
-    this.playButton.addEventListener('click', e => this.paused ? this.play() : this.pause())
-    this.recordButton.addEventListener('click', e => this.paused ? this.record() : this.pause())
+    this.playButton.addEventListener('click', e => {
+      this.paused ? this.play() : this.pause()
+      this.textarea.focus()
+    })
+    this.recordButton.addEventListener('click', e => {
+      this.paused ? this.record() : this.pause()
+      this.textarea.focus()
+    })
 
     // audio
     this.playback = document.createElement('audio')
+    this.playback.addEventListener('ended', e => {
+      this.pause()
+    })
+    // NOTE: instead of timeupdate event, we schedule twice-timeslice frame renderer
+    // this.playback.addEventListener('timeupdate', e => {})
   }
 
   async initRecorder() {
@@ -71,10 +86,11 @@ export default class Wavearea {
     this.recorder = new MediaRecorder(stream);
     this.recorder.ondataavailable = (e) => {
       // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
-      this.chunks.push(e.data)
+      // FIXME: capture header, initial 2 chunks are required for playback source validity
+      if (this.header.length < 2) this.header.push(e.data)
+      else {
+        this.chunks.push(e.data)
 
-      // FIXME: capture header
-      if (this.chunks.length > 2) {
         // FIXME: is that possible to read data from audio chunks?
         analyser.getFloatTimeDomainData(dataArray);
         let ssum = 0
@@ -90,21 +106,37 @@ export default class Wavearea {
     this.recordButton.innerHTML = `${recordIcon}`
     this.playButton.innerHTML = `${playIcon}`
 
-    this.recorder.stop()
+    if (this.recording) this.recorder.stop()
+    if (this.playing) this.playback.pause()
   }
 
   play() {
+    // reset recording
+    this.pause();
+
     this.paused = false
     this.playButton.innerHTML = `${pauseIcon}`
 
-    const from = Math.max(wavearea.selectionStart, 2), to = wavearea.selectionEnd
-    const frag = from === to ? chunks.slice(from) : chunks.slice(from, to)
-    // NOTE: initial 2-3 chunks are required for playback source validity
-    // these chunks can be seen on waveform
-    // FIXME: ideally delegate to webworker?
-    frag.unshift(chunks[0], chunks[1])
-    let blob = new Blob(frag, { type: recorder.mimeType })
-    playback.src = window.URL.createObjectURL(blob)
+    const from = this.textarea.selectionStart, to = this.textarea.selectionEnd
+    const frag = from === to ? this.chunks.slice(from) : this.chunks.slice(from, to)
+    let blob = new Blob([...this.header, ...frag], { type: this.recorder.mimeType })
+    // FIXME: ideally, make playback fully reflect the visible range, via SourceBuffer
+    this.playback.src = window.URL.createObjectURL(blob)
+    // this.playback.srcObject = stream
+
+    // FIXME: cache(?) playback ranges
+    this.playback.play()
+
+    // FIXME: make a separate method when (if) full-playback method is implemented
+    const updateCaret = () => {
+      this.textarea.selectionStart = from + Math.floor(frag.length * this.playback.currentTime / this.playback.duration)
+      if (!this.paused) requestAnimationFrame(updateCaret)
+    }
+    const {playback} = this
+    playback.addEventListener('loadeddata', function o() {
+      updateCaret()
+      playback.removeEventListener('loadeddata', o)
+    })
 
     // FIXME: chrome is picky for min chunk length, it disregards short chunks, that's why we can only do playback.src
     // maybe that's possible to workaround by merging chunks, who knows
