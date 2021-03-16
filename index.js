@@ -71,11 +71,23 @@ export default class Wavearea {
 
     // audio
     this.playback = document.createElement('audio')
-    this.playback.addEventListener('ended', e => {
-      this.pause()
-    })
     // NOTE: instead of timeupdate event, we schedule twice-timeslice frame renderer
     // this.playback.addEventListener('timeupdate', e => {})
+
+    const updateTime = e => (
+      this.playback.currentTime = this.playback.duration * this.textarea.selectionStart / this.chunks.length
+    )
+    this.textarea.addEventListener('click', updateTime)
+
+    const updateCaret = () => {
+      if (this.playing) {
+        // const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
+        const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
+        this.textarea.selectionStart = framesPlayed
+      }
+      requestAnimationFrame(updateCaret)
+    }
+    updateCaret()
   }
 
   async initRecorder() {
@@ -102,11 +114,37 @@ export default class Wavearea {
   }
 
   pause() {
+    if (this.paused) return
+
     this.paused = true
     this.recordButton.innerHTML = `${recordIcon}`
     this.playButton.innerHTML = `${playIcon}`
 
-    if (this.recording) this.recorder.stop()
+    if (this.recording) {
+      this.recorder.stop()
+
+      // create playback chunk
+      this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
+      this.playback.src = window.URL.createObjectURL(this.blob)
+      // this.playback.srcObject = stream
+
+      const playback = this.playback
+      playback.addEventListener('loadedmetadata', function f() {
+        playback.removeEventListener('loadedmetadata', f)
+        // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
+        if (playback.duration === Infinity) {
+          playback.currentTime = Number.MAX_SAFE_INTEGER
+          playback.ontimeupdate = () => {
+            playback.ontimeupdate = null
+            // console.log('ontimeupdate',playback.duration)
+            // playback.currentTime = 0
+          }
+        }
+        // Normal behavior
+        // else console.log('immediate',playback.duration)
+      })
+    }
+
     if (this.playing) this.playback.pause()
 
     clearInterval(this.interval)
@@ -114,36 +152,28 @@ export default class Wavearea {
 
   play() {
     // reset recording
-    this.pause();
+    if (!this.paused) this.pause();
 
     this.paused = false
     this.playButton.innerHTML = `${pauseIcon}`
 
-    const from = this.textarea.selectionStart, to = this.textarea.selectionEnd
-    const frag = from === to ? this.chunks.slice(from) : this.chunks.slice(from, to)
-    let blob = new Blob([...this.header, ...frag], { type: this.recorder.mimeType })
+    // const fromTime = this.playback.duration * this.textarea.selectionStart / this.textarea.textContent.length
+    // const frag = from === to ? this.chunks.slice(from) : this.chunks.slice(from, to)
+    // let blob = new Blob([...this.header, ...frag], { type: this.recorder.mimeType })
+
     // FIXME: ideally, make playback fully reflect the visible range, via SourceBuffer
-    this.playback.src = window.URL.createObjectURL(blob)
+    // this.playback.src = window.URL.createObjectURL(blob)
     // this.playback.srcObject = stream
 
     // FIXME: cache(?) playback ranges
     this.playback.play()
 
+    this.playback.onended = () => {
+      this.playback.onended = null
+      this.pause()
+    }
     // FIXME: make a separate method when (if) full-playback method is implemented
     // FIXME: playback duration is detected wrong, since we slice chunks
-    let startTime
-    const updateCaret = () => {
-      const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
-      // const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
-      this.textarea.selectionStart = from + framesPlayed
-      if (!this.paused) requestAnimationFrame(updateCaret)
-    }
-    const {playback} = this
-    playback.addEventListener('canplay', function o() {
-      startTime = Date.now()
-      updateCaret()
-      playback.removeEventListener('canplay', o)
-    })
 
     // FIXME: chrome is picky for min chunk length, it disregards short chunks, that's why we can only do playback.src
     // maybe that's possible to workaround by merging chunks, who knows
@@ -188,7 +218,7 @@ export default class Wavearea {
     this.timestamps = []
     let last = Date.now()
     this.recorder.ondataavailable = (e) => {
-      console.log(last - (last = Date.now()), this.timeslice)
+      // console.log(last - (last = Date.now()), this.timeslice)
       // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
       // FIXME: capture header, initial 2 chunks are required for playback source validity
       if (this.header.length < 2) this.header.push(e.data)
