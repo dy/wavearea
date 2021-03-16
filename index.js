@@ -79,37 +79,26 @@ export default class Wavearea {
   }
 
   async initRecorder() {
-    let stream = this.stream = await navigator.mediaDevices.getUserMedia({audio: true})
+    const audioContext = this.audioContext = new AudioContext();
 
-    const audioContext = new AudioContext();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    const bufferLength = analyser.frequencyBinCount;
-    source.connect(analyser);
-    const dataArray = new Float32Array(bufferLength);
+    // FIXME: make configurable
+    // https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks
+    const constraints = {audio: {
+      autoGainControl: false,
+      echoCancellation: false,
+      latency: 0,
+      noiseSuppression: false,
+      sampleRate: audioContext.sampleRate,
+      sampleSize: 16
+    }}
+    let stream = this.stream = await navigator.mediaDevices.getUserMedia(constraints)
 
-    this.timeslice = analyser.fftSize/audioContext.sampleRate
-
+    this.mediaStreamSource = audioContext.createMediaStreamSource(stream);
+    this.analyser = audioContext.createAnalyser();
+    this.analyser.fftSize = 2048;
+    this.analyser.smoothingTimeConstant = 0;
+    this.mediaStreamSource.connect(this.analyser);
     this.recorder = new MediaRecorder(stream);
-    this.timestamps = []
-    this.recorder.ondataavailable = (e) => {
-      // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
-      // FIXME: capture header, initial 2 chunks are required for playback source validity
-      if (this.header.length < 2) this.header.push(e.data)
-      else {
-        this.chunks.push(e.data)
-        this.timestamps.push(Date.now()*.001)
-
-        // FIXME: is that possible to read data from audio chunks?
-        analyser.getFloatTimeDomainData(dataArray);
-        let ssum = 0
-        for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
-        const rms = Math.sqrt(ssum / dataArray.length)
-        this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)))
-        this.textarea.selectionStart = this.textarea.textContent.length
-      }
-    }
   }
 
   pause() {
@@ -119,6 +108,8 @@ export default class Wavearea {
 
     if (this.recording) this.recorder.stop()
     if (this.playing) this.playback.pause()
+
+    clearInterval(this.interval)
   }
 
   play() {
@@ -143,6 +134,7 @@ export default class Wavearea {
     let startTime
     const updateCaret = () => {
       const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
+      // const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
       this.textarea.selectionStart = from + framesPlayed
       if (!this.paused) requestAnimationFrame(updateCaret)
     }
@@ -157,12 +149,11 @@ export default class Wavearea {
     // maybe that's possible to workaround by merging chunks, who knows
     // create playback stream - anything flushed into sourceBuffer will be played
     // var mediaSource = new MediaSource();
-    // playback.src = URL.createObjectURL(mediaSource);
-    // var sourceopen = new Promise(resolve => console.log('sourceopen') || mediaSource.addEventListener('sourceopen', resolve));
+    // this.playback.src = URL.createObjectURL(mediaSource);
+    // await new Promise(resolve => mediaSource.addEventListener('sourceopen', resolve));
 
     // console.log('add chunks', wavearea.selectionStart, queue)
-    // await sourceopen
-    // const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+    // const sourceBuffer = mediaSource.addSourceBuffer(this.recorder.mimeType);
     // sourceBuffer.onerror = (...e) => console.log('sourcebuffer error', ...e)
     // sourceBuffer.mode = 'sequence'
 
@@ -183,13 +174,42 @@ export default class Wavearea {
   }
 
   async record() {
-    if (!this.stream) await this.initRecorder()
+    if (!this.recorder) await this.initRecorder()
 
     this.paused = false
     this.recordButton.innerHTML = `${pauseIcon}`
 
-    // recorder.start()
-    this.recorder.start(1000 * this.timeslice)
+
+    const dataArray = new Float32Array(this.analyser.fftSize);
+
+    // FIXME: there's discrepancy of calculated samples and played ones
+    this.timeslice = (this.analyser.fftSize)/this.audioContext.sampleRate
+
+    this.timestamps = []
+    let last = Date.now()
+    this.recorder.ondataavailable = (e) => {
+      console.log(last - (last = Date.now()), this.timeslice)
+      // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
+      // FIXME: capture header, initial 2 chunks are required for playback source validity
+      if (this.header.length < 2) this.header.push(e.data)
+      else {
+        this.chunks.push(e.data)
+        this.timestamps.push(Date.now()*.001)
+
+        // FIXME: is that possible to read data from audio chunks?
+        this.analyser.getFloatTimeDomainData(dataArray);
+        let ssum = 0
+        for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
+        const rms = Math.sqrt(ssum / dataArray.length)
+        this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)))
+        this.textarea.selectionStart = this.textarea.textContent.length
+      }
+    }
+
+    // NOTE: this method is way more precise than the next one
+    this.recorder.start()
+    this.interval = setInterval(() => this.recorder.requestData(), 1000 * this.timeslice)
+    // this.recorder.start(1000 * this.timeslice)
   }
 }
 
