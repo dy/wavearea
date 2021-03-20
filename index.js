@@ -269,57 +269,5 @@ export default class Wavearea {
 }
 
 
-// try splitting buffer to N parts, recording in parallel, generating blob
-async function download() {
-  const audioContext = new AudioContext();
-
-  const mimeType = 'audio/webm;codecs=opus'
-
-  const bufs = [], all = []
-  for (let i = 0; i < 10; i++ ) {
-    // 2705 - min chunk length for opus encoder in Chrome, so we increase block size to 4096 plus silent header
-    let buf = new AudioBuffer({length: 4096, sampleRate: audioContext.sampleRate})
-    bufs.push(buf)
-    let data = buf.getChannelData(0)
-    for (let j = 0; j < 4096; j++) data[j] = Math.sin(j / ((i + 1) * 2))
-
-    // create recorders
-    const source = audioContext.createBufferSource();
-    source.buffer = buf;
-
-
-    const chunks = []
-    all.push(new Promise(r => {
-      const dest = audioContext.createMediaStreamDestination();
-      const recorder = new MediaRecorder(dest.stream, {mimeType});
-      source.connect(dest)
-
-      recorder.start(10)
-      // delay is needed to shift encodingblocks
-      source.start(0)
-
-      recorder.ondataavailable = (e) => {
-        const blob = e.data
-        if (blob.size) chunks.push(blob)
-      }
-      recorder.onstop = e => {
-        r(chunks)
-      }
-      source.onended = e => {
-        recorder.stop()
-      }
-    }))
-  }
-
-  const blobs = await Promise.all(all);
-
-  // combine multiple recorders back
-  console.log(blobs)
-  var blob = new Blob([...blobs[0], ...blobs.slice(1).map(b => b.slice(1)).flat()], { type : mimeType });
-  let audio = document.createElement('audio')
-  audio.src = URL.createObjectURL(blob);
-  audio.play()
-}
-
 
 const event = (target, evt) => new Promise(r => target.addEventListener(evt, function fn(){target.removeEventListener(evt, fn),r()}))
