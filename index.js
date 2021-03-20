@@ -126,59 +126,10 @@ export default class Wavearea {
     this.recorder = new MediaRecorder(stream);
   }
 
-  // stop recording
-  stop() {
-    if (this.paused) return
-
-    this.paused = true
-    this.recordButton.innerHTML = `${recordIcon}`
-    this.playButton.innerHTML = `${playIcon}`
-
-    if (this.recording) {
-      this.recorder.stop()
-
-      // create playback chunk
-      this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
-      this.playback.src = window.URL.createObjectURL(this.blob)
-      // this.playback.srcObject = stream
-
-      const playback = this.playback
-      playback.addEventListener('loadedmetadata', function f() {
-        playback.removeEventListener('loadedmetadata', f)
-        // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
-        console.log('loadedmetadata', playback.duration)
-        if (playback.duration === Infinity || isNaN(playback.duration)) {
-          playback.currentTime = Number.MAX_SAFE_INTEGER
-          playback.ontimeupdate = () => {
-            playback.ontimeupdate = null
-            console.log('ontimeupdate',playback.duration,playback.currentTime)
-            // playback.currentTime = 0
-          }
-        }
-        // Normal behavior
-        // else console.log('immediate',playback.duration)
-      })
-    }
-
-    clearInterval(this.interval)
-  }
-
-  // pause playback
-  pause() {
-    if (this.paused) return
-
-    this.paused = true
-    this.playButton.innerHTML = `${playIcon}`
-
-    if (this.playing) this.playback.pause()
-
-    clearInterval(this.interval)
-  }
-
   play() {
     // reset recording
     if (!this.paused) this.pause();
-    if (this.playback.currentTime >= this.playback.duration || this.textarea.selectionStart >= this.textarea.textContent.length) {
+    if (this.playback.currentTime >= this.playback.duration || this.textarea.selectionStart >= this.textarea.textLength) {
       this.playback.currentTime = 0.001;
     }
 
@@ -231,6 +182,16 @@ export default class Wavearea {
     // flush()
   }
 
+  // pause playback
+  pause() {
+    if (this.paused) return
+
+    this.paused = true
+    this.playButton.innerHTML = `${playIcon}`
+
+    if (this.playing) this.playback.pause()
+  }
+
   async record() {
     if (this.playing) this.pause()
     if (!this.recorder) await this.initRecorder()
@@ -244,8 +205,8 @@ export default class Wavearea {
     this.timeslice = (this.analyser.fftSize)/this.audioContext.sampleRate
 
     this.timestamps = []
-    let last = Date.now()
     this.recorder.ondataavailable = (e) => {
+      if (!e.data.size) return
       // console.log(last - (last = Date.now()), this.timeslice)
       // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
       // FIXME: capture header, initial 2 chunks are required for playback source validity
@@ -259,24 +220,106 @@ export default class Wavearea {
         let ssum = 0
         for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
         const rms = Math.sqrt(ssum / dataArray.length)
-        this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)))
-        this.textarea.selectionStart = this.textarea.textContent.length
+        this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)) )
+        this.textarea.selectionStart = this.textarea.textLength
+        console.log('dataavailable', this.textarea.textLength)
       }
     }
 
     // NOTE: this method is way more precise than the next one
-    this.recorder.start()
-    this.interval = setInterval(() => this.recorder.requestData(), 1000 * this.timeslice)
-    // this.recorder.start(1000 * this.timeslice)
+    // this.recorder.start()
+    // this.interval = setInterval(() => this.recorder.requestData(), 1000 * this.timeslice)
+    this.recorder.start(1000 * this.timeslice)
   }
+
+  // stop recording
+  async stop() {
+    if (this.paused) return
+
+    this.paused = true
+    this.recordButton.innerHTML = `${recordIcon}`
+    this.playButton.innerHTML = `${playIcon}`
+
+    if (this.recording) {
+      this.recorder.stop()
+
+      await event(this.recorder, 'stop')
+
+      // create playback chunk
+      console.log(this.chunks, this.textarea.textLength)
+      this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
+      this.playback.src = window.URL.createObjectURL(this.blob)
+      // this.playback.srcObject = stream
+
+      await event(this.playback, 'loadedmetadata')
+
+      // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
+      console.log('loadedmetadata', this.playback.duration)
+      if (this.playback.duration === Infinity || isNaN(this.playback.duration)) {
+        this.playback.currentTime = Number.MAX_SAFE_INTEGER
+        await event(this.playback, 'timeupdate')
+        console.log('ontimeupdate',this.playback.duration,this.playback.currentTime)
+        // playback.currentTime = 0
+      }
+      // Normal behavior
+      // else console.log('immediate',playback.duration)
+    }
+  }
+
 }
 
 
 // try splitting buffer to N parts, recording in parallel, generating blob
-function download(AudioBuffer) {
+async function download() {
+  const audioContext = new AudioContext();
 
-  var dest = audioContext.createMediaStreamDestination();
-  var mediaRecorder = new MediaRecorder(dest.stream);
-  this.analyser.connect(dest)
-  console.log(this.recorder)
+  const mimeType = 'audio/webm;codecs=opus'
+
+  const bufs = [], all = []
+  for (let i = 0; i < 10; i++ ) {
+    // 2705 - min chunk length for opus encoder in Chrome, so we increase block size to 4096 plus silent header
+    let buf = new AudioBuffer({length: 4096, sampleRate: audioContext.sampleRate})
+    bufs.push(buf)
+    let data = buf.getChannelData(0)
+    for (let j = 0; j < 4096; j++) data[j] = Math.sin(j / ((i + 1) * 2))
+
+    // create recorders
+    const source = audioContext.createBufferSource();
+    source.buffer = buf;
+
+
+    const chunks = []
+    all.push(new Promise(r => {
+      const dest = audioContext.createMediaStreamDestination();
+      const recorder = new MediaRecorder(dest.stream, {mimeType});
+      source.connect(dest)
+
+      recorder.start(10)
+      // delay is needed to shift encodingblocks
+      source.start(0)
+
+      recorder.ondataavailable = (e) => {
+        const blob = e.data
+        if (blob.size) chunks.push(blob)
+      }
+      recorder.onstop = e => {
+        r(chunks)
+      }
+      source.onended = e => {
+        recorder.stop()
+      }
+    }))
+  }
+
+  const blobs = await Promise.all(all);
+
+  // combine multiple recorders back
+  console.log(blobs)
+  var blob = new Blob([...blobs[0], ...blobs.slice(1).map(b => b.slice(1)).flat()], { type : mimeType });
+  let audio = document.createElement('audio')
+  audio.src = URL.createObjectURL(blob);
+  audio.play()
 }
+
+
+const event = (target, evt) => new Promise(r => target.addEventListener(evt, function fn(){target.removeEventListener(evt, fn),r()}))
