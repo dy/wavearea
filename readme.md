@@ -1,6 +1,6 @@
 # wavearea [![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
 
-Edit waveform/audio/other data in textarea.
+Textarea providing editable audio.
 
 [![wavearea](https://raw.githubusercontent.com/audio-lab/wavearea/gh-pages/preview.png "wavearea")](http://audio-lab.github.io/wavearea/)
 

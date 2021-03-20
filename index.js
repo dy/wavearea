@@ -85,8 +85,9 @@ export default class Wavearea {
     this.playback = document.createElement('audio')
   }
 
-  async initRecorder() {
-    const audioContext = this.audioContext = new AudioContext();
+  // init recorder
+  async init() {
+    const audioContext = new AudioContext();
 
     // FIXME: make configurable
     // https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks
@@ -102,12 +103,99 @@ export default class Wavearea {
     let stream = this.stream = await navigator.mediaDevices.getUserMedia(constraints)
     console.timeEnd('init recorder')
 
-    this.mediaStreamSource = audioContext.createMediaStreamSource(stream);
-    this.analyser = audioContext.createAnalyser();
-    this.analyser.fftSize = 2048;
-    this.analyser.smoothingTimeConstant = 0;
-    this.mediaStreamSource.connect(this.analyser);
+    const streamSource = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0;
+    streamSource.connect(analyser);
     this.recorder = new MediaRecorder(stream, {mimeType: this.mimeType});
+
+    const dataArray = new Float32Array(analyser.fftSize);
+    this.timeslice = (analyser.fftSize)/audioContext.sampleRate;
+
+    this.recorder.ondataavailable = (e) => {
+      if (!e.data.size) return
+      // console.log(last - (last = Date.now()), this.timeslice)
+      // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
+      // FIXME: capture header, initial 2 chunks are required for playback source validity
+      if (this.header.length < 2) {
+        this.header.push(e.data)
+      }
+      else {
+        // reading loudness data from chunks is hard
+        analyser.getFloatTimeDomainData(dataArray);
+        let ssum = 0
+        for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
+        const rms = Math.sqrt(ssum / dataArray.length)
+        const bar = String.fromCharCode(0x0100 + Math.floor(rms * 100))
+
+        // append
+        if (this.textarea.selectionStart === this.textarea.textLength) {
+          this.chunks.push(e.data)
+          this.textarea.append( bar )
+          this.textarea.selectionStart = this.textarea.textLength
+        }
+        // insert
+        else {
+          const text = this.textarea.textContent, caret = this.textarea.selectionStart
+          const chunkStart = text.slice(0, caret).replace(/\s/ig,'').length;
+          this.chunks.splice(chunkStart, 0, e.data)
+          this.textarea.textContent = text.slice(0, caret) + bar + text.slice(caret)
+          this.textarea.selectionStart = caret + 1
+        }
+        // console.log('dataavailable', this.textarea.textLength)
+      }
+    }
+  }
+
+  async record() {
+    if (this.playing) this.pause()
+
+    this.paused = false
+    this.recordButton.innerHTML = `${pauseIcon}`
+
+    if (!this.recorder) await this.init()
+
+    // reset header to re-init it from the new recording part
+    this.header = []
+
+    // NOTE: real time intervals are different from timeslice
+    this.recorder.start(1000 * this.timeslice)
+  }
+
+  // stop recording
+  async stop() {
+    if (this.paused) return
+
+    this.paused = true
+    this.recordButton.innerHTML = `${recordIcon}`
+    this.playButton.innerHTML = `${playIcon}`
+
+    if (this.recording) {
+      this.recorder.stop()
+
+      // it still can generate the last ondataavailable event, so we wait
+      await event(this.recorder, 'stop')
+
+      // create playback chunk
+      console.log(this.chunks, this.textarea.textLength)
+      this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
+      this.playback.src = window.URL.createObjectURL(this.blob)
+      // this.playback.srcObject = stream
+
+      await event(this.playback, 'loadedmetadata')
+
+      // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
+      console.log('loadedmetadata', this.playback.duration)
+      if (this.playback.duration === Infinity || isNaN(this.playback.duration)) {
+        this.playback.currentTime = Number.MAX_SAFE_INTEGER
+        await event(this.playback, 'timeupdate')
+        console.log('ontimeupdate',this.playback.duration,this.playback.currentTime)
+        // playback.currentTime = 0
+      }
+      // Normal behavior
+      // else console.log('immediate',playback.duration)
+    }
   }
 
   async play() {
@@ -148,81 +236,6 @@ export default class Wavearea {
 
     if (this.playing) this.playback.pause()
   }
-
-  async record() {
-    if (this.playing) this.pause()
-    if (!this.recorder) await this.initRecorder()
-
-    this.paused = false
-    this.recordButton.innerHTML = `${pauseIcon}`
-
-    const dataArray = new Float32Array(this.analyser.fftSize);
-
-    // FIXME: there's discrepancy of calculated samples and played ones
-    this.timeslice = (this.analyser.fftSize)/this.audioContext.sampleRate
-
-    this.timestamps = []
-    this.recorder.ondataavailable = (e) => {
-      if (!e.data.size) return
-      // console.log(last - (last = Date.now()), this.timeslice)
-      // no need to turn data into array buffers, unless we're able to read them instead of Web-Audio-API
-      // FIXME: capture header, initial 2 chunks are required for playback source validity
-      if (this.header.length < 2) this.header.push(e.data)
-      else {
-        this.chunks.push(e.data)
-        this.timestamps.push(Date.now()*.001)
-
-        // FIXME: is that possible to read data from audio chunks?
-        this.analyser.getFloatTimeDomainData(dataArray);
-        let ssum = 0
-        for (let i = 0; i < dataArray.length; i++) ssum += dataArray[i] * dataArray[i]
-        const rms = Math.sqrt(ssum / dataArray.length)
-        this.textarea.append( String.fromCharCode(0x0100 + Math.floor(rms * 100)) )
-        this.textarea.selectionStart = this.textarea.textLength
-        console.log('dataavailable', this.textarea.textLength)
-      }
-    }
-
-    // NOTE: this method is way more precise than the next one
-    // this.recorder.start()
-    // this.interval = setInterval(() => this.recorder.requestData(), 1000 * this.timeslice)
-    this.recorder.start(1000 * this.timeslice)
-  }
-
-  // stop recording
-  async stop() {
-    if (this.paused) return
-
-    this.paused = true
-    this.recordButton.innerHTML = `${recordIcon}`
-    this.playButton.innerHTML = `${playIcon}`
-
-    if (this.recording) {
-      this.recorder.stop()
-
-      await event(this.recorder, 'stop')
-
-      // create playback chunk
-      console.log(this.chunks, this.textarea.textLength)
-      this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
-      this.playback.src = window.URL.createObjectURL(this.blob)
-      // this.playback.srcObject = stream
-
-      await event(this.playback, 'loadedmetadata')
-
-      // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
-      console.log('loadedmetadata', this.playback.duration)
-      if (this.playback.duration === Infinity || isNaN(this.playback.duration)) {
-        this.playback.currentTime = Number.MAX_SAFE_INTEGER
-        await event(this.playback, 'timeupdate')
-        console.log('ontimeupdate',this.playback.duration,this.playback.currentTime)
-        // playback.currentTime = 0
-      }
-      // Normal behavior
-      // else console.log('immediate',playback.duration)
-    }
-  }
-
 }
 
 
