@@ -7,6 +7,17 @@ import pauseIcon from './asset/pause.svg'; // ⏸
 import downloadIcon from './asset/download.svg'; // ⬇⭳⤓
 import settingsIcon from './asset/settings.svg';
 
+// Design considerations
+// There are 2 strategies to handle data:
+// a. as sequence of blobs from media stream
+// b. as sequence of audio buffers, somehow converted to media stream
+// For input we must support media stream (mic), oscillator/noise (raw buffers), files (blobs)
+// For output we must be able to download (blob), playback (blob/raw)
+// For editing we can use buffers or blobs
+// If we support oscillators, editing must be buffers. (Also that gives precise audio manip benefits.)
+// If we support immediate download of edited file, editing must be blobs. (otherwise we're limited to wav encoding)
+// Seems that we need 1. raw chunks (audio buffers) 2. media recorder to encode them small-size
+
 export default class Wavearea {
   paused = true
   chunks = []
@@ -61,11 +72,11 @@ export default class Wavearea {
 
     // interactions
     this.playButton.addEventListener('click', e => {
-      this.paused ? this.play() : this.pause()
+      !this.playing ? this.play() : this.pause()
       this.textarea.focus()
     })
     this.recordButton.addEventListener('click', e => {
-      this.paused ? this.record() : this.pause()
+      !this.recording ? this.record() : this.stop()
       this.textarea.focus()
     })
 
@@ -74,16 +85,16 @@ export default class Wavearea {
     // NOTE: instead of timeupdate event, we schedule twice-timeslice frame renderer
     // this.playback.addEventListener('timeupdate', e => {})
 
-    const updateTime = e => (
+    const updateTime = this.updateTime = e => (
       this.playback.currentTime = this.playback.duration * this.textarea.selectionStart / this.chunks.length
     )
     this.textarea.addEventListener('click', updateTime)
 
-    const updateCaret = () => {
+    const updateCaret = this.updateCaret = () => {
       if (this.playing) {
         // const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
         const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
-        this.textarea.selectionStart = framesPlayed
+        this.textarea.selectionStart = this.textarea.selectionEnd = framesPlayed
       }
       requestAnimationFrame(updateCaret)
     }
@@ -103,7 +114,9 @@ export default class Wavearea {
       sampleRate: audioContext.sampleRate,
       sampleSize: 16
     }}
+    console.time('init recorder')
     let stream = this.stream = await navigator.mediaDevices.getUserMedia(constraints)
+    console.timeEnd('init recorder')
 
     this.mediaStreamSource = audioContext.createMediaStreamSource(stream);
     this.analyser = audioContext.createAnalyser();
@@ -113,7 +126,8 @@ export default class Wavearea {
     this.recorder = new MediaRecorder(stream);
   }
 
-  pause() {
+  // stop recording
+  stop() {
     if (this.paused) return
 
     this.paused = true
@@ -132,11 +146,12 @@ export default class Wavearea {
       playback.addEventListener('loadedmetadata', function f() {
         playback.removeEventListener('loadedmetadata', f)
         // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
-        if (playback.duration === Infinity) {
+        console.log('loadedmetadata', playback.duration)
+        if (playback.duration === Infinity || isNaN(playback.duration)) {
           playback.currentTime = Number.MAX_SAFE_INTEGER
           playback.ontimeupdate = () => {
             playback.ontimeupdate = null
-            // console.log('ontimeupdate',playback.duration)
+            console.log('ontimeupdate',playback.duration,playback.currentTime)
             // playback.currentTime = 0
           }
         }
@@ -144,6 +159,16 @@ export default class Wavearea {
         // else console.log('immediate',playback.duration)
       })
     }
+
+    clearInterval(this.interval)
+  }
+
+  // pause playback
+  pause() {
+    if (this.paused) return
+
+    this.paused = true
+    this.playButton.innerHTML = `${playIcon}`
 
     if (this.playing) this.playback.pause()
 
@@ -153,6 +178,9 @@ export default class Wavearea {
   play() {
     // reset recording
     if (!this.paused) this.pause();
+    if (this.playback.currentTime >= this.playback.duration || this.textarea.selectionStart >= this.textarea.textContent.length) {
+      this.playback.currentTime = 0.001;
+    }
 
     this.paused = false
     this.playButton.innerHTML = `${pauseIcon}`
@@ -204,11 +232,11 @@ export default class Wavearea {
   }
 
   async record() {
+    if (this.playing) this.pause()
     if (!this.recorder) await this.initRecorder()
 
     this.paused = false
     this.recordButton.innerHTML = `${pauseIcon}`
-
 
     const dataArray = new Float32Array(this.analyser.fftSize);
 
@@ -244,3 +272,11 @@ export default class Wavearea {
 }
 
 
+// try splitting buffer to N parts, recording in parallel, generating blob
+function download(AudioBuffer) {
+
+  var dest = audioContext.createMediaStreamDestination();
+  var mediaRecorder = new MediaRecorder(dest.stream);
+  this.analyser.connect(dest)
+  console.log(this.recorder)
+}
