@@ -23,6 +23,7 @@ export default class Wavearea {
   chunks = []
   header = []
   timeslice = null
+  mimeType = 'audio/webm;codecs=opus'
 
   get recording () {return this.recorder?.state === 'recording'}
   get playing () {return !this.playback?.paused}
@@ -82,23 +83,6 @@ export default class Wavearea {
 
     // audio
     this.playback = document.createElement('audio')
-    // NOTE: instead of timeupdate event, we schedule twice-timeslice frame renderer
-    // this.playback.addEventListener('timeupdate', e => {})
-
-    const updateTime = this.updateTime = e => (
-      this.playback.currentTime = this.playback.duration * this.textarea.selectionStart / this.chunks.length
-    )
-    this.textarea.addEventListener('click', updateTime)
-
-    const updateCaret = this.updateCaret = () => {
-      if (this.playing) {
-        // const framesPlayed = Math.floor((Date.now() - startTime) * .001 / this.timeslice)
-        const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
-        this.textarea.selectionStart = this.textarea.selectionEnd = framesPlayed
-      }
-      requestAnimationFrame(updateCaret)
-    }
-    updateCaret()
   }
 
   async initRecorder() {
@@ -123,63 +107,36 @@ export default class Wavearea {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0;
     this.mediaStreamSource.connect(this.analyser);
-    this.recorder = new MediaRecorder(stream);
+    this.recorder = new MediaRecorder(stream, {mimeType: this.mimeType});
   }
 
-  play() {
+  async play() {
     // reset recording
     if (!this.paused) this.pause();
-    if (this.playback.currentTime >= this.playback.duration || this.textarea.selectionStart >= this.textarea.textLength) {
-      this.playback.currentTime = 0.001;
-    }
+
+    if (this.textarea.selectionStart >= this.textarea.textLength) this.textarea.selectionStart = this.textarea.selectionEnd = 0
+
+    const from = this.playback.currentTime = this.playback.duration * this.textarea.selectionStart / this.textarea.textLength
+
+    // Bug? Setting currentTime to 0 doesn't reset playback
+    this.playback.currentTime = Math.max(from, 0.001)
+
+    const to = this.textarea.selectionStart === this.textarea.selectionEnd ? this.playback.duration :
+      this.playback.duration * this.textarea.selectionEnd / this.textarea.textLength
 
     this.paused = false
     this.playButton.innerHTML = `${pauseIcon}`
 
-    // const fromTime = this.playback.duration * this.textarea.selectionStart / this.textarea.textContent.length
-    // const frag = from === to ? this.chunks.slice(from) : this.chunks.slice(from, to)
-    // let blob = new Blob([...this.header, ...frag], { type: this.recorder.mimeType })
-
-    // FIXME: ideally, make playback fully reflect the visible range, via SourceBuffer
-    // this.playback.src = window.URL.createObjectURL(blob)
-    // this.playback.srcObject = stream
-
-    // FIXME: cache(?) playback ranges
     this.playback.play()
 
-    this.playback.onended = () => {
-      this.playback.onended = null
-      this.pause()
-    }
-    // FIXME: make a separate method when (if) full-playback method is implemented
-    // FIXME: playback duration is detected wrong, since we slice chunks
+    await Promise.any([event(this.playback, 'ended'), until(() => {
+      // update caret
+      const framesPlayed = Math.floor(this.chunks.length * this.playback.currentTime / this.playback.duration)
+      this.textarea.selectionStart = this.textarea.selectionEnd = framesPlayed
 
-    // FIXME: chrome is picky for min chunk length, it disregards short chunks, that's why we can only do playback.src
-    // maybe that's possible to workaround by merging chunks, who knows
-    // create playback stream - anything flushed into sourceBuffer will be played
-    // var mediaSource = new MediaSource();
-    // this.playback.src = URL.createObjectURL(mediaSource);
-    // await new Promise(resolve => mediaSource.addEventListener('sourceopen', resolve));
-
-    // console.log('add chunks', wavearea.selectionStart, queue)
-    // const sourceBuffer = mediaSource.addSourceBuffer(this.recorder.mimeType);
-    // sourceBuffer.onerror = (...e) => console.log('sourcebuffer error', ...e)
-    // sourceBuffer.mode = 'sequence'
-
-    // // sourceBuffer.onupdate = e => console.log('update',e)
-    // sourceBuffer.onupdateend = e => {
-    //   // console.log('updateend', sourceBuffer)
-    //   // sourceBuffer.timestampOffset += chunkDuration
-    //   flush()
-    // }
-
-    // const flush = () => {
-    //   if (sourceBuffer.updating) return
-    //   buf = queue.shift()
-    //   if (buf) sourceBuffer.appendBuffer(buf)
-    // }
-
-    // flush()
+      return this.paused || this.playback.currentTime >= to
+    })])
+    this.pause()
   }
 
   // pause playback
@@ -269,5 +226,11 @@ export default class Wavearea {
 }
 
 
-
+// wait until event
 const event = (target, evt) => new Promise(r => target.addEventListener(evt, function fn(){target.removeEventListener(evt, fn),r()}))
+
+// wait until condition
+const until = (cond) => new Promise(r => {
+  const check = () => cond() ? r() : requestAnimationFrame(check)
+  check()
+})
