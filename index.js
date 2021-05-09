@@ -178,7 +178,7 @@ export default class Wavearea {
       await event(this.recorder, 'stop')
 
       // create playback chunk
-      console.log(this.chunks, this.textarea.textLength)
+      console.log(this.chunks)
       this.blob = new Blob([...this.header, ...this.chunks], { type: this.recorder.mimeType })
       this.playback.src = window.URL.createObjectURL(this.blob)
       // this.playback.srcObject = stream
@@ -247,3 +247,73 @@ const until = (cond) => new Promise(r => {
   const check = () => cond() ? r() : requestAnimationFrame(check)
   check()
 })
+
+
+
+// try splitting buffer to N parts, recording in parallel, generating blob
+async function recordParallel() {
+  const audioContext = new AudioContext();
+  const mimeType = 'audio/webm;codecs=opus'
+
+  const N = 10, len = 4096
+  let src = new Float32Array(len * N)
+  for (let j = 0; j < src.length; j++) src[j] = Math.sin(j / 5)
+
+  const bufs = [], all = []
+  for (let i = 0; i < N; i++ ) {
+    // 2705 - min chunk length for opus encoder in Chrome, so we increase block size to len plus silent header
+    // let buf = new AudioBuffer({length: len, sampleRate: audioContext.sampleRate})
+    const buf = new AudioBuffer({length: len, sampleRate: audioContext.sampleRate})
+    let data = buf.getChannelData(0)
+    data.set(src.slice(i * len, (i+1) * len))
+    bufs.push(buf)
+
+    // create recorders
+    const source = audioContext.createBufferSource();
+    source.buffer = buf;
+
+    const chunks = []
+    all.push(new Promise(r => {
+      const dest = audioContext.createMediaStreamDestination();
+      const recorder = new MediaRecorder(dest.stream, {mimeType});
+      source.connect(dest)
+
+      recorder.start()
+      // delay is needed to shift encodingblocks
+      source.start(0)
+
+      recorder.ondataavailable = (e) => {
+        const blob = e.data
+        if (blob.size) chunks.push(blob)
+      }
+      recorder.onstop = e => {
+        r(chunks)
+      }
+      source.onended = e => {
+        recorder.stop()
+      }
+    }))
+  }
+
+  const blobs = await Promise.all(all);
+
+  // combine multiple recorders back
+  let buf = await blobs[0][0].arrayBuffer()
+  console.hex(buf)
+
+  var blob = new Blob([...blobs[0]], { type : mimeType });
+  let audio = document.createElement('audio')
+  audio.src = URL.createObjectURL(blob);
+  audio.play()
+}
+
+document.onclick = recordParallel
+
+
+
+console.hex = (d) => console.log((Object(d).buffer instanceof ArrayBuffer ? new Uint8Array(d.buffer) :
+typeof d === 'string' ? (new TextEncoder('utf-8')).encode(d) :
+new Uint8ClampedArray(d)).reduce((p, c, i, a) => p + (i % 16 === 0 ? i.toString(16).padStart(6, 0) + '  ' : ' ') +
+c.toString(16).padStart(2, 0) + (i === a.length - 1 || i % 16 === 15 ?
+' '.repeat((15 - i % 16) * 3) + Array.from(a).splice(i - i % 16, 16).reduce((r, v) =>
+r + (v > 31 && v < 127 || v > 159 ? String.fromCharCode(v) : '.'), '  ') + '\n' : ''), ''));

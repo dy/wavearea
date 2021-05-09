@@ -1,6 +1,6 @@
 # wavearea [![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
 
-Textarea providing editable audio.
+Editable audio in textarea or .
 
 [![wavearea](https://raw.githubusercontent.com/audio-lab/wavearea/gh-pages/preview.png "wavearea")](http://audio-lab.github.io/wavearea/)
 
@@ -10,13 +10,11 @@ Textarea providing editable audio.
 [![npm install wavearea](https://nodei.co/npm/wavearea.png?mini=true)](https://npmjs.org/package/wavearea/)
 
 ```js
-const Wavearea = require('wavearea');
-const autosize = require('autosize');
+import Wavearea from 'wavearea';
 
 let inputEl = document.body.appendChild(document.createElement('textarea'));
 
-autosize(inputEl);
-let wavearea = Wavearea(inputEl, options);
+let wavearea = new Wavearea(inputEl, options);
 
 wavearea.push(newData);
 wavearea.set(data);
@@ -24,12 +22,12 @@ wavearea.set(data);
 
 ## API
 
-<details><summary>**`const Wavearea = require('wavearea');`**</summary>
+### const Wavearea = require('wavearea');
 
 Get wave area constructor.
 
-</details>
-<details><summary>**`let wavearea = new Wavearea(textarea, options?);`**</summary>
+
+### let wavearea = new Wavearea(textarea, options?);
 
 Create waveform editor instance based off options:
 
@@ -49,8 +47,6 @@ style: 'bars',
 //show reflection of data
 reflected: false
 ```
-
-</details>
 
 
 ## Related
