@@ -31,6 +31,7 @@ export default class Wavearea {
   constructor (textarea, o={}) {
     // DOM
     this.textarea = textarea
+
     // this.textarea.style.setProperty('--size', 100)
     Object.assign(this.textarea.style, {
       lineHeight: 1,
@@ -41,43 +42,39 @@ export default class Wavearea {
       // backgroundImage: `linear-gradient(to bottom, rgb(230, 245, 255) 1px, transparent 1px)`,
     })
 
-    ;(this.primaryControls = document.createElement('div'))
-    .innerHTML = `
-      <span id="play">${playIcon}</span>
-      <span id="record">${recordIcon}</span>
-    `;
-    this.primaryControls.style.position = 'fixed';
-
-    ;(this.secondaryControls = document.createElement('div'))
-    .innerHTML = `
-      <span id="download">${downloadIcon}</span>
-      <span id="settings">${settingsIcon}</span>
-    `;
-    this.secondaryControls.style.position = 'fixed';
-    this.textarea.after(this.primaryControls)
-    this.textarea.after(this.secondaryControls)
-
-    // fix position
-    this.textarea.addEventListener('focus', e => {
-      reposition(this.textarea, this.primaryControls, {margin: -24, position: 'bottom-start'})
-      reposition(this.textarea, this.secondaryControls, {margin: -24, position: 'bottom-end'})
-    });
-    const resizeObserver = new ResizeObserver(() => {
-      reposition(this.textarea, this.primaryControls, {margin: -24, position: 'bottom-start'})
-      reposition(this.textarea, this.secondaryControls, {margin: -24, position: 'bottom-end'})
-    });
-    resizeObserver.observe(this.textarea);
-
-    [this.playButton, this.recordButton] = this.primaryControls.children;
-    [this.downloadButton, this.settingsButton] = this.secondaryControls.children;
-
-    // interactions
-    this.playButton.addEventListener('click', e => {
-      !this.playing ? this.play() : this.pause()
-      this.textarea.focus()
+    if (!(this.settingsButton = o.settingsButton)) {
+      this.textarea.after(this.settingsButton = document.createElement('button'))
+      this.settingsButton.innerHTML = settingsIcon
+    }
+    this.settingsButton.addEventListener('click', e => {
+      // !this.recording ? this.record() : this.stop()
+      // this.textarea.focus()
     })
+
+    if (!(this.downloadButton = o.downloadButton)) {
+      this.textarea.after(this.downloadButton = document.createElement('button'))
+      this.downloadButton.innerHTML = downloadIcon
+    }
+    this.downloadButton.addEventListener('click', e => {
+      // !this.playing ? this.play() : this.pause()
+      // this.textarea.focus()
+    })
+
+    if (!(this.recordButton = o.recordButton)) {
+      this.textarea.after(this.recordButton = document.createElement('button'))
+      this.recordButton.innerHTML = recordIcon
+    }
     this.recordButton.addEventListener('click', e => {
       !this.recording ? this.record() : this.stop()
+      this.textarea.focus()
+    })
+
+    if (!(this.playButton = o.playButton)) {
+      this.textarea.after(this.playButton = document.createElement('button'))
+      this.playButton.innerHTML = playIcon
+    }
+    this.playButton.addEventListener('click', e => {
+      !this.playing ? this.play() : this.pause()
       this.textarea.focus()
     })
 
@@ -306,9 +303,6 @@ async function recordParallel() {
   audio.src = URL.createObjectURL(blob);
   audio.play()
 }
-
-document.onclick = recordParallel
-
 
 
 console.hex = (d) => console.log((Object(d).buffer instanceof ArrayBuffer ? new Uint8Array(d.buffer) :
