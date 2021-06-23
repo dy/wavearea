@@ -60,7 +60,7 @@
 <p align="center" style="position: absolute; bottom: 0; right: 0;">🕉<p>
 
 <script>
-const audioContext = new AudioContext({sampleRate: 96000});
+const audioContext = new AudioContext({sampleRate: 48000*1});
 
 let isPlaying = false;
 
@@ -80,26 +80,31 @@ let currentNoteIdx = 0;
 let nextNoteTime = 0.0;
 
 const drawQueue = [];
-
+let timerID;
 
 const playButton = document.querySelector('.play-button');
 playButton.addEventListener('click', ev => {
   isPlaying = !isPlaying;
 
-  // check if context is in suspended state (autoplay policy)
-  if (audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
+  if (isPlaying) {
+    // check if context is in suspended state (autoplay policy)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
 
-  currentNoteIdx = 0;
-  nextNoteTime = audioContext.currentTime;
-  scheduler();
-  draw();
-  ev.target.dataset.playing = 'true';
+    currentNoteIdx = 0;
+    nextNoteTime = audioContext.currentTime;
+    scheduler();
+    draw();
+    ev.target.dataset.playing = 'true';
+  }
+  else {
+    window.clearTimeout(timerID)
+    audioContext.suspend()
+  }
 })
 
 
-let timerID;
 function scheduler() {
   while (nextNoteTime < audioContext.currentTime + scheduleAheadTime ) {
     drawQueue.push({note: currentNoteIdx, time: nextNoteTime})
@@ -138,7 +143,10 @@ function playSample(buffer, time) {
   sampleSource.buffer = buffer
   // sampleSource.onended = () => sampleSource.disconnect()
   sampleSource.connect(audioContext.destination)
-  sampleSource.start(time);
+
+  // sampleSource.start(time);
+  // round time to sample to avoid interpolation
+  sampleSource.start(Math.floor(time * audioContext.sampleRate) / audioContext.sampleRate);
   return sampleSource;
 }
 
