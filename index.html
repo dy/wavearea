@@ -1,69 +1,145 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audio textarea</title>
+<title>Wavearea</title>
 
-<link rel="stylesheet" href="https://unpkg.com/modern-normalize@1.0.0/modern-normalize.css" rel="preload"/>
+<link rel="stylesheet" href="../asset/modern-normalize.css" rel="preload"/>
 
 <style id="base-style">
-/* flex font size */
-html {font-size: 100%;}
-
-@media screen and (min-width: 320px) {
-  html {
-    font-size: calc(12px + 6 * ((100vw - 320px) / 680));
+  /* flex font size */
+  html {font-size: 100%;}
+  @media screen and (min-width: 320px) {
+    html {
+      font-size: calc(12px + 6 * ((100vw - 320px) / 680));
+    }
   }
-}
-@media screen and (min-width: 1000px) {
-  html {
-    font-size: 18px;
+  @media screen and (min-width: 1000px) {
+    html {
+      font-size: 18px;
+    }
   }
-}
 
-:root {
-  font-size: 100%/1.5;
-}
+  :root {
+    font-size: 100%/1.5;
+  }
 
-a {
-  color: black;
-  text-decoration-color: rgba(0,0,0,.108);
-  text-underline-offset: .108em;
-  text-decoration-thickness: .108ch;
-}
+  a {
+    color: black;
+    text-decoration-color: rgba(0,0,0,.108);
+    text-underline-offset: .108em;
+    text-decoration-thickness: .108ch;
+  }
 </style>
 <style id="wavefont-style">
   @font-face {
-		font-family: wavefont;
-		src: url(./wavefont.woff2) format('woff2');
-	}
-	@font-face {
-		font-family: blank;
-		/* src: url(./AdobeBlank2VF.ttf.woff2); */
-		src: url(data:application/x-font-woff;charset=utf-8;base64,d09GMgABAAAAAARMABMAAAAAC1AAAAPjAAEAxQAAAAAAAAAAAAAAAAAAAAAAAAAAGUYcID9IVkFSVAZgP1NUQVQkP1ZWQVJjAIIAL0YKWFwwLgE2AiQDCAsGAAQgBYsyBzEXJBgIGwEKEcXkJfmqgCdD4yWAULaeeBovVzstIc6riunXpnmtXivg+BLWsFA1x8PTXP+eO5PNAn8AUCwJsYCgqxxZ1JUELrLsXkOo3TUpDjbRB8Tvo61HSFe6NVBVO1SvlxDEvYxsxE4DfNN8ImIOJ0gqtv/9fq0+Wat/NsTds46FRuqU8lf0gse1iqY3dLfkGRqhqiTVConpREoxCY1FPHelp1Ny+uwFWpZYoBA7dh04oaUEhFLUFDri7o2bj2BaFYGOOeZ1vLhvdQ0IMAUABHoC6yWZLbYAgJ9NX06XhIBcaa5iDdL76Qz2k7njkrV+ci1cx5uLNbeOtx22hbrOrMaqxrO/9QL9NwVgAUJoSZgClkjP3HjyTmDP7j0nIoQAM3AGAJfCk0F+cI8EIeugpw/+AUwGvq0R/IaJbxBM/EE9gRAIQEJCRkaBAg00UKJEE0200EIbbXTQQRdd9NBDH30MMMAQQ4wwEuEmSaYkBnnYDCBXEDnpwW9EJK5WZJBAgQZGmA0oQIMiXw91sjku790e3LzZfHZ461Z5+/ozFVTN2diLFz9/ql67cl8k+nvMWO4OBBKYtXsY6LwaespXbYFXt+TqtTcIhK83bvTx5eGGf1s5V/D9qt/p9najlt/Mj6KUQFCxsYrB4sZY4VoloVbYkpHGKGGx3RT/yaJo4wSfCEucQDLwLLLV3u5asKHhhk9QmpVZaOnEerTNyqaunQW61ucM+umj+BAD6xtRwIJe7SdfPJ0j6BTPIkzxelO3WVhf//c2jpwWnwkGXVHJ7/FoDWDAQVkQ+OBTFKZJu8lXljDZnk7YqITmExH/y0MxUyoCDOBqChwdIU8mZhKKCJ2upGVgbGinpSoKOgThuVdIkAJUCkD1UYqNlj3J5kSRrqElYYogo7sLvSE3eCVefdEJa/SRA1H0BWVMIMAKSoG1TMqBSbtr5Q+DNGe+gASmqJQCTiiX8mISEDDtHgvYUEpCDjCuCZD0oQJ1YQ3sjHRPlXdfK+E/rSY28Bg4cI6cV00RDZaMcjGklsyXggUDJ2BRVwCGvwLAfxa/WTib27k4LwoOHB0NbJMLE/HNdo7AyM7W2AINfIZwPg2I0KNAtGALqE+jIEEkfiTfWAAkgSiiBZJkLDgSCXf6EaZ2NnDRspAUq7MFXOYSaLDGnozJK4dkPCmTRSmRKSxxWiDAMFMxKVLnoZ7iPA0oLgj+UBlRkrmlg3DbW9ieSDMnJbu4KqNIxL1kjISZ9GjJ5+t2TALq0U3AcYLmZeFeX9Ww6+F30lD/+kXetcg6ZJg3EalzO/5jvn7dbo3cSO6f/4dc8dJzzBkJMwsAAAA=) format('woff2');
-	}
+    font-family: wavefont;
+    src: url(./wavefont.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: blank;
+    /* src: url(./AdobeBlank2VF.ttf.woff2); */
+    src: url(data:application/x-font-woff;charset=utf-8;base64,d09GMgABAAAAAARMABMAAAAAC1AAAAPjAAEAxQAAAAAAAAAAAAAAAAAAAAAAAAAAGUYcID9IVkFSVAZgP1NUQVQkP1ZWQVJjAIIAL0YKWFwwLgE2AiQDCAsGAAQgBYsyBzEXJBgIGwEKEcXkJfmqgCdD4yWAULaeeBovVzstIc6riunXpnmtXivg+BLWsFA1x8PTXP+eO5PNAn8AUCwJsYCgqxxZ1JUELrLsXkOo3TUpDjbRB8Tvo61HSFe6NVBVO1SvlxDEvYxsxE4DfNN8ImIOJ0gqtv/9fq0+Wat/NsTds46FRuqU8lf0gse1iqY3dLfkGRqhqiTVConpREoxCY1FPHelp1Ny+uwFWpZYoBA7dh04oaUEhFLUFDri7o2bj2BaFYGOOeZ1vLhvdQ0IMAUABHoC6yWZLbYAgJ9NX06XhIBcaa5iDdL76Qz2k7njkrV+ci1cx5uLNbeOtx22hbrOrMaqxrO/9QL9NwVgAUJoSZgClkjP3HjyTmDP7j0nIoQAM3AGAJfCk0F+cI8EIeugpw/+AUwGvq0R/IaJbxBM/EE9gRAIQEJCRkaBAg00UKJEE0200EIbbXTQQRdd9NBDH30MMMAQQ4wwEuEmSaYkBnnYDCBXEDnpwW9EJK5WZJBAgQZGmA0oQIMiXw91sjku790e3LzZfHZ461Z5+/ozFVTN2diLFz9/ql67cl8k+nvMWO4OBBKYtXsY6LwaespXbYFXt+TqtTcIhK83bvTx5eGGf1s5V/D9qt/p9najlt/Mj6KUQFCxsYrB4sZY4VoloVbYkpHGKGGx3RT/yaJo4wSfCEucQDLwLLLV3u5asKHhhk9QmpVZaOnEerTNyqaunQW61ucM+umj+BAD6xtRwIJe7SdfPJ0j6BTPIkzxelO3WVhf//c2jpwWnwkGXVHJ7/FoDWDAQVkQ+OBTFKZJu8lXljDZnk7YqITmExH/y0MxUyoCDOBqChwdIU8mZhKKCJ2upGVgbGinpSoKOgThuVdIkAJUCkD1UYqNlj3J5kSRrqElYYogo7sLvSE3eCVefdEJa/SRA1H0BWVMIMAKSoG1TMqBSbtr5Q+DNGe+gASmqJQCTiiX8mISEDDtHgvYUEpCDjCuCZD0oQJ1YQ3sjHRPlXdfK+E/rSY28Bg4cI6cV00RDZaMcjGklsyXggUDJ2BRVwCGvwLAfxa/WTib27k4LwoOHB0NbJMLE/HNdo7AyM7W2AINfIZwPg2I0KNAtGALqE+jIEEkfiTfWAAkgSiiBZJkLDgSCXf6EaZ2NnDRspAUq7MFXOYSaLDGnozJK4dkPCmTRSmRKSxxWiDAMFMxKVLnoZ7iPA0oLgj+UBlRkrmlg3DbW9ieSDMnJbu4KqNIxL1kjISZ9GjJ5+t2TALq0U3AcYLmZeFeX9Ww6+F30lD/+kXetcg6ZJg3EalzO/5jvn7dbo3cSO6f/4dc8dJzzBkJMwsAAAA=) format('woff2');
+  }
 
-	.wavefont {
-		font-family: wavefont, blank;
+  .wavefont {
+    font-family: wavefont, blank;
     font-size: 5rem;
     letter-spacing: .0108ex;
-		--wdth: 20;
-		font-variation-settings: 'wdth' var(--wdth), 'algn' 0.5, 'radi' 50;
-	}
-</style>
-<style id="wavearea-style">
-body{
-  margin: 2rem;
-}
-#wavearea {
-  resize: both;
-}
+    --wdth: 20;
+    font-variation-settings: 'wdth' var(--wdth), 'algn' 0.5, 'radi' 50;
+  }
 </style>
 
-<textarea id="wavearea" class="wavefont" spellcheck="false" cols="882" autofocus wavearea></textarea>
+<ruby id="wavearea" class="wavearea" contenteditable>
+  Te Re Khe Ta
+</ruby>
 
-<script type="module">
-import Wavearea from './dist/wavearea.min.js'
-document.querySelectorAll('[wavearea]').forEach(el => new Wavearea(el))
-</script>
+<a class="play-button">▶</a>
+<input class="bpm" type="number" step=1 min=60 value=120 />
 
 <p align="center" style="position: absolute; bottom: 0; right: 0;">🕉<p>
+
+<script>
+const audioContext = new AudioContext({sampleRate: 96000});
+
+let isPlaying = false;
+
+let tempo = 120.0;
+const bpmControl = document.querySelector('.bpm');
+// const bpmValEl = document.querySelector('#bpmval');
+
+bpmControl.addEventListener('input', ev => {
+  tempo = Number(ev.target.value);
+  // bpmValEl.innerText = tempo;
+}, false);
+
+const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
+const scheduleAheadTime = 0.1; // How far ahead to schedule audio (sec)
+
+let currentNoteIdx = 0;
+let nextNoteTime = 0.0;
+
+const drawQueue = [];
+
+
+const playButton = document.querySelector('.play-button');
+playButton.addEventListener('click', ev => {
+  isPlaying = !isPlaying;
+
+  // check if context is in suspended state (autoplay policy)
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  currentNoteIdx = 0;
+  nextNoteTime = audioContext.currentTime;
+  scheduler();
+  draw();
+  ev.target.dataset.playing = 'true';
+})
+
+
+let timerID;
+function scheduler() {
+  while (nextNoteTime < audioContext.currentTime + scheduleAheadTime ) {
+    drawQueue.push({note: currentNoteIdx, time: nextNoteTime})
+    playSample(tickBuffer, nextNoteTime)
+    nextNoteTime += 60.0 / tempo
+    currentNoteIdx++
+  }
+  timerID = window.setTimeout(scheduler, lookahead);
+}
+
+// UI loop
+let lastNoteDrawn = 0;
+function draw() {
+  let drawNote = lastNoteDrawn;
+  const currentTime = audioContext.currentTime;
+
+  while (drawQueue.length && drawQueue[0].time < currentTime) {
+    drawNote = drawQueue[0].note;
+    drawQueue.splice(0,1); // (faster than shift)
+  }
+
+  if (lastNoteDrawn !== drawNote) {
+    // TODO: move cursor to drawn note
+
+    lastNoteDrawn = drawNote;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+const tickBuffer = new AudioBuffer({sampleRate: audioContext.sampleRate, numberOfChannels: 1, length: 2})
+tickBuffer.getChannelData(0)[0] = 1
+tickBuffer.getChannelData(0)[1] = -1
+function playSample(buffer, time) {
+  const sampleSource = audioContext.createBufferSource()
+  sampleSource.buffer = buffer
+  // sampleSource.onended = () => sampleSource.disconnect()
+  sampleSource.connect(audioContext.destination)
+  sampleSource.start(time);
+  return sampleSource;
+}
+
+</script>
