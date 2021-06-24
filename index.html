@@ -3,33 +3,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wavearea</title>
 
-<link rel="stylesheet" href="../asset/modern-normalize.css" rel="preload"/>
+<link rel="stylesheet" href="asset/modern-normalize.css" rel="preload"/>
 
-<style id="base-style">
-  /* flex font size */
-  html {font-size: 100%;}
-  @media screen and (min-width: 320px) {
-    html {
-      font-size: calc(12px + 6 * ((100vw - 320px) / 680));
-    }
-  }
-  @media screen and (min-width: 1000px) {
-    html {
-      font-size: 18px;
-    }
-  }
-
-  :root {
-    font-size: 100%/1.5;
-  }
-
-  a {
-    color: black;
-    text-decoration-color: rgba(0,0,0,.108);
-    text-underline-offset: .108em;
-    text-decoration-thickness: .108ch;
-  }
-</style>
 <style id="wavefont-style">
   @font-face {
     font-family: wavefont;
@@ -49,15 +24,133 @@
     font-variation-settings: 'wdth' var(--wdth), 'algn' 0.5, 'radi' 50;
   }
 </style>
+<style type="text/css">
+  /* flex font size */
+  html { font-size: 108%; }
+  @media screen and (min-width: 320px) {
+    html {
+      font-size: calc(16px + 6 * ((100vw - 320px) / 680));
+    }
+  }
+  @media screen and (min-width: 1000px) {
+    html {
+      font-size: 24px;
+    }
+  }
+  :root {
+    line-height: 1.5;
+  }
 
-<ruby id="wavearea" class="wavearea" contenteditable>
-  Te Re Khe Ta
-</ruby>
+  a {
+    color: black;
+    text-decoration-color: rgba(0,0,0,.108);
+    text-underline-offset: .108em;
+    text-decoration-thickness: .108ch;
+  }
 
-<a class="play-button">▶</a>
-<input class="bpm" type="number" step=1 min=60 value=120 />
+  /* stick footer */
+  html, body {
+    height: 100%;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  main {
+    flex:  1 0 auto;
+  }
+  footer {
+    flex-shrink: 0;
+  }
 
-<p align="center" style="position: absolute; bottom: 0; right: 0;">🕉<p>
+  main, footer {
+    text-align:  center;
+    margin:  0 auto;
+    width: 100%;
+    max-width: 820px;
+  }
+
+  .wavearea {
+    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    width: 100%;
+    display: block;
+    border-radius: .2em;
+    padding: .8rem;
+    min-height: 32vh;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+  }
+  .wavearea:focus {
+    box-shadow: rgba(3, 102, 214, 0.3) 0px 0px 0px 3px, rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  }
+  .wavearea .input {
+    outline: none;
+    text-align: left;
+    flex: 1 0 auto;
+  }
+  .wavearea .controls {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+  .wavearea .play.playing .play-icon {
+    display: none;
+  }
+  .wavearea .play:not(.playing) .pause-icon {
+    display: none;
+  }
+  .wavearea .bpm {
+    width: 4em;
+    outline: none;
+    margin-left: 1em;
+  }
+
+  .dict {
+    text-align:  left;
+    padding: 0 1em;
+  }
+</style>
+
+<main>
+  <h1>Wavearea</h1>
+  <div class="wavearea">
+    <ruby class="input" contenteditable spellcheck="false">
+      Te Re Khe Ta
+    </ruby>
+
+    <div class="controls">
+      <a class="play" href="#play">
+        <svg class="play-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M36.2045 17.632C38.0672 18.5538 38.9986 19.0147 39.2964 19.64C39.5555 20.184 39.5555 20.816 39.2964 21.36C38.9986 21.9853 38.0672 22.4462 36.2045 23.368L4.61932 38.9986C3.08886 39.756 2.32363 40.1347 1.70199 40.041C1.15914 39.9592 0.67377 39.6579 0.359679 39.2076C5.78512e-06 38.692 5.82244e-06 37.8382 5.89709e-06 36.1306L7.26356e-06 4.86938C7.3382e-06 3.16178 7.37552e-06 2.30798 0.359681 1.79237C0.673772 1.34212 1.15914 1.04076 1.70199 0.95896C2.32363 0.865286 3.08886 1.24398 4.61931 2.00135L36.2045 17.632Z" fill="black"/>
+        </svg>
+        <svg class="pause-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0.5" y="0.5" width="10" height="36" rx="2" fill="black"/>
+        <rect x="18" y="0.5" width="10" height="36" rx="2" fill="black"/>
+        </svg>
+      </a>
+      <input class="bpm" type="number" step=1 min=60 value=120 />
+    </div>
+  </div>
+
+  <dl class="dict">
+    <dt>Te</dt>
+    <dd></dd>
+    <dt>Re</dt>
+    <dd></dd>
+    <dt>Khe</dt>
+    <dd></dd>
+    <dt>Ta</dt>
+    <dd></dd>
+  </dl>
+</main>
+
+<footer class="footer">
+  &copy; ॐ
+</footer>
 
 <script>
 const audioContext = new AudioContext({sampleRate: 48000*1});
@@ -82,7 +175,7 @@ let nextNoteTime = 0.0;
 const drawQueue = [];
 let timerID;
 
-const playButton = document.querySelector('.play-button');
+const playButton = document.querySelector('.play');
 playButton.addEventListener('click', ev => {
   isPlaying = !isPlaying;
 
@@ -96,15 +189,17 @@ playButton.addEventListener('click', ev => {
     nextNoteTime = audioContext.currentTime;
     scheduler();
     draw();
-    ev.target.dataset.playing = 'true';
+    playButton.classList.add('playing')
   }
   else {
     window.clearTimeout(timerID)
-    audioContext.suspend()
+    // suspend must release scheduled notes to play
+    setTimeout(() => audioContext.suspend(), scheduleAheadTime * 1000)
+    playButton.classList.remove('playing')
   }
 })
 
-
+// not single raf loop because raf stops on switching tab, whereas setTimeout only drops rate
 function scheduler() {
   while (nextNoteTime < audioContext.currentTime + scheduleAheadTime ) {
     drawQueue.push({note: currentNoteIdx, time: nextNoteTime})
@@ -146,6 +241,7 @@ function playSample(buffer, time) {
 
   // sampleSource.start(time);
   // round time to sample to avoid interpolation
+  // NOTE: can produce ring effect, since not perfectly aligned in time, interval varies
   sampleSource.start(Math.floor(time * audioContext.sampleRate) / audioContext.sampleRate);
   return sampleSource;
 }
