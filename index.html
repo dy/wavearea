@@ -74,14 +74,20 @@
     max-width: 820px;
   }
 
+  input, textarea, select {
+    border: none;
+    outline: none;
+    padding: 0;
+  }
+
   .wavearea {
     box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
     width: 100%;
     display: block;
-    border-radius: .2em;
+    border-radius: .5rem;
     min-height: 32vh;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     text-align: center;
   }
   .wavearea:focus {
@@ -90,20 +96,22 @@
   .wavearea .input {
     outline: none;
     text-align: left;
-    flex: 1 0 auto;
     padding: 1rem;
+    flex: 1 0 auto;
   }
   .wavearea .controls {
-    border-top: 1px solid rgba(0,0,0,.108);
-    padding: 1rem;
-    flex-shrink: 0;
+    /*border-top: 1px solid rgba(0,0,0,.108);*/
+    padding: 1rem 1rem;
     display: flex;
+    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
   }
   .wavearea .controls svg {
     display:  block;
+  }
+  .wavearea .play {
+    margin:  .5rem;
   }
   .wavearea .play.playing .play-icon {
     display: none;
@@ -115,11 +123,13 @@
     margin-left: .5em;
   }
 
-  .container {
+  .wavearea .container {
+    flex: 1 0 auto;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
   }
-  .info {
+  .wavearea .info {
+    flex-shrink: 0;
     text-align:  left;
     padding: 1rem 1rem;
     border-left: 1px solid rgba(0,0,0,.108);
@@ -144,45 +154,44 @@
 </style>
 
 <main>
+  <br/>
   <div class="wavearea">
     <div class="container">
       <ruby class="input" contenteditable spellcheck="false">
         Te Re Khe Ta
       </ruby>
-      <aside class="info">
-        <label>Dictionary:</label>
-        <select>
-          <option>Mridanga</option>
-          <option>Karatals</option>
-          <option>Harmonium</option>
-        </select>
-        <dl class="dict">
-          <dt>Te</dt>
-          <dd></dd>
-          <dt>Re</dt>
-          <dd></dd>
-          <dt>Khe</dt>
-          <dd></dd>
-          <dt>Ta</dt>
-          <dd></dd>
-        </dl>
-      </aside>
+      <div class="controls">
+        <a class="play" href="#play">
+          <svg class="play-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M36.2045 17.632C38.0672 18.5538 38.9986 19.0147 39.2964 19.64C39.5555 20.184 39.5555 20.816 39.2964 21.36C38.9986 21.9853 38.0672 22.4462 36.2045 23.368L4.61932 38.9986C3.08886 39.756 2.32363 40.1347 1.70199 40.041C1.15914 39.9592 0.67377 39.6579 0.359679 39.2076C5.78512e-06 38.692 5.82244e-06 37.8382 5.89709e-06 36.1306L7.26356e-06 4.86938C7.3382e-06 3.16178 7.37552e-06 2.30798 0.359681 1.79237C0.673772 1.34212 1.15914 1.04076 1.70199 0.95896C2.32363 0.865286 3.08886 1.24398 4.61931 2.00135L36.2045 17.632Z" fill="black"/>
+          </svg>
+          <svg class="pause-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0.5" y="2" width="10" height="36" rx="2" fill="black"/>
+          <rect x="18" y="2" width="10" height="36" rx="2" fill="black"/>
+          </svg>
+        </a>
+        <label class="bpm input-sizer" data-value=120>
+          <input type="number" step=1 min=60 value=120 onInput="this.parentNode.dataset.value = this.value" />
+        </label>
+      </div>
     </div>
-
-    <div class="controls">
-      <a class="play" href="#play">
-        <svg class="play-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M36.2045 17.632C38.0672 18.5538 38.9986 19.0147 39.2964 19.64C39.5555 20.184 39.5555 20.816 39.2964 21.36C38.9986 21.9853 38.0672 22.4462 36.2045 23.368L4.61932 38.9986C3.08886 39.756 2.32363 40.1347 1.70199 40.041C1.15914 39.9592 0.67377 39.6579 0.359679 39.2076C5.78512e-06 38.692 5.82244e-06 37.8382 5.89709e-06 36.1306L7.26356e-06 4.86938C7.3382e-06 3.16178 7.37552e-06 2.30798 0.359681 1.79237C0.673772 1.34212 1.15914 1.04076 1.70199 0.95896C2.32363 0.865286 3.08886 1.24398 4.61931 2.00135L36.2045 17.632Z" fill="black"/>
-        </svg>
-        <svg class="pause-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0.5" y="2" width="10" height="36" rx="2" fill="black"/>
-        <rect x="18" y="2" width="10" height="36" rx="2" fill="black"/>
-        </svg>
-      </a>
-      <label class="bpm input-sizer" data-value=120>
-        <input type="number" step=1 min=60 value=120 onInput="this.parentNode.dataset.value = this.value" />
-      </label>
-    </div>
+    <aside class="info">
+      <select>
+        <option>Mridanga</option>
+        <option>Karatals</option>
+        <option>Harmonium</option>
+      </select>
+      <dl class="dict">
+        <dt>Te</dt>
+        <dd></dd>
+        <dt>Re</dt>
+        <dd></dd>
+        <dt>Khe</dt>
+        <dd></dd>
+        <dt>Ta</dt>
+        <dd></dd>
+      </dl>
+    </aside>
   </div>
 </main>
 
