@@ -34,7 +34,7 @@ a {
 <style id="wavefont-style">
   @font-face {
 		font-family: wavefont;
-		src: url(./wavefont.woff2) format('woff2');
+		src: url(../asset/wavefont.woff2) format('woff2');
 	}
 	@font-face {
 		font-family: blank;
@@ -56,13 +56,14 @@ body{
 }
 #wavearea {
   resize: both;
+  width: 100%;
 }
 </style>
 
 <textarea id="wavearea" class="wavefont" spellcheck="false" cols="882" autofocus wavearea></textarea>
 
 <script type="module">
-import Wavearea from './dist/wavearea.min.js'
+import Wavearea from './audio-recorder.js'
 document.querySelectorAll('[wavearea]').forEach(el => new Wavearea(el))
 </script>
 
