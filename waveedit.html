@@ -53,6 +53,7 @@
     width: 100%;
     outline: none;
     border: none;
+    padding: 0;
     line-height: 1;
     background-size: 100vw calc(1em);
     background-attachment: local;
@@ -70,6 +71,8 @@
 
 
 <script type="module">
+import * as au from './source/lib/audio-util.js'
+
 const inputFile = document.querySelector('#input-file')
 const wavearea = document.querySelector('#wavearea')
 const playButton = document.querySelector('#play')
@@ -78,6 +81,9 @@ const playButton = document.querySelector('#play')
 let audioBuffer, audioContext = new AudioContext()
 // abl is like audio-track. No need to store multiple chunks, just display audiobuffer
 const frameSize = 512   // ~ 50fps
+// track caret - alternative to tracking multiple various events
+let fromFrame, toFrame
+
 
 inputFile.onchange = async e => {
   const fileList = inputFile.files
@@ -91,8 +97,35 @@ inputFile.onchange = async e => {
 
 playButton.onclick = async e => {
   wavearea.focus()
-  const ended = await playAudio()
+  if (fromFrame === wavearea.textContent.length) fromFrame = 0;
+  const buffer = !fromFrame ? audioBuffer : au.slice(audioBuffer, fromFrame*frameSize)
+  const ended = await playAudio(buffer)
 }
+
+// must come before tracking caret because we need prev caret state and input already updates content
+wavearea.addEventListener('input', e => {
+  // TODO: in case we switch to contenteditable, it's possible to use this method
+  // console.log(e.getTargetRanges())
+  if (e.inputType === 'deleteContentBackward') {
+    console.log('deleting', fromFrame, toFrame)
+    audioBuffer = au.remove(audioBuffer, fromFrame*frameSize, toFrame*frameSize)
+  }
+})
+
+// document.onselectionchange
+function trackCaret (e) {
+  if (document.activeElement !== wavearea) return
+  fromFrame = wavearea.selectionStart, toFrame = wavearea.selectionEnd
+}
+wavearea.addEventListener('keypress', trackCaret); // Every character written
+wavearea.addEventListener('mousedown', trackCaret); // Click down
+wavearea.addEventListener('touchstart', trackCaret); // Mobile
+wavearea.addEventListener('input', trackCaret); // Other input events
+wavearea.addEventListener('paste', trackCaret); // Clipboard actions
+wavearea.addEventListener('cut', trackCaret);
+wavearea.addEventListener('mousemove', trackCaret); // Selection, dragging text
+wavearea.addEventListener('select', trackCaret); // Some browsers support this event
+wavearea.addEventListener('selectstart', trackCaret); // Some browsers support this event
 
 
 
@@ -148,34 +181,36 @@ function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random())
 }
 
-async function playAudio() {
+async function playAudio(audioBuffer) {
   await audioContext.resume();
-  const fromTime = audioContext.currentTime;
+  const startTime = audioContext.currentTime, startFrame = fromFrame;
 
   // sync caret
   updateCaret()
   function updateCaret () {
     if (audioContext.state !== 'running') return
-    const framesPlayed = Math.floor((audioContext.currentTime - fromTime) * audioContext.sampleRate / frameSize)
-    wavearea.selectionStart = wavearea.selectionEnd = framesPlayed
+    const framesPlayed = Math.floor((audioContext.currentTime - startTime) * audioContext.sampleRate / frameSize)
+    wavearea.selectionStart = wavearea.selectionEnd = startFrame + framesPlayed
     requestAnimationFrame(updateCaret)
   }
 
 
   const sampleSource = audioContext.createBufferSource()
   sampleSource.buffer = audioBuffer
-  // sampleSource.onended = () => sampleSource.disconnect()
   sampleSource.connect(audioContext.destination)
 
   sampleSource.onended = e => {
-    sampleSource.disconnect()
-    audioContext.suspend()
+    // postpone to let caret update first
+    setTimeout(e => {
+      sampleSource.disconnect()
+      audioContext.suspend()
+    }, 100)
   }
 
-  // sampleSource.start(fromTime);
-  // round fromTime to sample to avoid interpolation
-  // NOTE: can produce ring effect, since not perfectly aligned in fromTime, interval varies
-  sampleSource.start(Math.floor(fromTime * audioContext.sampleRate) / audioContext.sampleRate);
+  // sampleSource.start(startTime);
+  // round startTime to sample to avoid interpolation
+  // NOTE: can produce ring effect, since not perfectly aligned in startTime, interval varies
+  sampleSource.start(Math.floor(startTime * audioContext.sampleRate) / audioContext.sampleRate);
 }
 
 
