@@ -63,7 +63,7 @@
 
 <input id="input-file" type="file" capture="user" accept="audio/*">
 <!-- <img src="../asset/upload.svg"></input> -->
-<button><img src="../asset/play.svg"></button>
+<button id="play"><img src="../asset/play.svg"></button>
 <!-- <button><img src="../asset/download.svg"></button> -->
 <!-- <button><img src="../asset/settings.svg"></button> -->
 <textarea id="wavearea" class="wavefont" spellcheck="false" autofocus wavearea></textarea>
@@ -72,23 +72,32 @@
 <script type="module">
 const inputFile = document.querySelector('#input-file')
 const wavearea = document.querySelector('#wavearea')
+const playButton = document.querySelector('#play')
+
+
+let audioBuffer, audioContext = new AudioContext()
+// abl is like audio-track. No need to store multiple chunks, just display audiobuffer
+const frameSize = 512   // ~ 50fps
+
 inputFile.onchange = async e => {
   const fileList = inputFile.files
 
   let arrayBuf = await readAudio(fileList[0])
-  let audioBuf = await decodeAudio(arrayBuf)
+  audioBuffer = await decodeAudio(arrayBuf)
 
-  drawData(audioBuf)
+  drawData(audioBuffer)
+}
+
+
+playButton.onclick = async e => {
+  wavearea.focus()
+  const ended = await playAudio()
 }
 
 
 
 // render abuffer bars
 function drawData(abuf) {
-  // abl is like audio-track. No need to store multiple chunks, just display audiobuffer
-
-  const frameSize = 512   // ~ 50fps
-
   let data = abuf.getChannelData(0)
   let waveStr = ''
 
@@ -107,7 +116,7 @@ function drawData(abuf) {
     let mean = sum / frameSize
     // https://www.mun.ca/biology/scarr/Simplified_calculation_of_variance.html
     let sdev = Math.sqrt(sum2 / frameSize - mean*mean)
-    let value = Math.round(sdev * 100)
+    let value = Math.ceil(sdev * 100)
     waveStr += value ? String.fromCharCode(0x100 + value) : ' '
   }
 
@@ -130,15 +139,45 @@ function readAudio(file) {
   })
 }
 
-let ctx = new AudioContext()
 function decodeAudio(buf) {
-  return ctx.decodeAudioData(buf)
+  return audioContext.decodeAudioData(buf)
 }
 
 
 function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random())
 }
+
+async function playAudio() {
+  await audioContext.resume();
+  const fromTime = audioContext.currentTime;
+
+  // sync caret
+  updateCaret()
+  function updateCaret () {
+    if (audioContext.state !== 'running') return
+    const framesPlayed = Math.floor((audioContext.currentTime - fromTime) * audioContext.sampleRate / frameSize)
+    wavearea.selectionStart = wavearea.selectionEnd = framesPlayed
+    requestAnimationFrame(updateCaret)
+  }
+
+
+  const sampleSource = audioContext.createBufferSource()
+  sampleSource.buffer = audioBuffer
+  // sampleSource.onended = () => sampleSource.disconnect()
+  sampleSource.connect(audioContext.destination)
+
+  sampleSource.onended = e => {
+    sampleSource.disconnect()
+    audioContext.suspend()
+  }
+
+  // sampleSource.start(fromTime);
+  // round fromTime to sample to avoid interpolation
+  // NOTE: can produce ring effect, since not perfectly aligned in fromTime, interval varies
+  sampleSource.start(Math.floor(fromTime * audioContext.sampleRate) / audioContext.sampleRate);
+}
+
 
 // document.querySelectorAll('[wavearea]').forEach(el => new Wavearea(el))
 </script>
