@@ -84,6 +84,9 @@ const frameSize = 512   // ~ 50fps
 // track caret - alternative to tracking multiple various events
 let fromFrame, toFrame
 
+document.addEventListener('click', e => {
+  if (audioContext.state !== 'running') audioContext.resume()
+})
 
 inputFile.onchange = async e => {
   const fileList = inputFile.files
@@ -92,14 +95,6 @@ inputFile.onchange = async e => {
   audioBuffer = await decodeAudio(arrayBuf)
 
   drawData(audioBuffer)
-}
-
-
-playButton.onclick = async e => {
-  wavearea.focus()
-  if (fromFrame === wavearea.textContent.length) fromFrame = 0;
-  const buffer = !fromFrame ? audioBuffer : au.slice(audioBuffer, fromFrame*frameSize)
-  const ended = await playAudio(buffer)
 }
 
 // must come before tracking caret because we need prev caret state and input already updates content
@@ -128,6 +123,47 @@ wavearea.addEventListener('select', trackCaret); // Some browsers support this e
 wavearea.addEventListener('selectstart', trackCaret); // Some browsers support this event
 
 
+playButton.onclick = async e => {
+  wavearea.focus()
+  wavearea.selectionStart = wavearea.selectionEnd = wavearea.selectionStart || 0; // reselection on focus bug
+
+  const ended = await playAudio(fromFrame, toFrame)
+}
+
+async function playAudio(startFrame, endFrame) {
+  if (startFrame === wavearea.value.length) startFrame = 0;
+  if (startFrame === endFrame) endFrame = wavearea.value.length;
+
+  const startTime = audioContext.currentTime
+
+  // sync caret
+  updateCaret()
+  function updateCaret () {
+    const framesPlayed = Math.floor((audioContext.currentTime - startTime) * audioContext.sampleRate / frameSize)
+    wavearea.selectionStart = wavearea.selectionEnd = Math.min(startFrame + framesPlayed, endFrame)
+    if (startFrame + framesPlayed >= endFrame) return
+    requestAnimationFrame(updateCaret)
+  }
+
+  // TODO: parallelize with context resume?
+  const buffer = au.slice(audioBuffer, startFrame*frameSize, endFrame*frameSize)
+  const sampleSource = audioContext.createBufferSource()
+  sampleSource.buffer = buffer
+  sampleSource.connect(audioContext.destination)
+
+  // await audioContext.resume();
+  sampleSource.onended = e => {
+    sampleSource.disconnect()
+    // setTimeout(() => audioContext.suspend(), 50)
+  }
+
+  sampleSource.start(startTime);
+  // round startTime to sample to avoid interpolation
+  // NOTE: can produce ring effect, since not perfectly aligned in startTime, interval varies
+  // sampleSource.start(Math.floor(startTime * audioContext.sampleRate) / audioContext.sampleRate);
+}
+
+
 
 // render abuffer bars
 function drawData(abuf) {
@@ -153,7 +189,7 @@ function drawData(abuf) {
     waveStr += value ? String.fromCharCode(0x100 + value) : ' '
   }
 
-  wavearea.textContent = waveStr
+  wavearea.value = waveStr
 }
 
 function readAudio(file) {
@@ -179,38 +215,6 @@ function decodeAudio(buf) {
 
 function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random())
-}
-
-async function playAudio(audioBuffer) {
-  await audioContext.resume();
-  const startTime = audioContext.currentTime, startFrame = fromFrame;
-
-  // sync caret
-  updateCaret()
-  function updateCaret () {
-    if (audioContext.state !== 'running') return
-    const framesPlayed = Math.floor((audioContext.currentTime - startTime) * audioContext.sampleRate / frameSize)
-    wavearea.selectionStart = wavearea.selectionEnd = startFrame + framesPlayed
-    requestAnimationFrame(updateCaret)
-  }
-
-
-  const sampleSource = audioContext.createBufferSource()
-  sampleSource.buffer = audioBuffer
-  sampleSource.connect(audioContext.destination)
-
-  sampleSource.onended = e => {
-    // postpone to let caret update first
-    setTimeout(e => {
-      sampleSource.disconnect()
-      audioContext.suspend()
-    }, 100)
-  }
-
-  // sampleSource.start(startTime);
-  // round startTime to sample to avoid interpolation
-  // NOTE: can produce ring effect, since not perfectly aligned in startTime, interval varies
-  sampleSource.start(Math.floor(startTime * audioContext.sampleRate) / audioContext.sampleRate);
 }
 
 
