@@ -72,17 +72,29 @@
 
 <script type="module">
 import * as au from './source/lib/audio-util.js'
+import kvStorage from './source/lib/kv-storage-polyfill.mjs'
+import encodeWav from './source/lib/wav-encoder.js'
+
+window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder ||
+                     window.MozBlobBuilder;
 
 const inputFile = document.querySelector('#input-file')
 const wavearea = document.querySelector('#wavearea')
 const playButton = document.querySelector('#play')
 
 
-let audioBuffer, audioContext = new AudioContext()
+const audioContext = new AudioContext()
 // abl is like audio-track. No need to store multiple chunks, just display audiobuffer
 const frameSize = 512   // ~ 50fps
 // track caret - alternative to tracking multiple various events
 let fromFrame, toFrame
+let audioBuffer
+
+// load previously saved file, if any
+const DB_KEY = 'wavearea-audio'
+try {
+  await initAudio(await kvStorage.get(DB_KEY))
+} catch (e) {console.log(e)}
 
 document.addEventListener('click', e => {
   if (audioContext.state !== 'running') audioContext.resume()
@@ -90,12 +102,17 @@ document.addEventListener('click', e => {
 
 inputFile.onchange = async e => {
   const fileList = inputFile.files
+  initAudio(fileList[0])
+  save(fileList[0])
+}
 
-  let arrayBuf = await readAudio(fileList[0])
+async function initAudio (blob) {
+  if (!blob) return
+  let arrayBuf = await blobToAB(blob)
   audioBuffer = await decodeAudio(arrayBuf)
-
   drawData(audioBuffer)
 }
+
 
 // must come before tracking caret because we need prev caret state and input already updates content
 wavearea.addEventListener('input', e => {
@@ -104,6 +121,7 @@ wavearea.addEventListener('input', e => {
   if (e.inputType === 'deleteContentBackward') {
     console.log('deleting', fromFrame, toFrame)
     audioBuffer = au.remove(audioBuffer, fromFrame*frameSize, toFrame*frameSize)
+    save(audioBuffer)
   }
 })
 
@@ -121,10 +139,14 @@ wavearea.addEventListener('cut', trackCaret);
 wavearea.addEventListener('mousemove', trackCaret); // Selection, dragging text
 wavearea.addEventListener('select', trackCaret); // Some browsers support this event
 wavearea.addEventListener('selectstart', trackCaret); // Some browsers support this event
+wavearea.addEventListener('change', trackCaret); // Some browsers support this event
+wavearea.addEventListener('focus', trackCaret); // Some browsers support this event
+wavearea.addEventListener('blur', trackCaret); // Some browsers support this event
 
 
 playButton.onclick = async e => {
   wavearea.focus()
+  // const from = wavearea.selectionStart, to = wavearea.selectionEnd
   wavearea.selectionStart = wavearea.selectionEnd = wavearea.selectionStart || 0; // reselection on focus bug
 
   const ended = await playAudio(fromFrame, toFrame)
@@ -192,7 +214,8 @@ function drawData(abuf) {
   wavearea.value = waveStr
 }
 
-function readAudio(file) {
+// blob to arrayBuffer
+function blobToAB(file) {
   // Check if the file is an image.
   if (file.type && !file.type.startsWith('audio/')) {
     console.log('File is not an audio.', file.type, file);
@@ -201,9 +224,10 @@ function readAudio(file) {
 
   return new Promise((y,n) => {
     const reader = new FileReader();
-    reader.addEventListener('load', (event) => {
+    reader.addEventListener('loadend', (event) => {
       y(event.target.result);
     });
+    reader.addEventListener('error', n)
     reader.readAsArrayBuffer(file);
   })
 }
@@ -212,10 +236,33 @@ function decodeAudio(buf) {
   return audioContext.decodeAudioData(buf)
 }
 
+async function save (buffer) {
+  // convert audioBuffer into blob
+  if (buffer instanceof AudioBuffer) {
+    let audioData = {
+      sampleRate: audioBuffer.sampleRate,
+      channelData: Array.from({length: audioBuffer.numberOfChannels}).map((_,channel) => audioBuffer.getChannelData(channel))
+    }
+    const arrayBuf = await encodeWav(audioData)
+
+    // save audioBuffer to DB
+    return kvStorage.set(DB_KEY, new Blob([arrayBuf]))
+  }
+  // expect blob by default
+  else {
+    return kvStorage.set(DB_KEY, buffer)
+  }
+}
 
 function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random())
 }
+
+function audioBufferToBlob(buffer) {
+  return new Blob([buffer], {type: type});
+}
+
+
 
 
 // document.querySelectorAll('[wavearea]').forEach(el => new Wavearea(el))
