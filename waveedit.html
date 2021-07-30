@@ -20,8 +20,21 @@
     }
   }
 
-  :root {
-    font-size: 100%/1.5;
+  /* stick footer */
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    flex: 1 0 auto;
+  }
+  footer {
+    flex-shrink: 0;
+    text-align: center;
   }
 
   a {
@@ -51,6 +64,7 @@
   #wavearea {
     resize: both;
     width: 100%;
+    height: 100%;
     outline: none;
     border: none;
     padding: 0;
@@ -62,18 +76,27 @@
   }
 </style>
 
-<input id="input-file" type="file" capture="user" accept="audio/*">
-<!-- <img src="../asset/upload.svg"></input> -->
-<button id="play"><img src="../asset/play.svg"></button>
-<button id="download"><img src="../asset/download.svg"></button>
-<!-- <button><img src="../asset/settings.svg"></button> -->
-<textarea id="wavearea" class="wavefont" spellcheck="false" autofocus wavearea></textarea>
+<header>
+  <input id="input-file" type="file" capture="user" accept="audio/*">
+  <!-- <img src="../asset/upload.svg"></input> -->
+  <button id="play"><img src="../asset/play.svg"></button>
+  <button id="download"><img src="../asset/download.svg"></button>
+  <!-- <button><img src="../asset/settings.svg"></button> -->
+</header>
 
+<main>
+  <textarea id="wavearea" class="wavefont" spellcheck="false" autofocus wavearea></textarea>
+</main>
+
+<footer>
+<p align="center">🕉<p>
+</footer>
 
 <script type="module">
 import * as au from './source/lib/audio-util.js'
 import kvStorage from './source/lib/kv-storage-polyfill.mjs'
 import encodeWav from './source/lib/wav-encoder.js'
+// import autosize from './source/lib/autosize.js'
 
 window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder ||
                      window.MozBlobBuilder;
@@ -294,4 +317,3 @@ function downloadBlob(blob, fileName) {
 // document.querySelectorAll('[wavearea]').forEach(el => new Wavearea(el))
 </script>
 
-<p align="center" style="position: absolute; bottom: 0; right: 0;">🕉<p>
