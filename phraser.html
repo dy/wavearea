@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wavearea</title>
+
+<link rel="stylesheet" href="asset/modern-normalize.css" rel="preload"/>
+
+<style id="wavefont-style">
+  @font-face {
+    font-family: wavefont;
+    src: url(./wavefont.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: blank;
+    /* src: url(./AdobeBlank2VF.ttf.woff2); */
+    src: url(data:application/x-font-woff;charset=utf-8;base64,d09GMgABAAAAAARMABMAAAAAC1AAAAPjAAEAxQAAAAAAAAAAAAAAAAAAAAAAAAAAGUYcID9IVkFSVAZgP1NUQVQkP1ZWQVJjAIIAL0YKWFwwLgE2AiQDCAsGAAQgBYsyBzEXJBgIGwEKEcXkJfmqgCdD4yWAULaeeBovVzstIc6riunXpnmtXivg+BLWsFA1x8PTXP+eO5PNAn8AUCwJsYCgqxxZ1JUELrLsXkOo3TUpDjbRB8Tvo61HSFe6NVBVO1SvlxDEvYxsxE4DfNN8ImIOJ0gqtv/9fq0+Wat/NsTds46FRuqU8lf0gse1iqY3dLfkGRqhqiTVConpREoxCY1FPHelp1Ny+uwFWpZYoBA7dh04oaUEhFLUFDri7o2bj2BaFYGOOeZ1vLhvdQ0IMAUABHoC6yWZLbYAgJ9NX06XhIBcaa5iDdL76Qz2k7njkrV+ci1cx5uLNbeOtx22hbrOrMaqxrO/9QL9NwVgAUJoSZgClkjP3HjyTmDP7j0nIoQAM3AGAJfCk0F+cI8EIeugpw/+AUwGvq0R/IaJbxBM/EE9gRAIQEJCRkaBAg00UKJEE0200EIbbXTQQRdd9NBDH30MMMAQQ4wwEuEmSaYkBnnYDCBXEDnpwW9EJK5WZJBAgQZGmA0oQIMiXw91sjku790e3LzZfHZ461Z5+/ozFVTN2diLFz9/ql67cl8k+nvMWO4OBBKYtXsY6LwaespXbYFXt+TqtTcIhK83bvTx5eGGf1s5V/D9qt/p9najlt/Mj6KUQFCxsYrB4sZY4VoloVbYkpHGKGGx3RT/yaJo4wSfCEucQDLwLLLV3u5asKHhhk9QmpVZaOnEerTNyqaunQW61ucM+umj+BAD6xtRwIJe7SdfPJ0j6BTPIkzxelO3WVhf//c2jpwWnwkGXVHJ7/FoDWDAQVkQ+OBTFKZJu8lXljDZnk7YqITmExH/y0MxUyoCDOBqChwdIU8mZhKKCJ2upGVgbGinpSoKOgThuVdIkAJUCkD1UYqNlj3J5kSRrqElYYogo7sLvSE3eCVefdEJa/SRA1H0BWVMIMAKSoG1TMqBSbtr5Q+DNGe+gASmqJQCTiiX8mISEDDtHgvYUEpCDjCuCZD0oQJ1YQ3sjHRPlXdfK+E/rSY28Bg4cI6cV00RDZaMcjGklsyXggUDJ2BRVwCGvwLAfxa/WTib27k4LwoOHB0NbJMLE/HNdo7AyM7W2AINfIZwPg2I0KNAtGALqE+jIEEkfiTfWAAkgSiiBZJkLDgSCXf6EaZ2NnDRspAUq7MFXOYSaLDGnozJK4dkPCmTRSmRKSxxWiDAMFMxKVLnoZ7iPA0oLgj+UBlRkrmlg3DbW9ieSDMnJbu4KqNIxL1kjISZ9GjJ5+t2TALq0U3AcYLmZeFeX9Ww6+F30lD/+kXetcg6ZJg3EalzO/5jvn7dbo3cSO6f/4dc8dJzzBkJMwsAAAA=) format('woff2');
+  }
+
+  .wavefont {
+    font-family: wavefont, blank;
+    font-size: 5rem;
+    letter-spacing: .0108ex;
+    --wdth: 20;
+    font-variation-settings: 'wdth' var(--wdth), 'algn' 0.5, 'radi' 50;
+  }
+</style>
+<style type="text/css">
+  /* flex font size */
+  html { font-size: 108%; }
+  @media screen and (min-width: 320px) {
+    html {
+      font-size: calc(16px + 6 * ((100vw - 320px) / 680));
+    }
+  }
+  @media screen and (min-width: 1000px) {
+    html {
+      font-size: 24px;
+    }
+  }
+  :root {
+    line-height: 1.5;
+  }
+
+  a {
+    color: black;
+    text-decoration-color: rgba(0,0,0,.108);
+    text-underline-offset: .108em;
+    text-decoration-thickness: .108ch;
+  }
+  input {
+    border:  none;
+  }
+
+  /* stick footer */
+  html, body {
+    height: 100%;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  main {
+    flex:  1 0 auto;
+  }
+  footer {
+    flex-shrink: 0;
+  }
+
+  main, footer {
+    text-align:  center;
+    margin:  0 auto;
+    width: 100%;
+    max-width: 820px;
+  }
+
+  input, textarea, select {
+    border: none;
+    outline: none;
+    padding: 0;
+  }
+
+  .wavearea {
+    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    width: 100%;
+    display: block;
+    border-radius: .5rem;
+    min-height: 32vh;
+    display: flex;
+    flex-direction: row;
+    text-align: center;
+  }
+  .wavearea:focus {
+    box-shadow: rgba(3, 102, 214, 0.3) 0px 0px 0px 3px, rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  }
+  .wavearea .input {
+    outline: none;
+    text-align: left;
+    padding: 1rem;
+    flex: 1 0 auto;
+  }
+  .wavearea .controls {
+    /*border-top: 1px solid rgba(0,0,0,.108);*/
+    padding: 1rem 1rem;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+  .wavearea .controls svg {
+    display:  block;
+  }
+  .wavearea .play {
+    margin:  .5rem;
+  }
+  .wavearea .play.playing .play-icon {
+    display: none;
+  }
+  .wavearea .play:not(.playing) .pause-icon {
+    display: none;
+  }
+  .wavearea .bpm {
+    margin-left: .5em;
+  }
+
+  .wavearea .container {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .wavearea .info {
+    flex-shrink: 0;
+    text-align:  left;
+    padding: 1rem 1rem;
+    border-left: 1px solid rgba(0,0,0,.108);
+  }
+
+  .input-sizer{
+    display: inline-grid;
+    vertical-align: top;
+    align-items: center;
+    position: relative;
+  }
+  .input-sizer input {
+    position: absolute;
+    width: 100%;
+  }
+  .input-sizer::after {
+    content: attr(data-value) ' ';
+    visibility: hidden;
+    white-space: pre-wrap;
+    margin-right: 1em;
+  }
+</style>
+
+<main>
+  <br/>
+  <div class="wavearea">
+    <div class="container">
+      <ruby class="input" contenteditable spellcheck="false">
+        Te Re Khe Ta
+      </ruby>
+      <div class="controls">
+        <a class="play" href="#play">
+          <svg class="play-icon" width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M36.2045 17.632C38.0672 18.5538 38.9986 19.0147 39.2964 19.64C39.5555 20.184 39.5555 20.816 39.2964 21.36C38.9986 21.9853 38.0672 22.4462 36.2045 23.368L4.61932 38.9986C3.08886 39.756 2.32363 40.1347 1.70199 40.041C1.15914 39.9592 0.67377 39.6579 0.359679 39.2076C5.78512e-06 38.692 5.82244e-06 37.8382 5.89709e-06 36.1306L7.26356e-06 4.86938C7.3382e-06 3.16178 7.37552e-06 2.30798 0.359681 1.79237C0.673772 1.34212 1.15914 1.04076 1.70199 0.95896C2.32363 0.865286 3.08886 1.24398 4.61931 2.00135L36.2045 17.632Z" fill="black"/>
+          </svg>
+          <svg class="pause-icon" width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0.5" y="2" width="10" height="36" rx="2" fill="black"/>
+          <rect x="18" y="2" width="10" height="36" rx="2" fill="black"/>
+          </svg>
+        </a>
+        <label class="bpm input-sizer" data-value=120>
+          <input type="number" step=1 min=60 value=120 onInput="this.parentNode.dataset.value = this.value" />
+        </label>
+      </div>
+    </div>
+    <aside class="info">
+      <select>
+        <option>Mridanga</option>
+        <option>Karatals</option>
+        <option>Harmonium</option>
+      </select>
+      <dl class="dict">
+        <dt>Te</dt>
+        <dd></dd>
+        <dt>Re</dt>
+        <dd></dd>
+        <dt>Khe</dt>
+        <dd></dd>
+        <dt>Ta</dt>
+        <dd></dd>
+      </dl>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer">
+  &copy; ॐ
+</footer>
+
+<script>
+const audioContext = new AudioContext({sampleRate: 48000*1});
+
+let isPlaying = false;
+
+let tempo = 120.0;
+const bpmControl = document.querySelector('.bpm input');
+// const bpmValEl = document.querySelector('#bpmval');
+
+bpmControl.addEventListener('input', ev => {
+  tempo = Number(ev.target.value);
+  // bpmValEl.innerText = tempo;
+}, false);
+
+const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
+const scheduleAheadTime = 0.1; // How far ahead to schedule audio (sec)
+
+let currentNoteIdx = 0;
+let nextNoteTime = 0.0;
+
+const drawQueue = [];
+let timerID;
+
+const playButton = document.querySelector('.play');
+playButton.addEventListener('click', ev => {
+  isPlaying = !isPlaying;
+
+  if (isPlaying) {
+    // check if context is in suspended state (autoplay policy)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
+    currentNoteIdx = 0;
+    nextNoteTime = audioContext.currentTime;
+    scheduler();
+    draw();
+    playButton.classList.add('playing')
+  }
+  else {
+    window.clearTimeout(timerID)
+    // suspend must release scheduled notes to play
+    setTimeout(() => audioContext.suspend(), scheduleAheadTime * 1000)
+    playButton.classList.remove('playing')
+  }
+})
+
+// not single raf loop because raf stops on switching tab, whereas setTimeout only drops rate
+function scheduler() {
+  while (nextNoteTime < audioContext.currentTime + scheduleAheadTime ) {
+    drawQueue.push({note: currentNoteIdx, time: nextNoteTime})
+    playSample(tickBuffer, nextNoteTime)
+    nextNoteTime += 60.0 / tempo
+    currentNoteIdx++
+  }
+  timerID = window.setTimeout(scheduler, lookahead);
+}
+
+// UI loop
+let lastNoteDrawn = 0;
+function draw() {
+  let drawNote = lastNoteDrawn;
+  const currentTime = audioContext.currentTime;
+
+  while (drawQueue.length && drawQueue[0].time < currentTime) {
+    drawNote = drawQueue[0].note;
+    drawQueue.splice(0,1); // (faster than shift)
+  }
+
+  if (lastNoteDrawn !== drawNote) {
+    // TODO: move cursor to drawn note
+
+    lastNoteDrawn = drawNote;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+const tickBuffer = new AudioBuffer({sampleRate: audioContext.sampleRate, numberOfChannels: 1, length: 2})
+tickBuffer.getChannelData(0)[0] = 1
+tickBuffer.getChannelData(0)[1] = -1
+function playSample(buffer, time) {
+  const sampleSource = audioContext.createBufferSource()
+  sampleSource.buffer = buffer
+  // sampleSource.onended = () => sampleSource.disconnect()
+  sampleSource.connect(audioContext.destination)
+
+  // sampleSource.start(time);
+  // round time to sample to avoid interpolation
+  // NOTE: can produce ring effect, since not perfectly aligned in time, interval varies
+  sampleSource.start(Math.floor(time * audioContext.sampleRate) / audioContext.sampleRate);
+  return sampleSource;
+}
+
+
+const mridangSample = {
+  Te: ``,
+  Re: ``,
+  Khe: ``,
+  Ta: ``
+}
+</script>

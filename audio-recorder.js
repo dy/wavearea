@@ -1,11 +1,9 @@
-import {reposition} from 'nanopop';
-
-import recordIcon from './asset/record.svg'; // ⏺
-import stopIcon from './asset/stop.svg'; // ⏹
-import playIcon from './asset/play.svg'; // ▶
-import pauseIcon from './asset/pause.svg'; // ⏸
-import downloadIcon from './asset/download.svg'; // ⬇⭳⤓
-import settingsIcon from './asset/settings.svg';
+const recordIcon = `<img src="../asset/record.svg"/>`
+const stopIcon = `<img src="../asset/stop.svg"/>`
+const playIcon = `<img src="../asset/play.svg"/>`
+const pauseIcon = `<img src="../asset/pause.svg"/>`
+const downloadIcon = `<img src="../asset/download.svg"/>`
+const settingsIcon = `<img src="../asset/settings.svg"/>`
 
 // Design considerations
 // There are 2 strategies to handle data:
