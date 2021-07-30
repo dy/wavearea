@@ -65,7 +65,7 @@
 <input id="input-file" type="file" capture="user" accept="audio/*">
 <!-- <img src="../asset/upload.svg"></input> -->
 <button id="play"><img src="../asset/play.svg"></button>
-<!-- <button><img src="../asset/download.svg"></button> -->
+<button id="download"><img src="../asset/download.svg"></button>
 <!-- <button><img src="../asset/settings.svg"></button> -->
 <textarea id="wavearea" class="wavefont" spellcheck="false" autofocus wavearea></textarea>
 
@@ -81,6 +81,7 @@ window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder ||
 const inputFile = document.querySelector('#input-file')
 const wavearea = document.querySelector('#wavearea')
 const playButton = document.querySelector('#play')
+const downloadButton = document.querySelector('#download')
 
 
 const audioContext = new AudioContext()
@@ -153,8 +154,7 @@ playButton.onclick = async e => {
 }
 
 async function playAudio(startFrame, endFrame) {
-  if (startFrame === wavearea.value.length) startFrame = 0;
-  if (startFrame === endFrame) endFrame = wavearea.value.length;
+  [startFrame, endFrame] = getStartEndFrames(startFrame, endFrame)
 
   const startTime = audioContext.currentTime
 
@@ -185,6 +185,11 @@ async function playAudio(startFrame, endFrame) {
   // sampleSource.start(Math.floor(startTime * audioContext.sampleRate) / audioContext.sampleRate);
 }
 
+function getStartEndFrames(startFrame,endFrame) {
+  if (startFrame === wavearea.value.length) startFrame = 0;
+  if (startFrame === endFrame) endFrame = wavearea.value.length;
+  return [startFrame, endFrame]
+}
 
 
 // render abuffer bars
@@ -239,14 +244,10 @@ function decodeAudio(buf) {
 async function save (buffer) {
   // convert audioBuffer into blob
   if (buffer instanceof AudioBuffer) {
-    let audioData = {
-      sampleRate: audioBuffer.sampleRate,
-      channelData: Array.from({length: audioBuffer.numberOfChannels}).map((_,channel) => audioBuffer.getChannelData(channel))
-    }
-    const arrayBuf = await encodeWav(audioData)
+    let blob = await audioBufferToBlob(buffer)
 
     // save audioBuffer to DB
-    return kvStorage.set(DB_KEY, new Blob([arrayBuf]))
+    return kvStorage.set(DB_KEY, blob)
   }
   // expect blob by default
   else {
@@ -254,14 +255,46 @@ async function save (buffer) {
   }
 }
 
+async function audioBufferToBlob(buffer) {
+    let audioData = {
+      sampleRate: audioBuffer.sampleRate,
+      channelData: Array.from({length: buffer.numberOfChannels}).map((_,channel) => buffer.getChannelData(channel))
+    }
+    const arrayBuf = await encodeWav(audioData)
+
+    return new Blob([arrayBuf])
+}
+
 function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random())
 }
 
-function audioBufferToBlob(buffer) {
-  return new Blob([buffer], {type: type});
+
+
+downloadButton.onclick = async e => {
+  const [startFrame, endFrame] = getStartEndFrames(fromFrame, toFrame)
+  // get buffer form selection
+  let sliceBuffer = au.slice(audioBuffer, startFrame*frameSize, endFrame*frameSize)
+  let blob = await audioBufferToBlob(sliceBuffer)
+  console.log(sliceBuffer.duration)
+
+  downloadBlob(blob, 'wavearea.wav')
 }
 
+
+function downloadBlob(blob, fileName) {
+    if (typeof navigator.msSaveBlob == "function") return navigator.msSaveBlob(blob, fileName);
+
+    var saver = document.createElementNS("http://www.w3.org/1999/xhtml", "a");
+    var blobURL = saver.href = URL.createObjectURL(blob);
+
+    saver.download = fileName;
+
+    document.body.appendChild(saver);
+    saver.dispatchEvent(new MouseEvent("click"));
+    document.body.removeChild(saver);
+    URL.revokeObjectURL(blobURL);
+}
 
 
 
