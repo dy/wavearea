@@ -219,14 +219,7 @@ function drawData(abuf) {
   wavearea.value = waveStr
 }
 
-// blob to arrayBuffer
 function blobToAB(file) {
-  // Check if the file is an image.
-  if (file.type && !file.type.startsWith('audio/')) {
-    console.log('File is not an audio.', file.type, file);
-    return;
-  }
-
   return new Promise((y,n) => {
     const reader = new FileReader();
     reader.addEventListener('loadend', (event) => {
