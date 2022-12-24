@@ -15,7 +15,7 @@
       :value="waveform"
     ></textarea>
 
-    <audio class="playback" controls :src="`data:audio/mpeg;base64,${wavBase64}`"></audio>
+    <audio class="playback" controls :src="wavURL"></audio>
 
     <!-- <div class="playback">
       <button class="record">
@@ -64,7 +64,7 @@
       waveform: '',
 
       // current playable audio data
-      wavBase64: '',
+      wavURL: '',
 
       // current selection
       selection: [0,0],
@@ -109,10 +109,16 @@
       const wav = toWav(audioBuffer);
       console.timeEnd('wav encode')
 
-      console.time('base64')
-      // FIXME: this guy takes 16ms
-      state.wavBase64 = b64.encode(wav);
-      console.timeEnd('base64')
+      console.time('wav url')
+      const blob = new Blob([wav], { type: "audio/wav" });
+      state.wavURL = URL.createObjectURL(blob);
+      // audio.onload = function (e) { windowURL.revokeObjectURL(this.src); }
+      console.timeEnd('wav url')
+
+      // NOTE: this guy takes 16s
+      // console.time('base64')
+      // state.wavURL = `data:audio/mpeg;base64,` + b64.encode(wav);
+      // console.timeEnd('base64')
 
       state.loading = false
     }
