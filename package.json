@@ -27,6 +27,6 @@
     "@github/textarea-autosize": "^0.3.1",
     "audioworklet-polyfill": "^1.1.2",
     "nanopop": "^2.1.0",
-    "sprae": "^2.2.1"
+    "sprae": "^2.2.2"
   }
 }

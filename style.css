@@ -1,0 +1,36 @@
+html, body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+@font-face {
+	font-family: wavefont;
+	font-display: block;
+	src: url(./asset/wavefont.woff2) format('woff2');
+}
+.waveedit {
+  height: 100%;
+}
+.wavefont {
+	--wght: 10;
+	font-family: wavefont;
+  letter-spacing: 0ch;
+	font-variation-settings: 'wght' var(--wght), 'ROND' 30, 'ALGN' 0.5;
+}
+.wavearea {
+  width: 100%;
+  height: 100%;
+  font-size: 100px;
+  outline: none;
+  border: none;
+  line-height: 1.4;
+  padding: 0;
+  padding-left: 2rem;
+}
+.playback {
+  position: fixed;
+  bottom: 0
+}

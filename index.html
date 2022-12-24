@@ -4,37 +4,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AU</title>
 
-<style>
-@font-face {
-	font-family: wavefont;
-	font-display: block;
-	src: url(./asset/wavefont.woff2) format('woff2');
-}
-.wavefont {
-	--wght: 10;
-	font-family: wavefont;
-  letter-spacing: 1ch;
-	font-variation-settings: 'wght' var(--wght), 'ROND' 30, 'ALGN' 0.5;
-}
-body {
-  margin: 0;
-}
-.waveform {
-  width: 100%;
-  height: 100%;
-  font-size: 100px;
-}
-.playback {
-  position: fixed;
-  bottom: 0
-}
-</style>
+<link href="./style.css" rel="stylesheet"/>
 
 <body>
   <div class="waveedit">
-    <textarea class="waveform wavefont" spellcheck="false" autofocus
+    <span :if="loading" style="position:absolute;">Loading...</span>
+
+    <textarea class="wavearea wavefont" spellcheck="false"
       :onfocus-onblur="trackCaret" cols="500" :init="autosize(this)"
-    >abcdef</textarea>
+      :value="waveform"
+    ></textarea>
 
     <div class="playback">
       <button class="record">
@@ -42,7 +21,7 @@ body {
         <span :else title="Start recording">*</span>
       </button>
       <button class="play">
-        <span :if="playing" title="Play">></span>
+        <span :if="!playing" title="Play">></span>
         <span :else title="Pause">||</span>
       </button>
       <input class="volume" type="range" min="0" max="100" step="1" value="90" :value="volume" :oninput:onchange="e => volume.value = e.target.value" />
@@ -62,14 +41,71 @@ body {
     import sprae from 'sprae';
     import autosize from 'autosize';
 
-    let state = sprae(document, {
+    let state = sprae(document.querySelector('.waveedit'), {
+      // params
+      loading: false,
       recording: false,
       playing: false,
       volume: 1,
 
+      // currend audio buffer
+      audioBuffer: null,
+
+      // get wavefont string from audio buffer
+      // FIXME: instead of recalculating waveform in complete, we can do fragments of it
+      get waveform() {
+        let { audioBuffer } = this;
+        if (!audioBuffer) return '';
+
+        // audio.value = new Audio
+        // audio.value.src = `data:audio/mpeg;base64,${base64}`
+
+        // // obtain waveform from audio input
+        // let wavData = b64.decode(response.output.target_wave.content);
+        // let audioBuffer = wav.decode(wavData);
+
+        // map waveform to wavefont
+        let channelData = audioBuffer.getChannelData(0), str = ''
+
+        // approx. block size - close to chars length. Must be in sync with wavefont.
+        let BLOCK_SIZE = 1024
+
+        // normalize waveform before rendering
+        // for every channel bring it to max-min amplitude range
+        let max = 0
+        for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
+        let amp = Math.max(1 / max, 1)
+        for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
+
+        // TODO: weight waveform by audible spectrum
+
+        // create wavefont string
+        // amp coef brings up value a bit
+        const VISUAL_AMP = 1//2.8
+        for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
+          let ssum = 0, sum = 0
+
+          // avg amp method - waveform is too small
+          // for (; i < nextBlock; i++) sum += Math.abs(i > channelData.length ? 0 : channelData[i])
+          // const avg = sum / BLOCK_SIZE
+          // str += String.fromCharCode(0x0100 + Math.ceil(avg * 100))
+
+          // rms method:
+          // drawback: waveform is smaller than needed
+          for (;i < nextBlock; i++) ssum += i > channelData.length ? 0 : channelData[i] ** 2
+          const rms = Math.sqrt(ssum / BLOCK_SIZE)
+          str += String.fromCharCode(0x0100 + Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP)))
+
+          nextBlock += BLOCK_SIZE
+        }
+
+        return str
+      },
+
       // current selection
       selection: [0,0],
 
+      // deps
       autosize,
 
       // reflect selection
@@ -77,9 +113,31 @@ body {
         const wavearea = e.target
         const track = () => console.log(state.selection = [wavearea.selectionStart, wavearea.selectionEnd])
         const evts = 'keypress mousedown touchstart input paste cut mousemove select selectstart change focus blur'.split(' ')
-        evts.map(evt => el.addEventListener(track))
-        return () => evts.map(evt => el.removeEventListener(track))
+        evts.map(evt => wavearea.addEventListener(evt, track))
+        return () => evts.map(evt => wavearea.removeEventListener(evt, track))
       }
     });
+
+    // load audio source
+    const sr = 48000;
+    const audioCtx = new OfflineAudioContext(2,sr*40,sr);
+    const source = audioCtx.createBufferSource();
+    async function loadAudio(src) {
+      state.loading = true;
+
+      let resp = await fetch(src);
+      if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
+
+      let arrayBuffer = await resp.arrayBuffer();
+
+      let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      console.log('Loaded audio:', audioBuffer)
+
+      state.audioBuffer = audioBuffer;
+      state.loading = false
+    }
+
+    loadAudio('./asset/Iskcon-manifest(enhanced).wav');
   </script>
 </body>
