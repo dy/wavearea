@@ -10,12 +10,12 @@
   <div class="waveedit">
     <span :if="loading" style="position:absolute;">Loading...</span>
 
-    <textarea class="wavearea wavefont" spellcheck="false"
+    <textarea :x="wavearea=this" class="wavearea wavefont" spellcheck="false"
       :onfocus-onblur="trackCaret" cols="500" :init="autosize(this)"
       :value="waveform"
     ></textarea>
 
-    <audio class="playback" controls :src="wavURL"></audio>
+    <audio :x="audio=this" class="playback" controls :src="wavURL" :onplay="() => wavearea.focus()"></audio>
 
     <!-- <div class="playback">
       <button class="record">
@@ -35,7 +35,7 @@
     {
       "imports": {
         "node-wav": "/source/lib/node-wav.js",
-        "sprae": "/node_modules/sprae/sprae.min.js",
+        "sprae": "/node_modules/sprae/sprae.js",
         "autosize": "/node_modules/@github/textarea-autosize/dist/index.js",
         "b64": "/source/lib/b64.js"
       }
@@ -48,9 +48,16 @@
     import * as b64 from 'b64';
 
     const SAMPLE_RATE = 48000;
+    // approx. block size - close to chars length. Must be in sync with wavefont.
+    const BLOCK_SIZE = 1024
     const audioCtx = new OfflineAudioContext(2,SAMPLE_RATE*40,SAMPLE_RATE);
 
     let state = sprae(document.querySelector('.waveedit'), {
+      //refs
+      // TODO: change signal-struct & sprae to expose refs on state directly
+      wavearea: null,
+      audio:null,
+
       // params
       loading: false,
       recording: false,
@@ -75,7 +82,7 @@
       // reflect selection
       trackCaret(e) {
         const wavearea = e.target
-        const track = () => console.log(state.selection = [wavearea.selectionStart, wavearea.selectionEnd])
+        const track = () => state.selection = [wavearea.selectionStart, wavearea.selectionEnd]
         const evts = 'keypress mousedown touchstart input paste cut mousemove select selectstart change focus blur'.split(' ')
         evts.map(evt => wavearea.addEventListener(evt, track))
         return () => evts.map(evt => wavearea.removeEventListener(evt, track))
@@ -83,6 +90,19 @@
     });
 
     loadAudio('./asset/Iskcon-manifest(enhanced).wav');
+
+    const startTime = audioCtx.currentTime
+    // sync caret
+    updateCaret()
+    function updateCaret () {
+      let {wavearea, audio} = state;
+      let startFrame = 0, endFrame = wavearea.length
+      const framesPlayed = Math.floor((audio.currentTime - startTime) * SAMPLE_RATE / BLOCK_SIZE)
+      // wavearea.selectionStart = wavearea.selectionEnd = Math.min(startFrame + framesPlayed, endFrame)
+      // if (startFrame + framesPlayed >= endFrame) return
+      wavearea.selectionStart = wavearea.selectionEnd = framesPlayed
+      requestAnimationFrame(updateCaret)
+    }
 
     // load audio source
     async function loadAudio(src) {
@@ -133,9 +153,6 @@
 
         // map waveform to wavefont
         let channelData = audioBuffer.getChannelData(0), str = ''
-
-        // approx. block size - close to chars length. Must be in sync with wavefont.
-        let BLOCK_SIZE = 1024
 
         // normalize waveform before rendering
         // for every channel bring it to max-min amplitude range
