@@ -1,5 +1,4 @@
 import sprae from 'sprae';
-import kvStorage from 'kv-storage';
 import * as au from 'au';
 
 
@@ -44,7 +43,6 @@ let state = sprae(document.querySelector('.waveedit'), {
     const syncCaret = () => {
       const framesPlayed = au.frame((audio.currentTime - startTime))
       const currentFrame = startFrame + framesPlayed;
-      // console.log('first sync', wavearea.selectionStart, framesPlayed, audio.currentTime)
       wavearea.selectionStart = wavearea.selectionEnd = currentFrame
       if (currentFrame >= endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
@@ -65,11 +63,17 @@ let state = sprae(document.querySelector('.waveedit'), {
 
 
 // init app
-async function init(src = './asset/Iskcon-manifest(enhanced).wav' ) {
+async function init(src) {
   state.loading = true;
 
-  // fetch remote audio
-  let arrayBuffer = await au.fetch(src);
+  // try loading existing audio, if any
+  let arrayBuffer = await au.load();
+
+  // fetch default audio, if not found in storage
+  if (!arrayBuffer) {
+    console.log('loading default audio');
+    arrayBuffer = await au.fetch('./asset/Iskcon-manifest(enhanced).wav');
+  }
 
   // set playable piece
   const blob = new Blob([arrayBuffer], { type: "audio/wav" });
@@ -84,13 +88,5 @@ async function init(src = './asset/Iskcon-manifest(enhanced).wav' ) {
   state.loading = false
 }
 
-
-// TODO: load previously saved file, if any
-// const DB_KEY = 'wavearea-audio'
-// try {
-//   await loadAudio(await kvStorage.get(DB_KEY))
-// } catch (e) {
-//   console.log(e)
-// }
 
 init();

@@ -1,21 +1,27 @@
 import wav from 'node-wav';
+import storage from 'kv-storage';
 
 const SAMPLE_RATE = 48000;
 // approx. block size - close to chars length. Must be in sync with wavefont.
-const BLOCK_SIZE = 1024
-const audioCtx = new OfflineAudioContext(2,SAMPLE_RATE*40,SAMPLE_RATE);
+const BLOCK_SIZE = 1024;
+// 1h-length audio ctx (hope more is not needed)
+const audioCtx = new OfflineAudioContext(2, SAMPLE_RATE * 60 * 60, SAMPLE_RATE);
 
+
+// conversion helpers
 export const frame = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
 export const time = frame => frame * BLOCK_SIZE / SAMPLE_RATE
 
+
 // load saved audio from store (blob)
-async function loadAudio (blob) {
+async function loadAudio (key=DB_KEY) {
+  let blob = await storage.get(key)
   if (!blob) return
   let arrayBuf = await blobToAB(blob)
-  audioBuffer = await decodeAudio(arrayBuf)
-  drawData(audioBuffer)
+  return arrayBuf
 }
-function blobToAB(file) {
+const DB_KEY = 'wavearea-audio'
+const blobToAB = (file) => {
   return new Promise((y,n) => {
     const reader = new FileReader();
     reader.addEventListener('loadend', (event) => {
@@ -24,6 +30,15 @@ function blobToAB(file) {
     reader.addEventListener('error', n)
     reader.readAsArrayBuffer(file);
   })
+}
+
+
+async function saveAudio (blob, key=DB_KEY) {
+  // convert audioBuffer into blob
+  // FIXME: we can cache blobs by audio buffers
+  // FIXME: we can try to save arraybuffer also
+  if (blob instanceof AudioBuffer) blob = new Blob([await encodeAudio(blob)])
+  return storage.set(DB_KEY, blob)
 }
 
 // fetch audio source from URL
@@ -39,6 +54,7 @@ async function fetchAudio(src) {
 }
 
 // decode array buffer to audio buffer
+// FIXME: we can cache blob maybe?
 async function decodeAudio (arrayBuffer, ctx) {
   console.time('decode')
   let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
@@ -142,6 +158,7 @@ export function create (sampleRate, data) {
 
 export {
   loadAudio as load,
+  saveAudio as save,
   fetchAudio as fetch,
   encodeAudio as encode,
   decodeAudio as decode,

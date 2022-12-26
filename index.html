@@ -20,19 +20,6 @@
     </div>
 
     <audio :ref="audio" class="we-playback" controls :src="wavURL" :onplay-onpause="play"></audio>
-
-    <!-- <div class="playback">
-      <button class="record">
-        <span :if="recording" title="Stop">x</span>
-        <span :else title="Start recording">*</span>
-      </button>
-      <button class="play">
-        <span :if="!playing" title="Play">></span>
-        <span :else title="Pause">||</span>
-      </button>
-      <input class="volume" type="range" min="0" max="100" step="1" value="90" :value="volume" :oninput:onchange="e => volume.value = e.target.value" />
-      <button class="download">_</button>
-    </div> -->
   </div>
 
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js"></script>
@@ -41,10 +28,10 @@
       "imports": {
         "node-wav": "/source/lib/node-wav.js",
         "sprae": "/node_modules/sprae/sprae.js",
-        "au": "/source/lib/audio-util.js",
-        "kv-storage": "/source/lib/kv-storage-polyfill.mjs"
+        "au": "/source/audio-util.js",
+        "kv-storage": "/node_modules/kv-storage-polyfill/dist/kv-storage-polyfill.mjs"
       }
     }
   </script>
-  <script type="module" src="main.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>

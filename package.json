@@ -27,6 +27,7 @@
     "@github/textarea-autosize": "^0.3.1",
     "audioworklet-polyfill": "^1.1.2",
     "base64-arraybuffer": "^1.0.2",
+    "kv-storage-polyfill": "^2.0.0",
     "nanopop": "^2.1.0",
     "node-wav": "^0.0.2",
     "sprae": "^2.3.2"
