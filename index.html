@@ -10,12 +10,12 @@
   <div class="waveedit">
     <span :if="loading" style="position:absolute;">Loading...</span>
 
-    <textarea :x="wavearea=this" class="wavearea wavefont" spellcheck="false"
+    <textarea :ref="wavearea" class="wavearea wavefont" spellcheck="false"
       :onfocus-onblur="trackCaret" cols="500" :init="autosize(this)"
       :value="waveform"
     ></textarea>
 
-    <audio :x="audio=this" class="playback" controls :src="wavURL" :onplay="() => wavearea.focus()"></audio>
+    <audio :ref="audio" class="playback" controls :src="wavURL" :onplay="() => wavearea.focus()"></audio>
 
     <!-- <div class="playback">
       <button class="record">
@@ -53,10 +53,6 @@
     const audioCtx = new OfflineAudioContext(2,SAMPLE_RATE*40,SAMPLE_RATE);
 
     let state = sprae(document.querySelector('.waveedit'), {
-      //refs
-      // TODO: change signal-struct & sprae to expose refs on state directly
-      wavearea: null,
-      audio:null,
 
       // params
       loading: false,

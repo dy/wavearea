@@ -29,6 +29,6 @@
     "base64-arraybuffer": "^1.0.2",
     "nanopop": "^2.1.0",
     "node-wav": "^0.0.2",
-    "sprae": "^2.2.4"
+    "sprae": "^2.3.0"
   }
 }
