@@ -10,12 +10,16 @@
   <div class="waveedit">
     <span :if="loading" style="position:absolute;">Loading...</span>
 
-    <textarea :ref="wavearea" class="wavearea wavefont" spellcheck="false"
-      :onfocus-onblur="trackCaret" cols="500" :init="autosize(this)"
-      :value="waveform"
-    ></textarea>
+    <div class="we-container">
+      <div class="we-sizer wavefont" :text="waveform"></div>
+      <textarea :ref="wavearea"
+        class="we-wavearea wavefont" spellcheck="false" cols="540"
+        :onfocus-onblur="trackCaret"
+        :value="waveform"
+      ></textarea>
+    </div>
 
-    <audio :ref="audio" class="playback" controls :src="wavURL" :onplay="() => wavearea.focus()"></audio>
+    <audio :ref="audio" class="we-playback" controls :src="wavURL" :onplay-onpause="play"></audio>
 
     <!-- <div class="playback">
       <button class="record">
@@ -43,7 +47,6 @@
   </script>
   <script type="module">
     import sprae from 'sprae';
-    import autosize from 'autosize';
     import wav from 'node-wav';
     import * as b64 from 'b64';
 
@@ -69,36 +72,50 @@
       // current playable audio data
       wavURL: '',
 
-      // current selection
-      selection: [0,0],
-
-      // deps
-      autosize,
-
-      // reflect selection
+      // selection -> audio timeline
       trackCaret(e) {
-        const wavearea = e.target
-        const track = () => state.selection = [wavearea.selectionStart, wavearea.selectionEnd]
-        const evts = 'keypress mousedown touchstart input paste cut mousemove select selectstart change focus blur'.split(' ')
+        const {wavearea, audio} = state
+        const track = (e) => {
+          if (!state.playing) audio.currentTime = wavearea.selectionStart * BLOCK_SIZE / SAMPLE_RATE
+        }
+        const evts = 'keypress keydown mousedown click touchstart input select selectstart paste cut change'.split(' ')
         evts.map(evt => wavearea.addEventListener(evt, track))
         return () => evts.map(evt => wavearea.removeEventListener(evt, track))
+      },
+
+      play (e) {
+        let {wavearea, audio} = state
+        state.playing = true;
+        const startTime = audio.currentTime
+        const startFrame = Math.floor(startTime * SAMPLE_RATE / BLOCK_SIZE)
+        const endFrame = (wavearea.selectionEnd && wavearea.selectionEnd !== wavearea.selectionStart) ? wavearea.selectionEnd : wavearea.value.length
+        let animId
+
+        const syncCaret = () => {
+          const framesPlayed = Math.floor((audio.currentTime - startTime) * SAMPLE_RATE / BLOCK_SIZE)
+          const currentFrame = startFrame + framesPlayed;
+          wavearea.selectionStart = wavearea.selectionEnd = currentFrame
+          if (currentFrame >= endFrame) {
+            audio.pause();
+          }
+          else animId = requestAnimationFrame(syncCaret)
+        }
+        syncCaret()
+
+        wavearea.focus();
+
+        return () => {
+          state.playing = false
+          cancelAnimationFrame(animId), animId = null
+
+          // return selection if there was any
+          console.log('end')
+          if (startFrame !== endFrame) wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
+        }
       }
     });
 
     loadAudio('./asset/Iskcon-manifest(enhanced).wav');
-
-    const startTime = audioCtx.currentTime
-    // sync caret
-    updateCaret()
-    function updateCaret () {
-      let {wavearea, audio} = state;
-      let startFrame = 0, endFrame = wavearea.length
-      const framesPlayed = Math.floor((audio.currentTime - startTime) * SAMPLE_RATE / BLOCK_SIZE)
-      // wavearea.selectionStart = wavearea.selectionEnd = Math.min(startFrame + framesPlayed, endFrame)
-      // if (startFrame + framesPlayed >= endFrame) return
-      wavearea.selectionStart = wavearea.selectionEnd = framesPlayed
-      requestAnimationFrame(updateCaret)
-    }
 
     // load audio source
     async function loadAudio(src) {
@@ -161,7 +178,7 @@
 
         // create wavefont string
         // amp coef brings up value a bit
-        const VISUAL_AMP = 1//2.8
+        const VISUAL_AMP = 2
         for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
           let ssum = 0, sum = 0
 

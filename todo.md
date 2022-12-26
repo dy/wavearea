@@ -4,6 +4,9 @@
   * [ ] Don't update caret in raf: update only on playback and time change
   * [ ] Don't track caret on every focus: only when user selects by mouse
   * [ ] Make playback within the selection
+* [ ] open file
+* [ ] close file / open another file
+* [ ] persist file in storage
 * [ ] time codes
 * [ ] create silence
 * [ ] download

@@ -13,27 +13,54 @@ body {
 }
 .waveedit {
   height: 100%;
-  margin-right: 4rem;
-  margin-left: 4rem;
+  margin: 0;
+  padding: 0 2rem;
   display: flex;
   flex-direction: column;
 }
 .wavefont {
   display: block;
-	--wght: 10;
+	--wght: 20;
 	font-family: wavefont;
   letter-spacing: 1ch;
+  font-size: 50px;
+  line-height: 1.4;
 	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
 }
-.wavearea {
-  height: 100%;
-  font-size: 100px;
+
+.we-container {
+  display: flex;
+  max-width: 54rem;
+  position: relative;
+  width: 100%;
+  margin: 2rem auto;
+}
+
+.we-sizer {
+  word-break: break-all;
+  visibility: hidden;
+}
+
+.we-wavearea {
+  position: absolute;
+  padding: 0;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: hidden;
   outline: none;
   border: none;
-  line-height: 1.4;
-  padding: 0;
+  resize: none;
 }
-.playback {
+
+
+.we-playback {
   position: fixed;
-  bottom: 1rem
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  margin: auto;
+  border-radius: 100px;
+  /* box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px; */
 }
