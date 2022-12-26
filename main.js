@@ -1,10 +1,9 @@
 import sprae from 'sprae';
-import wav from 'node-wav';
+import kvStorage from 'kv-storage';
+import * as au from 'au';
 
-const SAMPLE_RATE = 48000;
-// approx. block size - close to chars length. Must be in sync with wavefont.
-const BLOCK_SIZE = 1024
-const audioCtx = new OfflineAudioContext(2,SAMPLE_RATE*40,SAMPLE_RATE);
+
+window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
 
 let state = sprae(document.querySelector('.waveedit'), {
   // params
@@ -26,7 +25,7 @@ let state = sprae(document.querySelector('.waveedit'), {
   trackCaret(e) {
     const {wavearea, audio} = state
     const track = (e) => {
-      if (!state.playing) audio.currentTime = wavearea.selectionStart * BLOCK_SIZE / SAMPLE_RATE
+      if (!state.playing) audio.currentTime = au.time(wavearea.selectionStart)
     }
     const evts = 'keypress keydown mousedown click touchstart input select selectstart paste cut change'.split(' ')
     evts.map(evt => wavearea.addEventListener(evt, track))
@@ -37,14 +36,15 @@ let state = sprae(document.querySelector('.waveedit'), {
     let {wavearea, audio} = state
     state.playing = true;
     const startTime = audio.currentTime
-    const startFrame = Math.floor(startTime * SAMPLE_RATE / BLOCK_SIZE)
+    const startFrame = au.frame(startTime)
     const selection = [wavearea.selectionStart, wavearea.selectionEnd]
     const endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length
     let animId
 
     const syncCaret = () => {
-      const framesPlayed = Math.floor((audio.currentTime - startTime) * SAMPLE_RATE / BLOCK_SIZE)
+      const framesPlayed = au.frame((audio.currentTime - startTime))
       const currentFrame = startFrame + framesPlayed;
+      // console.log('first sync', wavearea.selectionStart, framesPlayed, audio.currentTime)
       wavearea.selectionStart = wavearea.selectionEnd = currentFrame
       if (currentFrame >= endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
@@ -58,93 +58,39 @@ let state = sprae(document.querySelector('.waveedit'), {
       cancelAnimationFrame(animId), animId = null
 
       // return selection if there was any
-      console.log('end')
       if (selection[0] !== selection[1]) wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
     }
   }
 });
 
 
-loadAudio('./asset/Iskcon-manifest(enhanced).wav');
-
-// load audio source
-async function loadAudio(src) {
+// init app
+async function init(src = './asset/Iskcon-manifest(enhanced).wav' ) {
   state.loading = true;
 
-  let resp = await fetch(src);
-  if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
+  // fetch remote audio
+  let arrayBuffer = await au.fetch(src);
 
-  console.time('to array buffer')
-  let arrayBuffer = await resp.arrayBuffer();
-  console.timeEnd('to array buffer')
-
-  console.time('decode')
-  let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  console.timeEnd('decode')
-
-  state.audioBuffer = audioBuffer;
-
-  console.time('to waveform string')
-  state.waveform = toWaveform(audioBuffer);
-  console.timeEnd('to waveform string')
-
-  console.time('wav encode')
-  const wav = toWav(audioBuffer);
-  console.timeEnd('wav encode')
-
-  console.time('wav url')
-  const blob = new Blob([wav], { type: "audio/wav" });
+  // set playable piece
+  const blob = new Blob([arrayBuffer], { type: "audio/wav" });
   state.wavURL = URL.createObjectURL(blob);
-  // audio.onload = function (e) { windowURL.revokeObjectURL(this.src); }
-  console.timeEnd('wav url')
+  state.audio.onload = (e) => { URL.revokeObjectURL(state.wavURL); }
 
-  // NOTE: this guy takes 16s
-  // console.time('base64')
-  // state.wavURL = `data:audio/mpeg;base64,` + b64.encode(wav);
-  // console.timeEnd('base64')
+  // decode data
+  const audioBuffer = await au.decode(arrayBuffer);
+  // render waveform
+  state.waveform = await au.draw(audioBuffer);
 
   state.loading = false
 }
 
-function toWav(audioBuffer) {
-  let channelData = audioBuffer.getChannelData(0)
-  return wav.encode([channelData], { sampleRate: audioBuffer.sampleRate, float: false, bitDepth: 16 })
-}
 
-function toWaveform(audioBuffer) {
-  if (!audioBuffer) return '';
+// TODO: load previously saved file, if any
+// const DB_KEY = 'wavearea-audio'
+// try {
+//   await loadAudio(await kvStorage.get(DB_KEY))
+// } catch (e) {
+//   console.log(e)
+// }
 
-  // map waveform to wavefont
-  let channelData = audioBuffer.getChannelData(0), str = ''
-
-  // normalize waveform before rendering
-  // for every channel bring it to max-min amplitude range
-  let max = 0
-  for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
-  let amp = Math.max(1 / max, 1)
-  for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
-
-  // TODO: weight waveform by audible spectrum
-
-  // create wavefont string
-  // amp coef brings up value a bit
-  const VISUAL_AMP = 2
-  for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
-    let ssum = 0, sum = 0
-
-    // avg amp method - waveform is too small
-    // for (; i < nextBlock; i++) sum += Math.abs(i > channelData.length ? 0 : channelData[i])
-    // const avg = sum / BLOCK_SIZE
-    // str += String.fromCharCode(0x0100 + Math.ceil(avg * 100))
-
-    // rms method:
-    // drawback: waveform is smaller than needed
-    for (;i < nextBlock; i++) ssum += i > channelData.length ? 0 : channelData[i] ** 2
-    const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    str += String.fromCharCode(0x0100 + Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP)))
-
-    nextBlock += BLOCK_SIZE
-  }
-
-  return str
-}
+init();
