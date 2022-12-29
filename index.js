@@ -1,6 +1,6 @@
 import '@github/file-attachment-element';
 import sprae from 'sprae';
-import * as au from '@audio-util';
+import * as au from './source/audio-util.js';
 
 
 window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;

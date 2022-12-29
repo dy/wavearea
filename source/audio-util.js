@@ -1,5 +1,5 @@
 import wav from 'node-wav';
-import storage from 'kv-storage';
+import storage from 'kv-storage-polyfill';
 
 const SAMPLE_RATE = 48000;
 // approx. block size - close to chars length. Must be in sync with wavefont.
