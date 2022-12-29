@@ -1,18 +1,16 @@
+import '@github/file-attachment-element';
 import sprae from 'sprae';
-import * as au from 'au';
+import * as au from '@audio-util';
 
 
 window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
 
 let state = sprae(document.querySelector('.waveedit'), {
   // params
-  loading: false,
+  loading: true,
   recording: false,
   playing: false,
   volume: 1,
-
-  // currend audio buffer
-  audioBuffer: null,
 
   // current displayed waveform text
   waveform: '',
@@ -63,15 +61,16 @@ let state = sprae(document.querySelector('.waveedit'), {
 
 
 // init app
-async function init(src) {
+async function init() {
   state.loading = true;
 
   // try loading existing audio, if any
-  let arrayBuffer = await au.load();
+  let arrayBuffer// = await au.load();
 
   // fetch default audio, if not found in storage
   if (!arrayBuffer) {
     console.log('loading default audio');
+    // return;
     arrayBuffer = await au.fetch('./asset/Iskcon-manifest(enhanced).wav');
   }
 
@@ -87,6 +86,5 @@ async function init(src) {
 
   state.loading = false
 }
-
 
 init();

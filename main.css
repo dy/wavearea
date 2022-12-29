@@ -1,3 +1,6 @@
+* {
+  box-sizing: border-box;
+}
 html, body {
   height: 100%;
 }
@@ -33,12 +36,34 @@ body {
   max-width: 54rem;
   position: relative;
   width: 100%;
+  /* min-height: 100%; */
   margin: 2rem auto;
+  padding: 2rem 0 3rem;
+}
+
+.we-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(20,20,20,.08);
+  width: 100%;
+  font-family: sans-serif;
+  z-index: 1;
 }
 
 .we-sizer {
   word-break: break-all;
   visibility: hidden;
+}
+
+.we-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
 }
 
 .we-wavearea {
@@ -52,6 +77,7 @@ body {
   outline: none;
   border: none;
   resize: none;
+  background: none;
 }
 
 
@@ -62,5 +88,7 @@ body {
   right: 0;
   margin: auto;
   border-radius: 100px;
+  z-index: 2;
+  height: 3rem;
   /* box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px; */
 }

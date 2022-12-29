@@ -4,13 +4,22 @@
   * [x] Don't update caret in raf: update only on playback and time change
   * [x] Don't track caret on every focus: only when user selects by mouse
   * [x] Make playback within the selection
+* [ ] broken sprae condition of `:if :ref`
+* [ ] serialize file in url: ?load=path/to/url/file/to/fetch
+* [ ] replace file selector with + under caret
+* [ ] sprae :onfile-attachment-accepted
+* [ ] add preloader (sprae mount-unmount)
+* [ ] open file
+* [ ] delete file fully -> displays open file again
+* [ ] save file in storage
+* [ ] delete fragments -> updates audio
 * [ ] Safari: wrong current time positioning
 * [ ] Safari: initial audio loading state displays Error (show silent buffer)
-* [ ] open file
-* [ ] close file / open another file
-* [ ] persist file in storage
 * [ ] time codes next to lines
 * [ ] edit audio: cut, paste
 * [ ] create silence by space
-* [ ] download
-* [ ] rebuild player based on media stream to avoid preloading multiple chunks at once
+* [x] download
+* [ ] plus sign under the caret
+* [ ] ? rebuild player based on media stream to avoid preloading multiple chunks at once
+* [ ] caret must be able to be reoriented during the playback
+* [ ] scroll must follow the current caret position
