@@ -4,6 +4,11 @@
   * [x] Don't update caret in raf: update only on playback and time change
   * [x] Don't track caret on every focus: only when user selects by mouse
   * [x] Make playback within the selection
+* [ ] take source from URL, load that and visualize.
+  * [ ] if there's none - take random source
+* [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
+* [ ] move loading/decoding/encoding to worker
+* [ ] random phrase player (from URL - like thetamath) via free speech api
 * [ ] broken sprae condition of `:if :ref`
 * [ ] serialize file in url: ?load=path/to/url/file/to/fetch
 * [ ] replace file selector with + under caret

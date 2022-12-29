@@ -1,3 +1,34 @@
+## Name
+
+* waveedit
+* wavearea
+* waver
+* wavee
+* waveplay
+  + free
+* waveplayer
+* playwave
+* waev
+  + wæv
+  + anagram
+  + free
+* wavea
+  + wavearea
+* wavescope
+* waveview
+
+## Demo cases
+
+* Classics?
+* Famous quotes?
+* Prabhupada vani?
+* Audio books?
+* Poetry?
+* Mantras/Mahamantra?
+* Randomly generated music stream?
+* The most popular songs of all time?
+* Vedas?
+
 ## Use cases?
 
 * Drop [Prabhupada] audio (paste by URL, by file, drop file), have multiline waveform with time markers.

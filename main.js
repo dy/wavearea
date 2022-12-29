@@ -60,6 +60,12 @@ let state = sprae(document.querySelector('.waveedit'), {
 });
 
 
+const sampleSources = [
+  'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
+  'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
+  'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+]
+
 // init app
 async function init() {
   state.loading = true;
@@ -70,8 +76,8 @@ async function init() {
   // fetch default audio, if not found in storage
   if (!arrayBuffer) {
     console.log('loading default audio');
-    // return;
-    arrayBuffer = await au.fetch('./asset/Iskcon-manifest(enhanced).wav');
+    let randomSource = sampleSources[Math.floor(Math.random() * sampleSources.length)]
+    arrayBuffer = await au.fetch(randomSource);
   }
 
   // set playable piece
