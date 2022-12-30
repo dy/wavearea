@@ -16,7 +16,7 @@ const audioCtx = await (async () => {
     let { OggmentedAudioContext } = await import('oggmented');
     Context = OggmentedAudioContext
   }
-  return new Context({ sampleRate: SAMPLE_RATE, length: 60*60 });
+  return new Context({ sampleRate: SAMPLE_RATE, length: 60*60*44100 });
 })()
 
 // conversion helpers

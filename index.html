@@ -21,6 +21,7 @@
       <textarea :ref="wavearea" :if="wavURL"
         class="we-wavearea wavefont" spellcheck="false" cols="540"
         :onfocus..onblur="trackCaret"
+        :onkeydown="e=>e.preventDefault()"
         :value="waveform"
       ></textarea>
     </div>

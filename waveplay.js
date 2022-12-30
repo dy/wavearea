@@ -14,6 +14,9 @@ let state = sprae(document.querySelector('.waveedit'), {
 
   error: null,
 
+  // current audio buffer
+  buffer: null,
+
   // current displayed waveform text
   waveform: '',
 
@@ -29,6 +32,21 @@ let state = sprae(document.querySelector('.waveedit'), {
     const evts = 'keypress keydown mousedown click touchstart input select selectstart paste cut change'.split(' ')
     evts.map(evt => wavearea.addEventListener(evt, track))
     return () => evts.map(evt => wavearea.removeEventListener(evt, track))
+  },
+
+  // update audio URL based on current audio buffer
+  async render () {
+    const {buffer} = state
+
+    // encode into wav-able blob
+    // NOTE: can't do directly source since it can be unsupported
+    let wavBuffer = await au.encode(buffer);
+    let blob = new Blob([wavBuffer], {type:'audio/wav'});
+    state.wavURL = URL.createObjectURL( blob );
+    state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
+
+    // render waveform
+    state.waveform = await au.draw(buffer);
   },
 
   play (e) {
@@ -88,19 +106,11 @@ async function init(src=sampleSources[Math.floor(Math.random() * sampleSources.l
     arrayBuffer = await au.fetch(src);
 
     // decode data from src
-    const audioBuffer = await au.decode(arrayBuffer);
-
-    // encode into wav-able blob
-    // NOTE: can't do directly source since it can be unsupported
-    let wavBuffer = await au.encode(audioBuffer);
-    let blob = new Blob([wavBuffer], {type:'audio/wav'});
-    state.wavURL = URL.createObjectURL( blob );
-    state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
-
-    // render waveform
-    state.waveform = await au.draw(audioBuffer);
+    state.buffer = await au.decode(arrayBuffer);
+    state.render();
   }
   catch (e) {
+    console.error(e)
     state.error = e.message;
   }
 
