@@ -4,6 +4,7 @@
   * [x] Don't update caret in raf: update only on playback and time change
   * [x] Don't track caret on every focus: only when user selects by mouse
   * [x] Make playback within the selection
+* [x] Fix safari
 * [ ] Highlight of playable/playing region
 * [ ] Make nicer playback look (end of page)
 * [ ] take source from URL, load that and visualize.
@@ -30,4 +31,5 @@
 * [ ] ? rebuild player based on media stream to avoid preloading multiple chunks at once
 * [ ] caret must be able to be reoriented during the playback
 * [ ] scroll must follow the current caret position
+* [ ] BUG: stopping drops focus
 * [ ] save edits in URL, so that any audio URL can be opened, edited, played.
