@@ -2,7 +2,8 @@ import wav from './lib/node-wav';
 import storage from 'kv-storage-polyfill';
 
 
-const SAMPLE_RATE = 48000;
+// NOTE: oggmented doesn't support other sample rate
+const SAMPLE_RATE = 44100;
 
 // approx. block size - close to chars length. Must be in sync with wavefont.
 const BLOCK_SIZE = 1024;
