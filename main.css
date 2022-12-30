@@ -29,7 +29,7 @@ body {
   font-size: 50px;
   line-height: 1.4;
 	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .we-container {

@@ -12,6 +12,8 @@ let state = sprae(document.querySelector('.waveedit'), {
   playing: false,
   volume: 1,
 
+  error: null,
+
   // current displayed waveform text
   waveform: '',
 
@@ -66,29 +68,41 @@ const sampleSources = [
   'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
 ]
 
+const setSrc = src => {
+  const url = new URL(location.href);
+  url.searchParams.set('src', src);
+  history.pushState(null, '', url);
+}
+
 // init app
-async function init() {
+async function init(src=sampleSources[Math.floor(Math.random() * sampleSources.length)]) {
   state.loading = true;
 
-  // try loading existing audio, if any
-  let arrayBuffer// = await au.load();
+  try {
+    // try loading existing audio, if any
+    let arrayBuffer// = await au.load();
 
-  // fetch default audio, if not found in storage
-  if (!arrayBuffer) {
+    // fetch default audio, if not found in storage
     console.log('loading default audio');
-    let randomSource = sampleSources[Math.floor(Math.random() * sampleSources.length)]
-    arrayBuffer = await au.fetch(randomSource);
+    setSrc(src);
+    arrayBuffer = await au.fetch(src);
+
+    // decode data from src
+    const audioBuffer = await au.decode(arrayBuffer);
+
+    // encode into wav-able blob
+    // NOTE: can't do directly source since it can be unsupported
+    let wavBuffer = await au.encode(audioBuffer);
+    let blob = new Blob([wavBuffer], {type:'audio/wav'});
+    state.wavURL = URL.createObjectURL( blob );
+    state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
+
+    // render waveform
+    state.waveform = await au.draw(audioBuffer);
   }
-
-  // set playable piece
-  const blob = new Blob([arrayBuffer], { type: "audio/wav" });
-  state.wavURL = URL.createObjectURL(blob);
-  state.audio.onload = (e) => { URL.revokeObjectURL(state.wavURL); }
-
-  // decode data
-  const audioBuffer = await au.decode(arrayBuffer);
-  // render waveform
-  state.waveform = await au.draw(audioBuffer);
+  catch (e) {
+    state.error = e.message;
+  }
 
   state.loading = false
 }

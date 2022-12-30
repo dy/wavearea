@@ -25,7 +25,7 @@
       ></textarea>
     </div>
 
-    <audio :ref="audio" class="we-playback" controls :src="wavURL" :onplay..onpause="play"></audio>
+    <audio :ref="audio" :if="wavURL" class="we-playback" controls :src="wavURL" :onplay..onpause="play"></audio>
   </div>
 
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js"></script>

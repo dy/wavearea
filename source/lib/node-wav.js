@@ -1837,7 +1837,7 @@ function encode(channelData, opts) {
   string("data");
   u32(buffer.byteLength - 44);
   lookup$1(data_encoders, bitDepth, floatingPoint)(buffer, pos, channelData, channels, samples);
-  return Buffer(buffer);
+  return buffer;
 }
 var nodeWav = {
   decode,

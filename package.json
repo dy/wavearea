@@ -4,8 +4,8 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild index.js --bundle --sourcemap --loader:.svg=text --format=esm --outfile=dist/waveplay.js --servedir=.",
-    "build": "esbuild index.js --bundle --minify --sourcemap --loader:.svg=text --format=esm --outfile=dist/waveplay.js"
+    "start": "esbuild waveplay.js --bundle --sourcemap --loader:.svg=text --format=esm --outfile=dist/waveplay.js --servedir=.",
+    "build": "esbuild waveplay.js --bundle --minify --sourcemap --loader:.svg=text --format=esm --outfile=dist/waveplay.js"
   },
   "repository": {
     "type": "git",
@@ -31,7 +31,8 @@
     "kv-storage-polyfill": "^2.0.0",
     "nanopop": "^2.1.0",
     "node-wav": "^0.0.2",
-    "sprae": "^2.5.0"
+    "oggmented": "^1.0.1",
+    "sprae": "^2.5.1"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"

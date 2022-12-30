@@ -1,12 +1,22 @@
-import wav from 'node-wav';
+import wav from './lib/node-wav';
 import storage from 'kv-storage-polyfill';
 
+
 const SAMPLE_RATE = 48000;
+
 // approx. block size - close to chars length. Must be in sync with wavefont.
 const BLOCK_SIZE = 1024;
-// 1h-length audio ctx (hope more is not needed)
-const audioCtx = new OfflineAudioContext(2, SAMPLE_RATE * 60 * 60, SAMPLE_RATE);
 
+// get ogg decoder
+// FIXME: direct decoder would be better
+const audioCtx = await (async () => {
+  let audio = new Audio, Context = OfflineAudioContext;
+  if (!audio.canPlayType('audio/ogg')) {
+    let { OggmentedAudioContext } = await import('oggmented');
+    Context = OggmentedAudioContext
+  }
+  return new Context({ sampleRate: SAMPLE_RATE, length: 60*60 });
+})()
 
 // conversion helpers
 export const frame = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
@@ -57,7 +67,12 @@ async function fetchAudio(src) {
 // FIXME: we can cache blob maybe?
 async function decodeAudio (arrayBuffer, ctx) {
   console.time('decode')
-  let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  let audioBuffer
+  try {
+    audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  } catch (e) {
+    console.log(e)
+  }
   console.timeEnd('decode')
   return audioBuffer
 }
