@@ -23,12 +23,12 @@ body {
 }
 .wavefont {
   display: block;
-	--wght: 20;
+	--wght: 25;
 	font-family: wavefont;
   letter-spacing: 1ch;
   font-size: 50px;
   line-height: 1.4;
-	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
+	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
   word-break: break-word;
 }
 
