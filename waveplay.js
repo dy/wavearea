@@ -51,10 +51,11 @@ let state = sprae(document.querySelector('.waveedit'), {
           state.buffer = au.remove(buffer, from, to)
     }
 
+    // FIXME: support multiple delete events
     clearTimeout(el._id)
     el._id = setTimeout(() => {
       state.render()
-    }, 300)
+    }, 7500)
   },
 
   // update audio URL based on current audio buffer
@@ -63,13 +64,14 @@ let state = sprae(document.querySelector('.waveedit'), {
 
     // encode into wav-able blob
     // NOTE: can't do directly source since it can be unsupported
-    console.trace('render', buffer.duration)
+    // console.trace('render', buffer.duration)
     let wavBuffer = await au.encode(buffer);
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     state.wavURL = URL.createObjectURL( blob );
     state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 
     // render waveform
+    // FIXME: can rerender only diffing part
     state.waveform = await au.draw(buffer);
   },
 
@@ -98,7 +100,15 @@ let state = sprae(document.querySelector('.waveedit'), {
       cancelAnimationFrame(animId), animId = null
 
       // return selection if there was any
-      if (selection[0] !== selection[1]) wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
+      if (selection[0] !== selection[1]) {
+        wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
+      }
+
+      // adjust end caret position
+      if (audio.currentTime >= audio.duration) {
+        wavearea.selectionStart = wavearea.selectionEnd = state.waveform.length
+      }
+
       wavearea.focus()
     }
   }

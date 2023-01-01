@@ -20,7 +20,7 @@
 * [ ] open file
 * [ ] delete file fully -> displays open file again
 * [ ] save file in storage
-* [ ] delete fragments -> updates audio
+* [x] delete fragments -> updates audio
 * [ ] Safari: wrong current time positioning
 * [ ] Safari: initial audio loading state displays Error (show silent buffer)
 * [ ] time codes next to lines
