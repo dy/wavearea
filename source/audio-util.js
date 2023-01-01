@@ -3,10 +3,10 @@ import storage from 'kv-storage-polyfill';
 
 
 // NOTE: oggmented doesn't support other sample rate
-const SAMPLE_RATE = 44100;
+export const SAMPLE_RATE = 44100;
 
 // approx. block size - close to chars length. Must be in sync with wavefont.
-const BLOCK_SIZE = 1024;
+export const BLOCK_SIZE = 1024;
 
 // get ogg decoder
 // FIXME: direct decoder would be better
@@ -144,11 +144,11 @@ export function slice (buffer, start, end) {
 
 export function remove (buffer, start, end) {
   start = start == null ? 0 : start;
-  end = end == null ? buffer.length : end;
+  end = Math.min(end == null ? buffer.length : end, buffer.length);
 
   var data = [], arr;
   for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(arr = new Float32Array(start + buffer.length - end))
+    data.push(arr = new Float32Array(buffer.length - Math.abs(end-start)))
     var channelData = buffer.getChannelData(channel)
     arr.set(channelData.subarray(0, start), 0);
     arr.set(channelData.subarray(end), start);

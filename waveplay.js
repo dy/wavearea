@@ -34,12 +34,36 @@ let state = sprae(document.querySelector('.waveedit'), {
     return () => evts.map(evt => wavearea.removeEventListener(evt, track))
   },
 
+  handleInput(e) {
+    let el = this
+    let newWaveform = el.value
+    let { waveform, buffer } = state
+    let start = el.selectionStart
+
+    // ignore unchanged
+    if (newWaveform.length === waveform.length && newWaveform === waveform) return
+
+    // was it deleted?
+    if (newWaveform.length < waveform.length) {
+      // segment that was deleted
+      let from = start * au.BLOCK_SIZE,
+          to = (start + waveform.length - newWaveform.length) * au.BLOCK_SIZE;
+          state.buffer = au.remove(buffer, from, to)
+    }
+
+    clearTimeout(el._id)
+    el._id = setTimeout(() => {
+      state.render()
+    }, 300)
+  },
+
   // update audio URL based on current audio buffer
   async render () {
-    const {buffer} = state
+    const {buffer} = state;
 
     // encode into wav-able blob
     // NOTE: can't do directly source since it can be unsupported
+    console.trace('render', buffer.duration)
     let wavBuffer = await au.encode(buffer);
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     state.wavURL = URL.createObjectURL( blob );
@@ -75,6 +99,7 @@ let state = sprae(document.querySelector('.waveedit'), {
 
       // return selection if there was any
       if (selection[0] !== selection[1]) wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
+      wavearea.focus()
     }
   }
 });

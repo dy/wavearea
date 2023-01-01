@@ -1,4 +1,4 @@
-## Name
+## [ ] Name
 
 * waveedit
 * wavearea
@@ -17,7 +17,7 @@
 * wavescope
 * waveview
 
-## Demo cases
+## [ ] Demo cases
 
 * Classics?
 * Famous quotes?
@@ -29,7 +29,7 @@
 * The most popular songs of all time?
 * Vedas?
 
-## Use cases?
+## [ ] Use cases?
 
 * Drop [Prabhupada] audio (paste by URL, by file, drop file), have multiline waveform with time markers.
   * Separate logical secions by pressing enter.
@@ -40,3 +40,29 @@
 * Put cursor at any place: record own speech.
 * Drop any audio chunk at specific caret location.
 * Generate speech at specific location.
+
+## [ ] Editing cases: what's the method of identifying changes?
+
+* Delete part (selection)
+* Delete single block
+* Paste piece from the other part
+* Speparate by Enter
+* Paste audio file
+
+1. 1a2b3a4a5...123a124b125c
+
+  - letter characters are selectable / navigatable, unlike combos
+  + allows identifying parts exactly
+  - too extended string
+
+2. \uff** + bar
+
+  - same as above
+  + less space taken
+
+3. Detect operation from changed input based on current selection
+
+  + no overhead
+  + smart algo
+  ~ selection can be unreliable on some devices
+  + more reliably detects allowed inputs
