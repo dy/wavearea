@@ -36,21 +36,39 @@ let state = sprae(document.querySelector('.waveedit'), {
 
   handleInput(e) {
     let el = this
-    let newWaveform = el.value
-    let { waveform, buffer } = state
+    let { waveform } = state
     let start = el.selectionStart
 
-    // was it deleted?
-    if (newWaveform.length < waveform.length) {
-      // segment that was deleted
-      let from = start * au.BLOCK_SIZE,
-          to = (start + waveform.length - newWaveform.length) * au.BLOCK_SIZE;
-          state.buffer = au.remove(buffer, from, to)
-    }
+    // ignore unchanged
+    if (waveform.length === el.value.length && waveform === el.value) return
 
     // FIXME: support multiple delete events
     clearTimeout(el._id)
+
     el._id = setTimeout(() => {
+      let newWaveform = el.value
+
+      // was it deleted?
+      if (newWaveform.length < waveform.length) {
+        // segment that was deleted
+        let from = start * au.BLOCK_SIZE,
+            to = (start + waveform.length - newWaveform.length) * au.BLOCK_SIZE;
+            console.log('remove')
+            state.buffer = au.remove(state.buffer, from, to)
+      }
+      // it was added - detect added parts
+      else {
+        // detect spaces
+        for (let i = 0; i < newWaveform.length; i++) {
+          let c = newWaveform[i]
+          if (c === ' ') {
+            let from = i
+            for (; i < newWaveform.length; i++) if (newWaveform[i] !== ' ') break;
+            state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence((i - from) * au.BLOCK_SIZE))
+          }
+        }
+      }
+
       state.render()
     }, 700)
   },
@@ -71,7 +89,9 @@ let state = sprae(document.querySelector('.waveedit'), {
     // render waveform
     // FIXME: can rerender only diffing part
     let newWaveform = await au.draw(buffer);
+    let from = state.wavearea.selectionStart;
     if (newWaveform !== state.waveform) state.waveform = newWaveform;
+    state.wavearea.selectionStart = state.wavearea.selectionEnd = from;
   },
 
   play (e) {
@@ -116,6 +136,7 @@ let state = sprae(document.querySelector('.waveedit'), {
 
 const sampleSources = [
   // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
+  // './2022.12.13 - Законы счастливой общины-6Dn9qvAfBH0.mp4'
   'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
   'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
   'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',

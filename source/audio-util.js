@@ -120,7 +120,9 @@ async function drawAudio (audioBuffer) {
     // drawback: waveform is smaller than needed
     for (;i < nextBlock; i++) ssum += i > channelData.length ? 0 : channelData[i] ** 2
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    str += String.fromCharCode(0x0100 + Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP)))
+    // replace 0 with space
+    let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))
+    str += String.fromCharCode(0x0100 + v)
 
     nextBlock += BLOCK_SIZE
   }
@@ -155,14 +157,19 @@ export function remove (buffer, start, end) {
     arr.set(channelData.subarray(end), start);
   }
 
-  return create(buffer.sampleRate, data)
+  return create(data)
 }
 
-export function create (sampleRate, data) {
+export function silence (len, channels=2) {
+  let data = Array.from({length:channels}, ()=>new Float32Array(len))
+  return create(data)
+}
+
+export function create (data) {
   let newBuffer = new AudioBuffer({
     length: data[0].length,
     numberOfChannels: data.length,
-    sampleRate
+    sampleRate: SAMPLE_RATE
   });
 
   for (var channel = 0; channel < newBuffer.numberOfChannels; channel++) {
@@ -170,6 +177,21 @@ export function create (sampleRate, data) {
   }
 
   return newBuffer
+}
+
+export function insert (buffer, start, newBuffer) {
+
+  var data = [], arr;
+  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
+    data.push(arr = new Float32Array(buffer.length + newBuffer.length))
+    var channelData = buffer.getChannelData(channel)
+    console.log('start', start);
+    arr.set(channelData.subarray(0, start), 0);
+    arr.set(newBuffer.getChannelData(channel), start)
+    arr.set(channelData.subarray(start), start + newBuffer.length);
+  }
+
+  return create(data)
 }
 
 
