@@ -71,7 +71,7 @@ let state = sprae(document.querySelector('.waveedit'), {
     // render waveform
     // FIXME: can rerender only diffing part
     let newWaveform = await au.draw(buffer);
-    if (newWaveform !== state.waveform) state.waveform = newWaveform
+    if (newWaveform !== state.waveform) state.waveform = newWaveform;
   },
 
   play (e) {
