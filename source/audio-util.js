@@ -97,10 +97,11 @@ async function drawAudio (audioBuffer) {
 
   // normalize waveform before rendering
   // for every channel bring it to max-min amplitude range
-  let max = 0
-  for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
-  let amp = Math.max(1 / max, 1)
-  for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
+  // NOTE: normalization updates scale on rerender, we don't need that
+  // let max = 0
+  // for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
+  // let amp = Math.max(1 / max, 1)
+  // for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
 
   // TODO: weight waveform by audible spectrum
 

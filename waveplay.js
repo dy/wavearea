@@ -40,9 +40,6 @@ let state = sprae(document.querySelector('.waveedit'), {
     let { waveform, buffer } = state
     let start = el.selectionStart
 
-    // ignore unchanged
-    if (newWaveform.length === waveform.length && newWaveform === waveform) return
-
     // was it deleted?
     if (newWaveform.length < waveform.length) {
       // segment that was deleted
@@ -55,7 +52,7 @@ let state = sprae(document.querySelector('.waveedit'), {
     clearTimeout(el._id)
     el._id = setTimeout(() => {
       state.render()
-    }, 7500)
+    }, 700)
   },
 
   // update audio URL based on current audio buffer
@@ -68,11 +65,13 @@ let state = sprae(document.querySelector('.waveedit'), {
     let wavBuffer = await au.encode(buffer);
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     state.wavURL = URL.createObjectURL( blob );
+
     state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 
     // render waveform
     // FIXME: can rerender only diffing part
-    state.waveform = await au.draw(buffer);
+    let newWaveform = await au.draw(buffer);
+    if (newWaveform !== state.waveform) state.waveform = newWaveform
   },
 
   play (e) {
@@ -116,6 +115,7 @@ let state = sprae(document.querySelector('.waveedit'), {
 
 
 const sampleSources = [
+  // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
   'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
   'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
   'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
