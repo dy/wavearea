@@ -31,11 +31,13 @@ let state = sprae(document.querySelector('.waveedit'), {
   // current playable audio data
   wavURL: '',
 
+  // caret repositioned my mouse or TODO: otherwise
   handleCaret(e) {
     state.startFrame = au.frame(state.audio.currentTime = au.time(e.target.selectionStart))
     state.endFrame = null
   },
 
+  // enter or delete characters
   handleInput(e) {
     let el = this
     let { waveform } = state
@@ -75,6 +77,12 @@ let state = sprae(document.querySelector('.waveedit'), {
     }, 700)
   },
 
+  // audio time changes
+  timeChange(e) {
+    state.wavearea.selectionStart = state.wavearea.selectionEnd = state.startFrame = au.frame(state.audio.currentTime)
+    state.wavearea.focus()
+  },
+
   // update audio URL based on current audio buffer
   async render () {
     const {buffer} = state;
@@ -86,6 +94,8 @@ let state = sprae(document.querySelector('.waveedit'), {
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     state.wavURL = URL.createObjectURL( blob );
 
+    // keep proper start time
+    state.audio.currentTime = au.time(state.wavearea.selectionStart);
     state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 
     // render waveform
@@ -100,7 +110,7 @@ let state = sprae(document.querySelector('.waveedit'), {
   play (e) {
     let {wavearea, audio} = state;
     state.playing = true;
-    state.startFrame = au.frame(audio.currentTime);
+    state.startFrame = wavearea.selectionStart;
     const selection = [wavearea.selectionStart, wavearea.selectionEnd];
     state.endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length;
     let animId
