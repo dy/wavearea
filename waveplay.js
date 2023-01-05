@@ -33,8 +33,9 @@ let state = sprae(document.querySelector('.waveedit'), {
 
   // caret repositioned my mouse or TODO: otherwise
   handleCaret(e) {
-    state.startFrame = au.frame(state.audio.currentTime = au.time(e.target.selectionStart))
-    state.endFrame = null
+    let w = e.target
+    state.startFrame = au.frame(state.audio.currentTime = au.time(w.selectionStart))
+    state.endFrame = w.selectionEnd === w.selectionStart ? w.value.length : w.selectionEnd
   },
 
   // enter or delete characters
@@ -79,6 +80,8 @@ let state = sprae(document.querySelector('.waveedit'), {
 
   // audio time changes
   timeChange(e) {
+    // ignore if event comes from wavearea
+    if (document.activeElement === state.wavearea) return
     state.wavearea.selectionStart = state.wavearea.selectionEnd = state.startFrame = au.frame(state.audio.currentTime)
     state.wavearea.focus()
   },
