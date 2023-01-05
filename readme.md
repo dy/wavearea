@@ -1,3 +1,3 @@
-# waveplay [![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
+# waveplay ▶
 
-Multiline waveform player.
+Textarea waveform player with simple editing. Based on [wavefont](https://github.com/dy/wavefont).
