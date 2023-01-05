@@ -3,15 +3,23 @@ import sprae from 'sprae';
 import * as au from './source/audio-util.js';
 
 
-window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+window.BlobBuilder ||= window.WebKitBlobBuilder || window.MozBlobBuilder;
+
 
 let state = sprae(document.querySelector('.waveedit'), {
   // params
   loading: true,
   recording: false,
   playing: false,
+  selecting: false,
+
+  // current playback start/end time
+  startFrame: 0,
+  endFrame: null,
+
   volume: 1,
 
+  // TODO: display error and state in audio element
   error: null,
 
   // current audio buffer
@@ -23,15 +31,9 @@ let state = sprae(document.querySelector('.waveedit'), {
   // current playable audio data
   wavURL: '',
 
-  // selection -> audio current time
-  trackCaret(e) {
-    const {wavearea, audio} = state
-    const track = (e) => {
-      if (!state.playing) audio.currentTime = au.time(wavearea.selectionStart)
-    }
-    const evts = 'keypress keydown mousedown click touchstart input select selectstart paste cut change'.split(' ')
-    evts.map(evt => wavearea.addEventListener(evt, track))
-    return () => evts.map(evt => wavearea.removeEventListener(evt, track))
+  handleCaret(e) {
+    state.startFrame = au.frame(state.audio.currentTime = au.time(e.target.selectionStart))
+    state.endFrame = null
   },
 
   handleInput(e) {
@@ -90,24 +92,25 @@ let state = sprae(document.querySelector('.waveedit'), {
     // FIXME: can rerender only diffing part
     let newWaveform = await au.draw(buffer);
     let from = state.wavearea.selectionStart;
+    // prevent
     if (newWaveform !== state.waveform) state.waveform = newWaveform;
     state.wavearea.selectionStart = state.wavearea.selectionEnd = from;
   },
 
   play (e) {
-    let {wavearea, audio} = state
+    let {wavearea, audio} = state;
     state.playing = true;
-    const startTime = audio.currentTime
-    const startFrame = au.frame(startTime)
-    const selection = [wavearea.selectionStart, wavearea.selectionEnd]
-    const endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length
+    state.startFrame = au.frame(audio.currentTime);
+    const selection = [wavearea.selectionStart, wavearea.selectionEnd];
+    state.endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length;
     let animId
 
     const syncCaret = () => {
-      const framesPlayed = au.frame((audio.currentTime - startTime))
-      const currentFrame = startFrame + framesPlayed;
-      wavearea.selectionStart = wavearea.selectionEnd = currentFrame
-      if (currentFrame >= endFrame) audio.pause();
+      const framesPlayed = au.frame(audio.currentTime) - state.startFrame
+      const currentFrame = state.startFrame + framesPlayed;
+      // Prevent updating during the click
+      if (!state.selecting) wavearea.selectionStart = wavearea.selectionEnd = currentFrame
+      if (state.endFrame && currentFrame >= state.endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
     syncCaret()

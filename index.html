@@ -20,7 +20,7 @@
       <div class="we-sizer wavefont" :text="waveform"></div>
       <textarea :ref="wavearea" :if="wavURL"
         class="we-wavearea wavefont" spellcheck="false" cols="540"
-        :onfocus..onblur="trackCaret"
+        :onmousedown..onmouseup="e=>(selecting=true,(e)=>(selecting=false,handleCaret(e)))"
         :onkeydown="e=>(![' ', 'Backspace'].includes(e.key) && e.preventDefault())"
         :onchange:oninput="handleInput"
         :value="waveform"
