@@ -13,8 +13,8 @@ export const BLOCK_SIZE = 1024;
 const audioCtx = await (async () => {
   let audio = new Audio, Context = OfflineAudioContext;
   if (!audio.canPlayType('audio/ogg')) {
-    let { OggmentedAudioContext } = await import('oggmented');
-    Context = OggmentedAudioContext
+    let mod = await import('oggmented');
+    Context = mod.default.OggmentedAudioContext;
   }
   return new Context({ sampleRate: SAMPLE_RATE, length: 60*60*44100 });
 })()
