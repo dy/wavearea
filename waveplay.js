@@ -43,7 +43,7 @@ let state = sprae(waveplay, {
   // caret repositioned my mouse
   handleCaret(e) {
     state.startFrame = au.frame(audio.currentTime = au.time(sel().start))
-    state.endFrame = sel().start === sel().end ? wavearea.textContent.length : sel().end
+    state.endFrame = sel().collapsed ? state.waveform.length : sel().end
   },
 
   // key pressed
@@ -51,8 +51,8 @@ let state = sprae(waveplay, {
     // insert line break manually
     if (e.key === 'Enter') {
       e.preventDefault()
-      console.log(e, sel())
-      // TODO
+      // let res = wavearea.firstChild.splitText(sel.start)
+      // wavearea.firstChild.after(document.createElement('br'))
     }
   },
 
@@ -60,16 +60,15 @@ let state = sprae(waveplay, {
   handleInput(e) {
     let { waveform } = state
     let start = sel().start
+    let newWaveform = wavearea.textContent
 
     // ignore unchanged
-    if (waveform.length === wavearea.textContent.length && waveform === wavearea.textContent) return
+    if (waveform.length === newWaveform.length && waveform === newWaveform) return
 
-    // FIXME: support multiple delete events
+    // debounce
     clearTimeout(wavearea._id)
 
     wavearea._id = setTimeout(() => {
-      let newWaveform = wavearea.textContent
-
       // was it deleted?
       if (newWaveform.length < waveform.length) {
         // segment that was deleted
@@ -79,10 +78,9 @@ let state = sprae(waveplay, {
       }
       // it was added - detect added parts
       else {
-        // detect spaces
+        // detect spaces & insert silence
         let spaces = newWaveform.match(/\s+/)
         if (spaces) {
-          console.log(spaces)
           let from = spaces.index, len = spaces[0].length
           state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence(len * au.BLOCK_SIZE))
         }
@@ -113,13 +111,12 @@ let state = sprae(waveplay, {
 
     // keep proper start time
     let selection = sel()
-    if (selection) audio.currentTime = au.time(sel().start);
+    if (selection) audio.currentTime = au.time(selection.start);
     audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 
     // render waveform
     // FIXME: can rerender only diffing part
     let newWaveform = await au.draw(buffer);
-    // prevent
     if (newWaveform !== state.waveform) state.waveform = newWaveform;
     if (selection) sel(selection.start);
   },
@@ -130,7 +127,7 @@ let state = sprae(waveplay, {
     if (!selection) selection = sel(0)
 
     state.startFrame = selection.start
-    state.endFrame = selection.start !== selection.end ? selection.end : wavearea.textContent.length;
+    state.endFrame = selection.start !== selection.end ? selection.end : state.waveform.length;
 
     let animId
 
@@ -166,21 +163,49 @@ let state = sprae(waveplay, {
 });
 
 
-// get/set selection
+// get/set selection with absolute (transparent) offsets
 const sel = (start, end=start) => {
   let s = window.getSelection()
 
   // set, if passed
-  if (start != undefined) {
-    let range = new Range()
-    range.setStart(wavearea.firstChild, start)
-    range.setEnd(wavearea.firstChild, end)
+  if (start != null) {
+    let startNode, endNode
     s.removeAllRanges()
+    let range = new Range()
+
+    // find start/end nodes
+    startNode = wavearea.firstChild
+    while (start > startNode.firstChild.data.length) start -= startNode.firstChild.data.length, startNode = startNode.nextSibling
+    range.setStart(startNode.firstChild, start)
+
+    endNode = wavearea.firstChild
+    while (end > endNode.firstChild.data.length) end -= endNode.firstChild.data.length, endNode = endNode.nextSibling
+    range.setEnd(endNode.firstChild, end)
+
     s.addRange(range)
+
+    return {
+      start, startNode, end, endNode,
+      collapsed: s.isCollapsed
+    }
   }
 
-  if (s.anchorNode !== wavearea.firstChild) return
-  return {start:s.anchorOffset, end:s.focusOffset}
+  if (!s.anchorNode || s.anchorNode.parentNode.parentNode !== wavearea) return
+
+  // collect start/end offsets
+  start = s.anchorOffset, end = s.focusOffset
+  let prevNode = s.anchorNode
+  while (prevNode = prevNode.previousSibling) start += prevNode.textContent.length
+  prevNode = s.focusNode
+  while (prevNode = prevNode.previousSibling) end += prevNode.textContent.length
+
+  return {
+    start,
+    startNode: s.anchorNode,
+    end,
+    endNode: s.focusNode,
+    collapsed: s.isCollapsed
+  }
 }
 
 

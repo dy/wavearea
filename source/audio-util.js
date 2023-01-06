@@ -180,12 +180,10 @@ export function create (data) {
 }
 
 export function insert (buffer, start, newBuffer) {
-
   var data = [], arr;
   for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
     data.push(arr = new Float32Array(buffer.length + newBuffer.length))
     var channelData = buffer.getChannelData(channel)
-    console.log('start', start);
     arr.set(channelData.subarray(0, start), 0);
     arr.set(newBuffer.getChannelData(channel), start)
     arr.set(channelData.subarray(start), start + newBuffer.length);

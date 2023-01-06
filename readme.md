@@ -8,7 +8,7 @@ Textual waveform player with simple editing. Based on [wavefont](https://github.
 * [x] Load file from `?src=url` param
 * [x] Delete fragments
 * [x] Download edited wave
-* [ ] Insert silence
+* [x] Insert silence
 * [ ] Timecodes
 * [ ] Line breaks
 * [ ] Insert fragments

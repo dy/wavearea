@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AU</title>
+<title>Waveplay</title>
 
 <link href="./main.css" rel="stylesheet"/>
 
@@ -18,11 +18,10 @@
         <input type="file" multiple />
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
-        :text="waveform"
         :onclick="handleCaret"
         :onkeydown="e=>(![' ', 'Backspace', 'Enter'].includes(e.key) && e.preventDefault(),handleKey(e))"
         :onchange:oninput="handleInput"
-      ></div>
+      ><span :each="segment, id in waveform.split('\n')" :text="segment" :data="{id}"></span></div>
     </div>
 
     <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>
