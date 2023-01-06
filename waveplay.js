@@ -1,15 +1,22 @@
-import '@github/file-attachment-element';
+// import '@github/file-attachment-element';
+
 import sprae from 'sprae';
 import * as au from './source/audio-util.js';
 
-
 window.BlobBuilder ||= window.WebKitBlobBuilder || window.MozBlobBuilder;
 
+// track if mouse is pressed - needed to workaround caret pos reset
 let isMouseDown
 document.addEventListener('mousedown', ()=> isMouseDown = true)
 document.addEventListener('mouseup', ()=> isMouseDown = false)
 
-let state = sprae(document.querySelector('.waveedit'), {
+// refs
+const waveplay = document.querySelector('.waveplay')
+const wavearea = waveplay.querySelector('.w-wavearea')
+const audio = waveplay.querySelector('.w-playback')
+
+// init markup
+let state = sprae(waveplay, {
   // params
   loading: true,
   recording: false,
@@ -34,27 +41,36 @@ let state = sprae(document.querySelector('.waveedit'), {
   // current playable audio data
   wavURL: '',
 
-  // caret repositioned my mouse or TODO: otherwise
+  // caret repositioned my mouse
   handleCaret(e) {
-    let w = e.target
-    state.startFrame = au.frame(state.audio.currentTime = au.time(w.selectionStart))
-    state.endFrame = w.selectionEnd === w.selectionStart ? w.value.length : w.selectionEnd
+    state.startFrame = au.frame(audio.currentTime = au.time(sel().start))
+    state.endFrame = sel().start === sel().end ? wavearea.textContent.length : sel().end
+  },
+
+  // key pressed
+  handleKey(e) {
+    // insert line break manually
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      console.log(e, sel())
+      // TODO
+    }
   },
 
   // enter or delete characters
   handleInput(e) {
-    let el = this
     let { waveform } = state
-    let start = el.selectionStart
+    let start = sel().start
+    let currentWaveform = wavearea.textContent
 
     // ignore unchanged
-    if (waveform.length === el.value.length && waveform === el.value) return
+    if (waveform.length === currentWaveform.length && waveform === currentWaveform) return
 
     // FIXME: support multiple delete events
-    clearTimeout(el._id)
+    clearTimeout(wavearea._id)
 
-    el._id = setTimeout(() => {
-      let newWaveform = el.value
+    wavearea._id = setTimeout(() => {
+      let newWaveform = currentWaveform
 
       // was it deleted?
       if (newWaveform.length < waveform.length) {
@@ -84,9 +100,9 @@ let state = sprae(document.querySelector('.waveedit'), {
   // audio time changes
   timeChange(e) {
     // ignore if event comes from wavearea
-    if (document.activeElement === state.wavearea) return
-    state.wavearea.selectionStart = state.wavearea.selectionEnd = state.startFrame = au.frame(state.audio.currentTime)
-    state.wavearea.focus()
+    if (document.activeElement === wavearea) return
+    sel(state.startFrame = au.frame(audio.currentTime))
+    wavearea.focus()
   },
 
   // update audio URL based on current audio buffer
@@ -101,24 +117,25 @@ let state = sprae(document.querySelector('.waveedit'), {
     state.wavURL = URL.createObjectURL( blob );
 
     // keep proper start time
-    state.audio.currentTime = au.time(state.wavearea.selectionStart);
-    state.audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
+    let selection = sel()
+    if (selection) audio.currentTime = au.time(sel().start);
+    audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 
     // render waveform
     // FIXME: can rerender only diffing part
     let newWaveform = await au.draw(buffer);
-    let from = state.wavearea.selectionStart;
     // prevent
     if (newWaveform !== state.waveform) state.waveform = newWaveform;
-    state.wavearea.selectionStart = state.wavearea.selectionEnd = from;
+    if (selection) sel(selection.start);
   },
 
   play (e) {
-    let {wavearea, audio} = state;
     state.playing = true;
-    state.startFrame = wavearea.selectionStart;
-    const selection = [wavearea.selectionStart, wavearea.selectionEnd];
-    state.endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length;
+    let selection = sel()
+    if (!selection) selection = sel(0)
+
+    state.startFrame = selection.start
+    state.endFrame = selection.start !== selection.end ? selection.end : wavearea.textContent.length;
 
     let animId
 
@@ -126,7 +143,7 @@ let state = sprae(document.querySelector('.waveedit'), {
       const framesPlayed = au.frame(audio.currentTime) - state.startFrame
       const currentFrame = state.startFrame + framesPlayed;
       // Prevent updating during the click
-      if (!isMouseDown) wavearea.selectionStart = wavearea.selectionEnd = currentFrame
+      if (!isMouseDown) sel(currentFrame)
       if (state.endFrame && currentFrame >= state.endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
@@ -139,19 +156,37 @@ let state = sprae(document.querySelector('.waveedit'), {
       cancelAnimationFrame(animId), animId = null
 
       // return selection if there was any
-      if (selection[0] !== selection[1]) {
-        wavearea.selectionStart = startFrame, wavearea.selectionEnd = endFrame
+      if (selection.start !== selection.end) {
+        sel(startFrame, endFrame)
       }
 
       // adjust end caret position
       if (audio.currentTime >= audio.duration) {
-        wavearea.selectionStart = wavearea.selectionEnd = state.waveform.length
+        sel(state.waveform.length)
       }
 
       wavearea.focus()
     }
   }
 });
+
+
+// get/set selection
+const sel = (start, end=start) => {
+  let s = window.getSelection()
+
+  // set, if passed
+  if (start != undefined) {
+    let range = new Range()
+    range.setStart(wavearea.firstChild, start)
+    range.setEnd(wavearea.firstChild, end)
+    s.removeAllRanges()
+    s.addRange(range)
+  }
+
+  if (s.anchorNode !== wavearea.firstChild) return
+  return {start:s.anchorOffset, end:s.focusOffset}
+}
 
 
 const sampleSources = [

@@ -1719,6 +1719,7 @@ const data_encoders = {
 };
 function lookup$1(table, bitDepth, floatingPoint) {
   let name = "pcm" + bitDepth + (floatingPoint ? "f" : "");
+  console.log('encoder', name)
   let fn = table[name];
   if (!fn)
     throw new TypeError("Unsupported data format: " + name);
@@ -1800,6 +1801,7 @@ function decode(buffer) {
   }
 }
 function encode(channelData, opts) {
+  console.time('encode start')
   let sampleRate = opts.sampleRate || 16e3;
   let floatingPoint = !!(opts.float || opts.floatingPoint);
   let bitDepth = floatingPoint ? 32 : opts.bitDepth | 0 || 16;
@@ -1836,7 +1838,10 @@ function encode(channelData, opts) {
   u16(bitDepth);
   string("data");
   u32(buffer.byteLength - 44);
+  console.timeEnd('encode start')
+  console.time('encode body')
   lookup$1(data_encoders, bitDepth, floatingPoint)(buffer, pos, channelData, channels, samples);
+  console.timeEnd('encode body')
   return buffer;
 }
 var nodeWav = {

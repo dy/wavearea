@@ -14,7 +14,7 @@ body {
 	font-display: block;
 	src: url(./asset/wavefont.woff2) format('woff2');
 }
-.waveedit {
+.waveplay {
   height: 100%;
   margin: 0;
   padding: 0 2rem;
@@ -32,7 +32,7 @@ body {
   word-break: break-all;
 }
 
-.we-container {
+.w-container {
   display: flex;
   max-width: 54rem;
   position: relative;
@@ -42,7 +42,7 @@ body {
   padding: 2rem 0 3rem;
 }
 
-.we-file {
+.w-file {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,12 +54,7 @@ body {
   z-index: 1;
 }
 
-.we-sizer {
-  word-break: break-all;
-  visibility: hidden;
-}
-
-.we-loader {
+.w-loader {
   position: absolute;
   top: 0;
   left: 0;
@@ -67,14 +62,8 @@ body {
   text-align: center;
 }
 
-.we-wavearea {
-  position: absolute;
-  padding: 0;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  overflow-y: hidden;
+.w-wavearea {
+  word-break: break-all;
   outline: none;
   border: none;
   resize: none;
@@ -82,7 +71,7 @@ body {
 }
 
 
-.we-playback {
+.w-playback {
   position: fixed;
   bottom: 2rem;
   left: 0;

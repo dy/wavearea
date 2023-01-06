@@ -15,6 +15,8 @@
 * [x] caret must be able to be reoriented during the playback
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
+* [ ] Shift + select
+* [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
 * [ ] Highlight of playable/playing region via diff color
 * [ ] take source from URL, load that and visualize.
   * [x] if there's none - take random source

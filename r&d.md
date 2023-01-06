@@ -41,7 +41,7 @@
 * Drop any audio chunk at specific caret location.
 * Generate speech at specific location.
 
-## [ ] Editing cases: what's the method of identifying changes?
+## [ ] Editing cases: what's the method of identifying changes? -> detect from operation
 
 * Delete part (selection)
 * Delete single block
@@ -66,3 +66,11 @@
   + smart algo
   ~ selection can be unreliable on some devices
   + more reliably detects allowed inputs
+  - no way to paste samples from somewhere else
+
+## [x] Paragraphs instead of textarea -> let's try line breaks
+
++ No hardship detecting line breaks
++ Easy way to display time codes
++ We anyways display single duplication node
+- Not textarea already: textarea can be useful for simple small fragments
