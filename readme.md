@@ -5,11 +5,12 @@ Textual waveform player with simple editing. Based on [wavefont](https://github.
 ## Features
 
 * [x] Playback
+* [x] Load file from `?src=url` param
 * [x] Delete fragments
-* [x] Download
+* [x] Download edited wave
+* [ ] Insert silence
 * [ ] Timecodes
 * [ ] Line breaks
-* [ ] Insert silence
 * [ ] Insert fragments
 * [ ] Persist edited file
 * [ ] Custom player
