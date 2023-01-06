@@ -1,6 +1,6 @@
 # waveplay ▸
 
-Textarea waveform player with simple editing. Based on [wavefont](https://github.com/dy/wavefont).
+Textual waveform player with simple editing. Based on [wavefont](https://github.com/dy/wavefont).
 
 ## Features
 
