@@ -68,7 +68,6 @@ let state = sprae(waveplay, {
     clearTimeout(wavearea._id)
 
     wavearea._id = setTimeout(() => {
-      console.log(123)
       let newWaveform = wavearea.textContent
 
       // was it deleted?
@@ -76,19 +75,16 @@ let state = sprae(waveplay, {
         // segment that was deleted
         let from = start * au.BLOCK_SIZE,
             to = (start + waveform.length - newWaveform.length) * au.BLOCK_SIZE;
-            console.log('remove')
             state.buffer = au.remove(state.buffer, from, to)
       }
       // it was added - detect added parts
       else {
         // detect spaces
-        for (let i = 0; i < newWaveform.length; i++) {
-          let c = newWaveform[i]
-          if (c === ' ') {
-            let from = i
-            while (newWaveform[i] === ' ') i++;
-            state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence((i - from) * au.BLOCK_SIZE))
-          }
+        let spaces = newWaveform.match(/\s+/)
+        if (spaces) {
+          console.log(spaces)
+          let from = spaces.index, len = spaces[0].length
+          state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence(len * au.BLOCK_SIZE))
         }
       }
 
@@ -192,9 +188,9 @@ const sampleSources = [
   // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
   // './2022.12.13 - Законы счастливой общины-6Dn9qvAfBH0.mp4'
   // './2019.02.12 - SB 1.6.21 - Conversation between Narada and Vyasadeva (Adilabad)-EKGiwd8Y2gI.m4a'
-  'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
+  // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
   'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
-  'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+  // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
 ]
 
 const url = new URL(location);
