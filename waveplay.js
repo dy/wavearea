@@ -5,6 +5,9 @@ import * as au from './source/audio-util.js';
 
 window.BlobBuilder ||= window.WebKitBlobBuilder || window.MozBlobBuilder;
 
+let isMouseDown
+document.addEventListener('mousedown', ()=> isMouseDown = true)
+document.addEventListener('mouseup', ()=> isMouseDown = false)
 
 let state = sprae(document.querySelector('.waveedit'), {
   // params
@@ -116,13 +119,14 @@ let state = sprae(document.querySelector('.waveedit'), {
     state.startFrame = wavearea.selectionStart;
     const selection = [wavearea.selectionStart, wavearea.selectionEnd];
     state.endFrame = selection[0] !== selection[1] ? selection[1] : wavearea.value.length;
+
     let animId
 
     const syncCaret = () => {
       const framesPlayed = au.frame(audio.currentTime) - state.startFrame
       const currentFrame = state.startFrame + framesPlayed;
       // Prevent updating during the click
-      if (!state.selecting) wavearea.selectionStart = wavearea.selectionEnd = currentFrame
+      if (!isMouseDown) wavearea.selectionStart = wavearea.selectionEnd = currentFrame
       if (state.endFrame && currentFrame >= state.endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
@@ -153,9 +157,10 @@ let state = sprae(document.querySelector('.waveedit'), {
 const sampleSources = [
   // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
   // './2022.12.13 - Законы счастливой общины-6Dn9qvAfBH0.mp4'
+  // './2019.02.12 - SB 1.6.21 - Conversation between Narada and Vyasadeva (Adilabad)-EKGiwd8Y2gI.m4a'
   'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
-  'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
-  'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+  // 'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
+  // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
 ]
 
 const setSrc = src => {
