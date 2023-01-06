@@ -31,7 +31,7 @@ async function loadAudio (key=DB_KEY) {
   let arrayBuf = await blobToAB(blob)
   return arrayBuf
 }
-const DB_KEY = 'wavearea-audio'
+const DB_KEY = 'waveplay-audio'
 const blobToAB = (file) => {
   return new Promise((y,n) => {
     const reader = new FileReader();

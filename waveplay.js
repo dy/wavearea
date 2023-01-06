@@ -1,5 +1,4 @@
 // import '@github/file-attachment-element';
-
 import sprae from 'sprae';
 import * as au from './source/audio-util.js';
 
@@ -61,16 +60,16 @@ let state = sprae(waveplay, {
   handleInput(e) {
     let { waveform } = state
     let start = sel().start
-    let currentWaveform = wavearea.textContent
 
     // ignore unchanged
-    if (waveform.length === currentWaveform.length && waveform === currentWaveform) return
+    if (waveform.length === wavearea.textContent.length && waveform === wavearea.textContent) return
 
     // FIXME: support multiple delete events
     clearTimeout(wavearea._id)
 
     wavearea._id = setTimeout(() => {
-      let newWaveform = currentWaveform
+      console.log(123)
+      let newWaveform = wavearea.textContent
 
       // was it deleted?
       if (newWaveform.length < waveform.length) {
@@ -87,7 +86,7 @@ let state = sprae(waveplay, {
           let c = newWaveform[i]
           if (c === ' ') {
             let from = i
-            for (; i < newWaveform.length; i++) if (newWaveform[i] !== ' ') break;
+            while (newWaveform[i] === ' ') i++;
             state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence((i - from) * au.BLOCK_SIZE))
           }
         }
@@ -198,23 +197,23 @@ const sampleSources = [
   'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
 ]
 
-const setSrc = src => {
-  const url = new URL(location.href);
-  url.searchParams.set('src', src);
-  history.pushState(null, '', url);
-}
+const url = new URL(location);
 
 // init app
-async function init(src=sampleSources[Math.floor(Math.random() * sampleSources.length)]) {
+async function init(src) {
   state.loading = true;
 
+  if (!src) {
+    src = sampleSources[Math.floor(Math.random() * sampleSources.length)]
+    url.searchParams.set('src', src);
+    history.pushState(null, '', url);
+  }
+
   try {
-    // try loading existing audio, if any
+    // try loading persisted audio, if any
     let arrayBuffer// = await au.load();
 
     // fetch default audio, if not found in storage
-    console.log('loading default audio');
-    setSrc(src);
     arrayBuffer = await au.fetch(src);
 
     // decode data from src
@@ -229,4 +228,6 @@ async function init(src=sampleSources[Math.floor(Math.random() * sampleSources.l
   state.loading = false
 }
 
-init();
+// load from url
+init(url.searchParams.get('src'));
+
