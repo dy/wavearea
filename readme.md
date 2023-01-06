@@ -4,15 +4,16 @@ Textarea waveform player with simple editing. Based on [wavefont](https://github
 
 ## Features
 
-* [x] playback
-* [ ] timecodes
-* [ ] line breaks
-* [x] delete fragments
-* [x] save edited wave
-* [ ] insert silence
-* [ ] insert fragments
-* [ ] persist edited file
-* [ ] undo / redo
+* [x] Playback
+* [x] Delete fragments
+* [x] Download
+* [ ] Timecodes
+* [ ] Line breaks
+* [ ] Insert silence
+* [ ] Insert fragments
+* [ ] Persist edited file
+* [ ] Custom player
+* [ ] Undo / redo
 
 
 <p align=center><a href="https://github.com/krishnized/license/">🕉</a></p>
