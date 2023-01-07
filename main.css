@@ -70,6 +70,18 @@ body {
   background: none;
 }
 
+.w-segment {
+  position: relative;
+}
+.w-segment::before{
+  content: attr(length);
+  position: absolute;
+  top: 0;
+  left: -4rem;
+  font-family: monospace;
+  font-size: 1rem;
+  line-height: calc(50px*1.4); /* FIXME: make depend on w-segment font-style */
+}
 
 .w-playback {
   position: fixed;

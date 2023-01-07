@@ -21,7 +21,7 @@
         :onclick="handleCaret"
         :onkeydown="e=>(![' ', 'Backspace', 'Enter'].includes(e.key) && e.preventDefault(),handleKey(e))"
         :onchange:oninput="handleInput"
-      ><span :each="segment, id in waveform.split('\n')" :text="segment" :data="{id}"></span></div>
+      ><span class="w-segment" :each="segment, id in segments" :text="segment" :length="segment.length"></span></div>
     </div>
 
     <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>

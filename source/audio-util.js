@@ -8,6 +8,12 @@ export const SAMPLE_RATE = 44100;
 // approx. block size - close to chars length. Must be in sync with wavefont.
 export const BLOCK_SIZE = 1024;
 
+// conversion helpers
+export const frame = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
+export const time = frame => frame * BLOCK_SIZE / SAMPLE_RATE
+export const block = t => Math.ceil(frame(t) / BLOCK_SIZE)
+
+
 // get ogg decoder
 // FIXME: direct decoder would be better
 const audioCtx = await (async () => {
@@ -18,10 +24,6 @@ const audioCtx = await (async () => {
   }
   return new Context({ sampleRate: SAMPLE_RATE, length: 60*60*44100 });
 })()
-
-// conversion helpers
-export const frame = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
-export const time = frame => frame * BLOCK_SIZE / SAMPLE_RATE
 
 
 // load saved audio from store (blob)

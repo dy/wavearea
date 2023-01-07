@@ -15,6 +15,8 @@
 * [x] caret must be able to be reoriented during the playback
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
+* [ ] Make 'Enter' create segments
+* [ ] time codes next to lines
 * [ ] Shift + select
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
 * [ ] Highlight of playable/playing region via diff color
@@ -31,7 +33,6 @@
 * [ ] delete file fully -> displays open file again
 * [ ] save file in storage
 * [ ] Safari: initial audio loading state displays Error (show silent buffer)
-* [ ] time codes next to lines
 * [ ] paste audio from outside
 * [ ] plus sign under the caret
 * [ ] ? rebuild player based on media stream to avoid preloading multiple chunks at once

@@ -24,7 +24,6 @@ let state = sprae(waveplay, {
 
   // current playback start/end time
   startFrame: 0,
-  endFrame: null,
 
   volume: 1,
 
@@ -34,16 +33,17 @@ let state = sprae(waveplay, {
   // current audio buffer
   buffer: null,
 
-  // current displayed waveform text
-  waveform: '',
+  // current waveform text segments
+  segments: [''],
 
   // current playable audio data
   wavURL: '',
 
   // caret repositioned my mouse
   handleCaret(e) {
-    state.startFrame = au.frame(audio.currentTime = au.time(sel().start))
-    state.endFrame = sel().collapsed ? state.waveform.length : sel().end
+    console.log('caret', e)
+    state.startFrame = au.frame(audio.currentTime = au.time(sel().start));
+    // state.endFrame = sel().collapsed ? au.block(audio.duration) : sel().end;
   },
 
   // key pressed
@@ -51,6 +51,7 @@ let state = sprae(waveplay, {
     // insert line break manually
     if (e.key === 'Enter') {
       e.preventDefault()
+      // TODO
       // let res = wavearea.firstChild.splitText(sel.start)
       // wavearea.firstChild.after(document.createElement('br'))
     }
@@ -58,9 +59,10 @@ let state = sprae(waveplay, {
 
   // enter or delete characters
   handleInput(e) {
-    let { waveform } = state
     let start = sel().start
     let newWaveform = wavearea.textContent
+    // FIXME: this can be costly for long files
+    let waveform = state.segments.join('')
 
     // ignore unchanged
     if (waveform.length === newWaveform.length && waveform === newWaveform) return
@@ -69,11 +71,13 @@ let state = sprae(waveplay, {
     clearTimeout(wavearea._id)
 
     wavearea._id = setTimeout(() => {
+      // FIXME: if delete happened with added (space) parts - we're going to suffer. We shoud track changes in sort-of CRDT
       // was it deleted?
       if (newWaveform.length < waveform.length) {
         // segment that was deleted
         let from = start * au.BLOCK_SIZE,
             to = (start + waveform.length - newWaveform.length) * au.BLOCK_SIZE;
+            // FIXME: buffers can be edited per-segment to speed up calculations
             state.buffer = au.remove(state.buffer, from, to)
       }
       // it was added - detect added parts
@@ -86,7 +90,8 @@ let state = sprae(waveplay, {
         }
       }
 
-      state.render()
+      state.updateAudio()
+
     }, 700)
   },
 
@@ -99,7 +104,7 @@ let state = sprae(waveplay, {
   },
 
   // update audio URL based on current audio buffer
-  async render () {
+  async updateAudio () {
     const {buffer} = state;
 
     // encode into wav-able blob
@@ -116,33 +121,40 @@ let state = sprae(waveplay, {
 
     // render waveform
     // FIXME: can rerender only diffing part
-    let newWaveform = await au.draw(buffer);
-    if (newWaveform !== state.waveform) state.waveform = newWaveform;
-    if (selection) sel(selection.start);
+    // FIXME: we may not need rerendering waveform here, hoping changes to initial file are enough
+    // FIXME: move to worker to check if waveform is different
+
+    let waveform = await au.draw(buffer);
+    if (state.segments.join('') !== waveform) {
+      console.log('rerender')
+      state.segments = [waveform]
+      if (selection) sel(selection.start);
+    }
   },
 
   play (e) {
     state.playing = true;
-    let selection = sel()
-    if (!selection) selection = sel(0)
+    let selection = sel();
+    if (!selection) selection = sel(0);
 
-    state.startFrame = selection.start
-    state.endFrame = selection.start !== selection.end ? selection.end : state.waveform.length;
+    let startFrame = selection.start;
+    let endFrame = !selection.collapsed ? selection.end : au.frame(audio.duration);
 
-    let animId
+    let animId;
 
     const syncCaret = () => {
       const framesPlayed = au.frame(audio.currentTime) - state.startFrame
       const currentFrame = state.startFrame + framesPlayed;
       // Prevent updating during the click
       if (!isMouseDown) sel(currentFrame)
-      if (state.endFrame && currentFrame >= state.endFrame) audio.pause();
+      if (endFrame && currentFrame >= endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
-    syncCaret()
+    syncCaret();
 
     wavearea.focus();
 
+    // onstop
     return () => {
       state.playing = false
       cancelAnimationFrame(animId), animId = null
@@ -154,7 +166,7 @@ let state = sprae(waveplay, {
 
       // adjust end caret position
       if (audio.currentTime >= audio.duration) {
-        sel(state.waveform.length)
+        sel(au.block(audio.duration).length)
       }
 
       wavearea.focus()
@@ -239,7 +251,8 @@ async function init(src) {
 
     // decode data from src
     state.buffer = await au.decode(arrayBuffer);
-    state.render();
+    state.updateAudio();
+    state.segments = [await au.draw(state.buffer)];
   }
   catch (e) {
     console.error(e)
