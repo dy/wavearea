@@ -17,9 +17,12 @@
 * [x] BUG: stopping drops focus
 * [ ] Make 'Enter' create segments
 * [ ] time codes next to lines
+* [ ] time codes as # hrefs
 * [ ] Shift + select
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
 * [ ] Highlight of playable/playing region via diff color
+* [ ] use audio-buffer-list for faster ops?
+* [ ]
 * [ ] take source from URL, load that and visualize.
   * [x] if there's none - take random source
 * [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
