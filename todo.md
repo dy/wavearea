@@ -15,8 +15,9 @@
 * [x] caret must be able to be reoriented during the playback
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
-* [ ] Make 'Enter' create segments
-* [ ] time codes next to lines
+* [x] Make 'Enter' create segments
+* [x] time codes next to lines
+  * [ ] fix segments repositioning of caret
 * [ ] time codes as # hrefs
 * [ ] Shift + select
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
@@ -42,3 +43,4 @@
 * [ ] scroll must follow the current caret position
 * [ ] save edits in URL, so that any audio URL can be opened, edited, played.
 * [ ] Make history of changes with undo/redo
+* [ ] Save history in query

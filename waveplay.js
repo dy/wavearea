@@ -44,7 +44,6 @@ let state = sprae(waveplay, {
 
   // caret repositioned my mouse
   handleCaret(e) {
-    console.log('caret', e)
     state.startFrame = au.frame(audio.currentTime = au.time(sel().start));
     // state.endFrame = sel().collapsed ? au.block(audio.duration) : sel().end;
   },
@@ -55,7 +54,14 @@ let state = sprae(waveplay, {
     if (e.key === 'Enter') {
       e.preventDefault()
       // TODO
-      // let res = wavearea.firstChild.splitText(sel.start)
+      let selection = sel()
+      let segmentId = selection.startNode.parentNode.dataset.id
+      if (!segmentId) throw Error('Segment id is not found, strange')
+      state.segments.splice(segmentId, 1,
+        state.segments[segmentId].slice(0, selection.startNodeOffset),
+        state.segments[segmentId].slice(selection.startNodeOffset)
+      )
+      state.segments = state.segments
       // wavearea.firstChild.after(document.createElement('br'))
     }
   },
@@ -188,25 +194,29 @@ let state = sprae(waveplay, {
 const sel = (start, end=start) => {
   let s = window.getSelection()
 
-  // set, if passed
+  // set selection, if passed
   if (start != null) {
     let startNode, endNode
     s.removeAllRanges()
     let range = new Range()
 
     // find start/end nodes
+    let startNodeOffset = start
     startNode = wavearea.firstChild
-    while (start > startNode.firstChild.data.length) start -= startNode.firstChild.data.length, startNode = startNode.nextSibling
-    range.setStart(startNode.firstChild, start)
+    while (startNodeOffset > startNode.firstChild.data.length)
+    startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
+    range.setStart(startNode.firstChild, startNodeOffset)
 
+    let endNodeOffset = end
     endNode = wavearea.firstChild
-    while (end > endNode.firstChild.data.length) end -= endNode.firstChild.data.length, endNode = endNode.nextSibling
-    range.setEnd(endNode.firstChild, end)
+    while (endNodeOffset > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
+    range.setEnd(endNode.firstChild, endNodeOffset)
 
     s.addRange(range)
 
     return {
       start, startNode, end, endNode,
+      startNodeOffset, endNodeOffset,
       collapsed: s.isCollapsed
     }
   }
@@ -223,8 +233,10 @@ const sel = (start, end=start) => {
   return {
     start,
     startNode: s.anchorNode,
+    startNodeOffset: s.anchorOffset,
     end,
     endNode: s.focusNode,
+    endNodeOffset: s.focusOffset,
     collapsed: s.isCollapsed
   }
 }

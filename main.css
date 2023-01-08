@@ -76,7 +76,7 @@ body {
   max-width: calc(var(--linew, 240) * 2ch);
 }
 .w-segment::before{
-  content: attr(length);
+  content: attr(timecodes);
   position: absolute;
   top: 0;
   left: -4rem;

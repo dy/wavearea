@@ -32,7 +32,7 @@
     "nanopop": "^2.1.0",
     "node-wav": "^0.0.2",
     "oggmented": "^1.0.1",
-    "sprae": "^2.5.4"
+    "sprae": "^2.5.5"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"

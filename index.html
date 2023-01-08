@@ -19,13 +19,18 @@
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
         :onclick="handleCaret"
-        :onkeydown="e=>console.log(e)||(![' ', 'Backspace', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(e.key) && e.preventDefault(),handleKey(e))"
+        :onkeydown="e=>(![' ', 'Backspace', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(e.key) && e.preventDefault(),handleKey(e))"
         :onchange:oninput="handleInput"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
-        :each="segment, id in segments"
+        :each="segment, id1 in segments"
         :text="segment"
-        :length="Array.from({length: Math.ceil(segment.length / lineWidth)}, (_,i)=>timecode(i*lineWidth)).join('\n')"></p></div>
+        :data="{
+          id:id1-1,
+          offset: +(this.previousSibling?.dataset.offset || 0) + segment.length
+        }"
+        :timecodes="let offset = +(this.previousSibling?.dataset.offset || 0), lines=Math.ceil(segment.length / lineWidth);
+          return Array.from({length: lines}, (_,i)=>timecode(i*lineWidth + offset)).join('\n')"></p></div>
     </div>
 
     <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>
