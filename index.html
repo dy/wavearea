@@ -19,9 +19,13 @@
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
         :onclick="handleCaret"
-        :onkeydown="e=>(![' ', 'Backspace', 'Enter'].includes(e.key) && e.preventDefault(),handleKey(e))"
+        :onkeydown="e=>console.log(e)||(![' ', 'Backspace', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(e.key) && e.preventDefault(),handleKey(e))"
         :onchange:oninput="handleInput"
-      ><span class="w-segment" :each="segment, id in segments" :text="segment" :length="segment.length"></span></div>
+        :="this.style.setProperty('--linew', lineWidth)"
+      ><p class="w-segment"
+        :each="segment, id in segments"
+        :text="segment"
+        :length="Array.from({length: Math.ceil(segment.length / lineWidth)}, (_,i)=>i).join('\n')"></p></div>
     </div>
 
     <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>

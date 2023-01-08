@@ -39,6 +39,9 @@ let state = sprae(waveplay, {
   // current playable audio data
   wavURL: '',
 
+  // chars per line
+  lineWidth: 240,
+
   // caret repositioned my mouse
   handleCaret(e) {
     console.log('caret', e)

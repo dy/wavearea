@@ -34,12 +34,11 @@ body {
 
 .w-container {
   display: flex;
-  max-width: 54rem;
   position: relative;
   width: 100%;
-  /* min-height: 100%; */
   margin: 2rem auto;
   padding: 2rem 0 3rem;
+  justify-content: center;
 }
 
 .w-file {
@@ -72,14 +71,22 @@ body {
 
 .w-segment {
   position: relative;
+  margin: 0;
+  padding: 0;
+  max-width: calc(var(--linew, 240) * 2ch);
 }
 .w-segment::before{
   content: attr(length);
   position: absolute;
   top: 0;
   left: -4rem;
-  font-family: monospace;
-  font-size: 1rem;
+  font-family: sans-serif;
+  letter-spacing: 0;
+  font-size: .75rem;
+  width: 1em;
+  word-break: keep-all;
+  white-space: pre;
+  opacity: .5;
   line-height: calc(50px*1.4); /* FIXME: make depend on w-segment font-style */
 }
 
