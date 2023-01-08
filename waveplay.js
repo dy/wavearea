@@ -174,6 +174,12 @@ let state = sprae(waveplay, {
 
       wavearea.focus()
     }
+  },
+
+  // produce display time from frames
+  timecode(frame) {
+    let time = au.time(frame)
+    return `${Math.floor(time/60).toFixed(0)}:${(time%60).toFixed(0).padStart(2,0)}`
   }
 });
 

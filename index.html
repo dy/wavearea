@@ -25,7 +25,7 @@
       ><p class="w-segment"
         :each="segment, id in segments"
         :text="segment"
-        :length="Array.from({length: Math.ceil(segment.length / lineWidth)}, (_,i)=>i).join('\n')"></p></div>
+        :length="Array.from({length: Math.ceil(segment.length / lineWidth)}, (_,i)=>timecode(i*lineWidth)).join('\n')"></p></div>
     </div>
 
     <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>
