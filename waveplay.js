@@ -71,7 +71,7 @@ let state = sprae(waveplay, {
     // FIXME: this can be costly for long files
     let waveform = state.segments.join('')
 
-    // ignore unchanged
+    // ignore unchanged (when?)
     if (waveform.length === newWaveform.length && waveform === newWaveform) return
 
     // debounce
@@ -96,6 +96,11 @@ let state = sprae(waveplay, {
           state.buffer = au.insert(state.buffer, from * au.BLOCK_SIZE, au.silence(len * au.BLOCK_SIZE))
         }
       }
+
+      // FIXME: selection must be preserved by sprae
+      let selection = sel()
+      state.segments = [...wavearea.children].map(child => child.textContent)
+      sel(selection.start)
 
       state.updateAudio()
 
@@ -132,8 +137,8 @@ let state = sprae(waveplay, {
     // FIXME: move to worker to check if waveform is different
 
     let waveform = await au.draw(buffer);
-    if (state.segments.join('') !== waveform) {
-      console.log('rerender')
+    // waveform = waveform.replaceAll(`\u0100`, ' ');
+    if (state.segments.join('') !== waveform.replaceAll(`\u0100`, ' ')) {
       state.segments = [waveform]
       if (selection) sel(selection.start);
     }
