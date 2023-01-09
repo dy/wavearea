@@ -79,7 +79,7 @@ body {
   content: attr(timecodes);
   position: absolute;
   top: 0;
-  left: -4rem;
+  left: -3rem;
   font-family: sans-serif;
   letter-spacing: 0;
   font-size: .75rem;

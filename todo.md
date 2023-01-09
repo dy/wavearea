@@ -16,6 +16,7 @@
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
 * [x] Make 'Enter' create segments
+  * [ ] sometimes splitting fails (like back-forth splits)
 * [x] time codes next to lines
   * [ ] fix segments repositioning of caret
 * [ ] time codes as # hrefs

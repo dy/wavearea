@@ -53,16 +53,14 @@ let state = sprae(waveplay, {
     // insert line break manually
     if (e.key === 'Enter') {
       e.preventDefault()
-      // TODO
       let selection = sel()
-      let segmentId = selection.startNode.parentNode.dataset.id
+      let segmentId = selection.startNode.dataset.id
       if (!segmentId) throw Error('Segment id is not found, strange')
       state.segments.splice(segmentId, 1,
         state.segments[segmentId].slice(0, selection.startNodeOffset),
         state.segments[segmentId].slice(selection.startNodeOffset)
       )
       state.segments = state.segments
-      // wavearea.firstChild.after(document.createElement('br'))
     }
   },
 
@@ -225,17 +223,17 @@ const sel = (start, end=start) => {
 
   // collect start/end offsets
   start = s.anchorOffset, end = s.focusOffset
-  let prevNode = s.anchorNode
-  while (prevNode = prevNode.previousSibling) start += prevNode.textContent.length
-  prevNode = s.focusNode
-  while (prevNode = prevNode.previousSibling) end += prevNode.textContent.length
+  let prevNode = s.anchorNode.parentNode
+  while (prevNode = prevNode.previousSibling) start += prevNode.firstChild.data.length
+  prevNode = s.focusNode.parentNode
+  while (prevNode = prevNode.previousSibling) end += prevNode.firstChild.data.length
 
   return {
     start,
-    startNode: s.anchorNode,
+    startNode: s.anchorNode.parentNode,
     startNodeOffset: s.anchorOffset,
     end,
-    endNode: s.focusNode,
+    endNode: s.focusNode.parentNode,
     endNodeOffset: s.focusOffset,
     collapsed: s.isCollapsed
   }
