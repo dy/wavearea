@@ -77,59 +77,16 @@ let state = sprae(waveplay, {
       return
     }
 
-    if (e.key === 'Backspace') {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
       let selection = sel()
       let segmentId = selection.startNode.dataset.id
       if (!segmentId) throw Error('Segment id is not found, strange')
-      let op = ['del', selection.start, selection.end - selection.start]
+      let count = selection.end - selection.start
+      let op = count ? ['del', selection.start, count] :
+        ['del', selection.start - (e.key === 'Delete' ? 0 : 1), 1]
       ops.push(op)
       applyOp(op)
     }
-  },
-
-  // enter or delete characters
-  handleInput(e) {
-    /*
-    let start = sel().start
-    let newWaveform = wavearea.textContent
-    // FIXME: this can be costly for long files
-    let waveform = state.segments.join('')
-
-    // ignore unchanged (when?)
-    if (waveform.length === newWaveform.length && waveform === newWaveform) return
-
-    // debounce
-    clearTimeout(wavearea._id)
-
-    wavearea._id = setTimeout(() => {
-      // FIXME: if delete happened with added (space) parts - we're going to suffer. We shoud track changes in sort-of CRDT
-      // was it deleted?
-      if (newWaveform.length < waveform.length) {
-        // segment that was deleted
-        let from = start * BLOCK_SIZE,
-            to = (start + waveform.length - newWaveform.length) * BLOCK_SIZE;
-            // FIXME: buffers can be edited per-segment to speed up calculations
-            state.buffer = au.remove(state.buffer, from, to)
-      }
-      // it was added - detect added parts
-      else {
-        // detect spaces & insert silence
-        let spaces = newWaveform.match(/\s+/)
-        if (spaces) {
-          let from = spaces.index, len = spaces[0].length
-          state.buffer = au.insert(state.buffer, from * BLOCK_SIZE, au.silence(len * BLOCK_SIZE))
-        }
-      }
-
-      // FIXME: selection must be preserved by sprae
-      let selection = sel()
-      state.segments = [...wavearea.children].map(child => child.textContent)
-      sel(selection.start)
-
-      renderAudio()
-
-    }, 700)
-    */
   },
 
   // audio time changes
