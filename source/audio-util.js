@@ -102,14 +102,6 @@ export function drawAudio (audioBuffer) {
   // map waveform to wavefont
   let channelData = audioBuffer.getChannelData(0), str = ''
 
-  // normalize waveform before rendering
-  // for every channel bring it to max-min amplitude range
-  // NOTE: normalization updates scale on rerender, we don't need that
-  // let max = 0
-  // for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
-  // let amp = Math.max(1 / max, 1)
-  // for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
-
   // TODO: weight waveform by audible spectrum
 
   // create wavefont string

@@ -14,19 +14,29 @@ export const src =  async (buffers, url) => {
   return [buffer]
 }
 
-// delete part of audio
-export const del = (buffers, offset, count) => {
-
+// normalize audio
+export const norm = (buffers) => {
+  // normalize waveform before rendering
+  // for every channel bring it to max-min amplitude range
+  let max = 0
+  for (let buffer of buffers) {
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      let channelData = buffer.getChannelData(c);
+      for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
+    }
+  }
+  let amp = Math.max(1 / max, 1)
+  for (let buffer of buffers) {
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      let channelData = buffer.getChannelData(c);
+      for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
+    }
+  }
+  return buffers
 }
 
 // either add external URL or silence (count)
 export const add = (buffers, offset, src) => {
-
-}
-
-// make subset of audio
-// FIXME: conflicts with subscribe
-export const sub = (buffers, from, count) => {
 
 }
 
@@ -40,10 +50,8 @@ export const br = (buffers, offset) => {
 
 }
 
-
-
-// audio buffer utils
-export function slice (buffer, start, end) {
+// clip to indicated fragment
+export function clip (buffer, start, end) {
   start = start == null ? 0 : start;
   end = end == null ? buffer.length : end;
 
@@ -55,7 +63,7 @@ export function slice (buffer, start, end) {
   return create(buffer.sampleRate, data)
 }
 
-export function remove (buffer, start, end) {
+export function del (buffer, start, end) {
   start = start == null ? 0 : start;
   end = Math.min(end == null ? buffer.length : end, buffer.length);
 
@@ -70,7 +78,7 @@ export function remove (buffer, start, end) {
   return create(data)
 }
 
-export function mut (len, channels=2) {
+export function mute (len, channels=2) {
   let data = Array.from({length:channels}, ()=>new Float32Array(len))
   return create(data)
 }

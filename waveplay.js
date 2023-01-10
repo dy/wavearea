@@ -245,7 +245,7 @@ async function init() {
       // TODO: make a history entry
       // url.searchParams.set('src', src);
       // history.pushState(null, '', url);
-      ops.push(['src', src])
+      ops.push(['src', src], ['norm'])
     }
 
     await applyOps(ops, []);
@@ -260,6 +260,7 @@ async function init() {
 
 // apply operations from URL
 async function applyOps (ops, buffers) {
+  console.log('Apply ops', ops)
   for (let [op, ...args] of ops) {
     if (!Ops[op]) throw Error('Unknown operation `' + op + '`')
 
