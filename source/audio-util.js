@@ -125,7 +125,7 @@ export function drawAudio (audioBuffer) {
 
     // rms method:
     // drawback: waveform is smaller than needed
-    for (;i < nextBlock; i++) ssum += i > channelData.length ? 0 : channelData[i] ** 2
+    for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
     // replace 0 with space
     let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))

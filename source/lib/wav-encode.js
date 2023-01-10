@@ -1587,68 +1587,6 @@ function isFastBuffer(obj) {
 function isSlowBuffer(obj) {
   return typeof obj.readFloatLE === "function" && typeof obj.slice === "function" && isFastBuffer(obj.slice(0, 0));
 }
-const data_decoders = {
-  pcm8: (buffer, offset, output, channels, samples) => {
-    let input = new Uint8Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch) {
-        let data = input[pos++] - 128;
-        output[ch][i] = data < 0 ? data / 128 : data / 127;
-      }
-    }
-  },
-  pcm16: (buffer, offset, output, channels, samples) => {
-    let input = new Int16Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch) {
-        let data = input[pos++];
-        output[ch][i] = data < 0 ? data / 32768 : data / 32767;
-      }
-    }
-  },
-  pcm24: (buffer, offset, output, channels, samples) => {
-    let input = new Uint8Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch) {
-        let x0 = input[pos++];
-        let x1 = input[pos++];
-        let x2 = input[pos++];
-        let xx = x0 + (x1 << 8) + (x2 << 16);
-        let data = xx > 8388608 ? xx - 16777216 : xx;
-        output[ch][i] = data < 0 ? data / 8388608 : data / 8388607;
-      }
-    }
-  },
-  pcm32: (buffer, offset, output, channels, samples) => {
-    let input = new Int32Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch) {
-        let data = input[pos++];
-        output[ch][i] = data < 0 ? data / 2147483648 : data / 2147483647;
-      }
-    }
-  },
-  pcm32f: (buffer, offset, output, channels, samples) => {
-    let input = new Float32Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch)
-        output[ch][i] = input[pos++];
-    }
-  },
-  pcm64f: (buffer, offset, output, channels, samples) => {
-    let input = new Float64Array(buffer, offset);
-    let pos = 0;
-    for (let i = 0; i < samples; ++i) {
-      for (let ch = 0; ch < channels; ++ch)
-        output[ch][i] = input[pos++];
-    }
-  }
-};
 const data_encoders = {
   pcm8: (buffer, offset, input, channels, samples) => {
     let output = new Uint8Array(buffer, offset);

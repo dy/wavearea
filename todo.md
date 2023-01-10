@@ -24,10 +24,12 @@
   * [ ] del
   * [ ] mute
 * [ ] Make UI interactions serialize to basic URL operations
+* [ ] Display left/right channels with a separate colors, and black is their intersection
 * [ ] Shift + select
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
   * [ ] faster encoder by just copying changed subbuffer data, opposed to full rerender
+    * ? should we work straight on wav buffer maybe instead of audio buffers?
 * [ ] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
 * [ ] take source from URL, load that and visualize.

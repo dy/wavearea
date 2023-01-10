@@ -16,20 +16,43 @@ export const src =  async (buffers, url) => {
 
 // normalize audio
 export const norm = (buffers) => {
-  // normalize waveform before rendering
-  // for every channel bring it to max-min amplitude range
+  // remove static - calculate avg and subtract
+  let sum = 0, total = 0
+  for (let buffer of buffers) {
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      let channelData = buffer.getChannelData(c);
+      total += channelData.length
+      for (let i = 0; i < channelData.length; i++)
+        sum += channelData[i]
+    }
+  }
+  let avg = sum / total
+  for (let buffer of buffers) {
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      let channelData = buffer.getChannelData(c);
+      total += channelData.length
+      for (let i = 0; i < channelData.length; i++)
+        channelData[i] -= avg
+    }
+  }
+
+  // amplify max to meet 1
   let max = 0
   for (let buffer of buffers) {
     for (let c = 0; c < buffer.numberOfChannels; c++) {
       let channelData = buffer.getChannelData(c);
-      for (let i = 0; i < channelData.length; i++) max = Math.max(Math.abs(channelData[i]), max)
+      for (let i = 0; i < channelData.length; i++)
+        max = Math.max(Math.abs(channelData[i]), max)
     }
   }
-  let amp = Math.max(1 / max, 1)
+
+  let amp = Math.max(1 / max, 1);
+
   for (let buffer of buffers) {
     for (let c = 0; c < buffer.numberOfChannels; c++) {
       let channelData = buffer.getChannelData(c);
-      for (let i = 0; i < channelData.length; i++) channelData[i] = Math.max(Math.min(amp * channelData[i], 1),-1);
+      for (let i = 0; i < channelData.length; i++)
+        channelData[i] = Math.min(1, Math.max(-1, channelData[i] * amp));
     }
   }
   return buffers
