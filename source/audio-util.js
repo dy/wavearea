@@ -159,3 +159,20 @@ export function sliceAudio (buffer, start=0, end=buffer.length) {
 
   return newBuffer
 }
+
+export function deleteAudio(buffer, start=0, end=buffer.length) {
+  let newBuffer = new AudioBuffer({
+    length: buffer.length - Math.abs(end - start),
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate
+  });
+
+  for (var c = 0; c < buffer.numberOfChannels; c++) {
+    var channelData = buffer.getChannelData(c)
+    var newChannelData = newBuffer.getChannelData(c)
+    newChannelData.set(channelData.subarray(0, start), 0);
+    newChannelData.set(channelData.subarray(end), start);
+  }
+
+  return newBuffer
+}

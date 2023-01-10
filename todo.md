@@ -21,7 +21,8 @@
   * [ ] fix segments repositioning of caret
 * [ ] Make all basic operations fork from URL:
   * [x] br
-  * [ ] del
+  * [x] del
+    * [x] fix deleting tail properly
   * [ ] mute
 * [ ] Make UI interactions serialize to basic URL operations
 * [ ] Display left/right channels with a separate colors, and black is their intersection

@@ -1,7 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
 
-import { decodeAudio, fetchAudio, sliceAudio, b2o } from './audio-util.js'
+import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
 
 // load file from url
 export const src =  async (buffers, url) => {
@@ -68,26 +68,52 @@ export const br = (buffers, ...offsets) => {
       let left = sliceAudio(buf, 0, bufOffset)
       let right = sliceAudio(buf, bufOffset)
 
-      buffers.splice(bufIdx, 1, left, right)
+      buffers.splice(bufIdx, 1,
+        left, right
+      )
     }
   }
 
   return buffers
 }
 
-export function del (buffer, start, end) {
-  start = start == null ? 0 : start;
-  end = Math.min(end == null ? buffer.length : end, buffer.length);
+export function del (buffers, offset, count) {
+  if (!count) return buffers
 
-  var data = [], arr;
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(arr = new Float32Array(buffer.length - Math.abs(end-start)))
-    var channelData = buffer.getChannelData(channel)
-    arr.set(channelData.subarray(0, start), 0);
-    arr.set(channelData.subarray(end), start);
+  let start = bufferOffset(buffers, b2o(offset))
+  let end = bufferOffset(buffers, b2o(offset + count))
+
+  // FIXME: account for conditions:
+  // end buffer === start buffer
+  // start buffer is 0
+  // start buffer is full length
+  // end buffer is 0
+  // end buffer is full length
+
+  let startBuffer = buffers[start[0]]
+  let endBuffer = buffers[end[0]]
+
+  let outBuffer = new AudioBuffer({
+    length: start[1] + (endBuffer.length - end[1]),
+    sampleRate: SAMPLE_RATE,
+    numberOfChannels: startBuffer.numberOfChannels
+  })
+
+  for (let c = 0; c < startBuffer.numberOfChannels; c++) {
+    let i = 0,
+      outData = outBuffer.getChannelData(c),
+      startData = startBuffer.getChannelData(c),
+      endData = endBuffer.getChannelData(c)
+
+    // transfer remaining head samples
+    for (i = 0; i < start[1]; i++) outData[i] = startData[i]
+    // transfer remaining tail samples
+    for (let j = end[1]; j < endData.length; j++) outData[i] = endData[j], i++
   }
 
-  return create(data)
+  buffers.splice(start[0], end[0]-start[0]+1, outBuffer)
+
+  return buffers
 }
 
 export function mute (len, channels=2) {
@@ -133,5 +159,9 @@ const bufferOffset = (buffers, offset) => {
     if (offset < end) return [ i, offset - start ]
     start = end
   }
-  return [buffers.length - 1, buffers[buffers.length - 1].length - 1]
+
+  // that's special case of last buffer: we return index pointing at non-existing item
+  // but that's useful for obtaining end of the range
+  // eg. getSelection() API also returns offset index _after_ last item.
+  return [buffers.length - 1, buffers[buffers.length - 1].length]
 }

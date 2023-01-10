@@ -78,7 +78,12 @@ let state = sprae(waveplay, {
     }
 
     if (e.key === 'Backspace') {
-
+      let selection = sel()
+      let segmentId = selection.startNode.dataset.id
+      if (!segmentId) throw Error('Segment id is not found, strange')
+      let op = ['del', selection.start, selection.end - selection.start]
+      ops.push(op)
+      applyOp(op)
     }
   },
 
@@ -224,13 +229,21 @@ const sel = (start, end=start) => {
   prevNode = s.focusNode.parentNode
   while (prevNode = prevNode.previousSibling) end += prevNode.firstChild.data.length
 
+  // swap selection direction
+  let startNode = s.anchorNode.parentNode, startNodeOffset = s.anchorOffset,
+      endNode = s.focusNode.parentNode, endNodeOffset = s.focusOffset;
+  if (start > end) {
+    [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
+    [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
+  }
+
   return {
     start,
-    startNode: s.anchorNode.parentNode,
-    startNodeOffset: s.anchorOffset,
+    startNode,
+    startNodeOffset,
     end,
-    endNode: s.focusNode.parentNode,
-    endNodeOffset: s.focusOffset,
+    endNode,
+    endNodeOffset,
     collapsed: s.isCollapsed
   }
 }
