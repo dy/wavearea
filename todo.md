@@ -22,6 +22,7 @@
 * [ ] time codes as # hrefs
 * [ ] Shift + select
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
+  * [ ] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [ ] Highlight of playable/playing region via diff color
 * [ ] use audio-buffer-list for faster ops?
 * [ ]

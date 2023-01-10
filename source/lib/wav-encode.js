@@ -1725,81 +1725,6 @@ function lookup$1(table, bitDepth, floatingPoint) {
     throw new TypeError("Unsupported data format: " + name);
   return fn;
 }
-function decode(buffer) {
-  let pos = 0, end = 0;
-  if (buffer.buffer) {
-    pos = buffer.byteOffset;
-    end = buffer.length;
-    buffer = buffer.buffer;
-  } else {
-    pos = 0;
-    end = buffer.byteLength;
-  }
-  let v = new DataView(buffer);
-  function u8() {
-    let x = v.getUint8(pos);
-    pos++;
-    return x;
-  }
-  function u16() {
-    let x = v.getUint16(pos, true);
-    pos += 2;
-    return x;
-  }
-  function u32() {
-    let x = v.getUint32(pos, true);
-    pos += 4;
-    return x;
-  }
-  function string(len) {
-    let str = "";
-    for (let i = 0; i < len; ++i)
-      str += String.fromCharCode(u8());
-    return str;
-  }
-  if (string(4) !== "RIFF")
-    throw new TypeError("Invalid WAV file");
-  u32();
-  if (string(4) !== "WAVE")
-    throw new TypeError("Invalid WAV file");
-  let fmt;
-  while (pos < end) {
-    let type = string(4);
-    let size = u32();
-    let next = pos + size;
-    switch (type) {
-      case "fmt ":
-        let formatId = u16();
-        if (formatId !== 1 && formatId !== 3)
-          throw new TypeError("Unsupported format in WAV file: " + formatId.toString(16));
-        fmt = {
-          format: "lpcm",
-          floatingPoint: formatId === 3,
-          channels: u16(),
-          sampleRate: u32(),
-          byteRate: u32(),
-          blockSize: u16(),
-          bitDepth: u16()
-        };
-        break;
-      case "data":
-        if (!fmt)
-          throw new TypeError('Missing "fmt " chunk.');
-        let samples = Math.floor(size / fmt.blockSize);
-        let channels = fmt.channels;
-        let sampleRate = fmt.sampleRate;
-        let channelData = [];
-        for (let ch = 0; ch < channels; ++ch)
-          channelData[ch] = new Float32Array(samples);
-        lookup$1(data_decoders, fmt.bitDepth, fmt.floatingPoint)(buffer, pos, channelData, channels, samples);
-        return {
-          sampleRate,
-          channelData
-        };
-    }
-    pos = next;
-  }
-}
 function encode(channelData, opts) {
   console.time('encode start')
   let sampleRate = opts.sampleRate || 16e3;
@@ -1844,11 +1769,4 @@ function encode(channelData, opts) {
   console.timeEnd('encode body')
   return buffer;
 }
-var nodeWav = {
-  decode,
-  encode
-};
-var decode$1 = nodeWav.decode;
-export default nodeWav;
-var encode$1 = nodeWav.encode;
-export {nodeWav as __moduleExports, decode$1 as decode, encode$1 as encode};
+export default encode

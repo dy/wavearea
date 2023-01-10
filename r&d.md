@@ -75,12 +75,12 @@
 + We anyways display single duplication node
 - Not textarea already: textarea can be useful for simple small fragments
 
-## [ ] CRDT: keep ops in URL
+## [x] CRDT: keep ops in URL -> yes, see readme for latest format details
 
 + allows undo/redo just from URL
 + allows permanent links to edited audio pieces
 * allowed URL chars: ;,/?:@&=+$-_.!~*()#
-* ops: `add(0:url(path/to/file)),br(112,5634,12355),del(12:45,123:234)`
+? ops: `add(0:url(path/to/file)),br(112,5634,12355),del(12:45,123:234)`
   * delete: `-(start:amt,23:12,...)`
   * add: `+(start:src,23:url(https://path/to/file),...)`
   * silence: `_(start:amt,start:amt,...)`
@@ -88,6 +88,7 @@
   * normalize?
   * remove-silence?
   * enhance-quality-via-external-processor, like `process(adobe-enhancer)`
+* Alt: `src=path/to-file&br=112,5634,12355&del=12:45,123:234`
 + colon is perfect separator: `#line:col`
 + one entry is one history item
 + shorturl for audio files

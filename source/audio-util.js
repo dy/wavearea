@@ -1,4 +1,6 @@
-import wav from './lib/node-wav';
+// various audio / single buffer utils
+
+import wavEncode from './lib/wav-encode';
 import storage from 'kv-storage-polyfill';
 
 
@@ -8,10 +10,10 @@ export const SAMPLE_RATE = 44100;
 // approx. block size - close to chars length. Must be in sync with wavefont.
 export const BLOCK_SIZE = 1024;
 
-// conversion helpers
-export const frame = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
-export const time = frame => frame * BLOCK_SIZE / SAMPLE_RATE
-export const block = t => Math.ceil(frame(t) / BLOCK_SIZE)
+// conversion helpers time <-> offset <-> block
+export const t2o = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
+export const o2t = frame => frame * BLOCK_SIZE / SAMPLE_RATE
+export const t2b = t => Math.ceil(frame(t) / BLOCK_SIZE)
 
 
 // get ogg decoder
@@ -27,7 +29,7 @@ const audioCtx = await (async () => {
 
 
 // load saved audio from store (blob)
-async function loadAudio (key=DB_KEY) {
+export async function loadAudio (key=DB_KEY) {
   let blob = await storage.get(key)
   if (!blob) return
   let arrayBuf = await blobToAB(blob)
@@ -46,7 +48,7 @@ const blobToAB = (file) => {
 }
 
 
-async function saveAudio (blob, key=DB_KEY) {
+export async function saveAudio (blob, key=DB_KEY) {
   // convert audioBuffer into blob
   // FIXME: we can cache blobs by audio buffers
   // FIXME: we can try to save arraybuffer also
@@ -55,7 +57,7 @@ async function saveAudio (blob, key=DB_KEY) {
 }
 
 // fetch audio source from URL
-async function fetchAudio(src) {
+export async function fetchAudio(src) {
   console.time('fetch')
   let resp = await fetch(src);
   if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
@@ -68,7 +70,7 @@ async function fetchAudio(src) {
 
 // decode array buffer to audio buffer
 // FIXME: we can cache blob maybe?
-async function decodeAudio (arrayBuffer, ctx) {
+export async function decodeAudio (arrayBuffer, ctx) {
   console.time('decode')
   let audioBuffer
   try {
@@ -81,16 +83,19 @@ async function decodeAudio (arrayBuffer, ctx) {
 }
 
 // convert audio to wav array buffer
-async function encodeAudio (audioBuffer) {
+export async function encodeAudio (...audioBuffers) {
+  // FIXME: it can be really done fast by pre-selecting encoding type
+  // and just copying audio buffers Float32Arrays straight to wav buffer
   console.time('wav encode')
+  let audioBuffer = audioBuffers[0]
   let channelData = audioBuffer.getChannelData(0)
-  let res = wav.encode([channelData], { sampleRate: audioBuffer.sampleRate, float: false, bitDepth: 16 })
+  let res = wavEncode([channelData], { sampleRate: audioBuffer.sampleRate, float: true, bitDepth: 32 })
   console.timeEnd('wav encode')
   return res
 }
 
 // convert audio buffer to waveform string
-async function drawAudio (audioBuffer) {
+export function drawAudio (audioBuffer) {
   if (!audioBuffer) return '';
   console.time('to waveform string')
 
@@ -131,75 +136,4 @@ async function drawAudio (audioBuffer) {
 
   console.timeEnd('to waveform string')
   return str
-}
-
-
-// audio buffer utils
-export function slice (buffer, start, end) {
-  start = start == null ? 0 : start;
-  end = end == null ? buffer.length : end;
-
-  var data = [];
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(buffer.getChannelData(channel).subarray(start, end));
-  }
-
-  return create(buffer.sampleRate, data)
-}
-
-export function remove (buffer, start, end) {
-  start = start == null ? 0 : start;
-  end = Math.min(end == null ? buffer.length : end, buffer.length);
-
-  var data = [], arr;
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(arr = new Float32Array(buffer.length - Math.abs(end-start)))
-    var channelData = buffer.getChannelData(channel)
-    arr.set(channelData.subarray(0, start), 0);
-    arr.set(channelData.subarray(end), start);
-  }
-
-  return create(data)
-}
-
-export function silence (len, channels=2) {
-  let data = Array.from({length:channels}, ()=>new Float32Array(len))
-  return create(data)
-}
-
-export function create (data) {
-  let newBuffer = new AudioBuffer({
-    length: data[0].length,
-    numberOfChannels: data.length,
-    sampleRate: SAMPLE_RATE
-  });
-
-  for (var channel = 0; channel < newBuffer.numberOfChannels; channel++) {
-    newBuffer.copyToChannel(data[channel], channel, 0)
-  }
-
-  return newBuffer
-}
-
-export function insert (buffer, start, newBuffer) {
-  var data = [], arr;
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(arr = new Float32Array(buffer.length + newBuffer.length))
-    var channelData = buffer.getChannelData(channel)
-    arr.set(channelData.subarray(0, start), 0);
-    arr.set(newBuffer.getChannelData(channel), start)
-    arr.set(channelData.subarray(start), start + newBuffer.length);
-  }
-
-  return create(data)
-}
-
-
-export {
-  loadAudio as load,
-  saveAudio as save,
-  fetchAudio as fetch,
-  encodeAudio as encode,
-  decodeAudio as decode,
-  drawAudio as draw
 }
