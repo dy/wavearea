@@ -19,11 +19,13 @@
   * [ ] sometimes splitting fails (like back-forth splits)
 * [x] time codes next to lines
   * [ ] fix segments repositioning of caret
-* [ ] Make all basic operations fork from URL: br, del, sil
+* [ ] Make all basic operations fork from URL:
+  * [x] br
+  * [ ] del
+  * [ ] mute
 * [ ] Make UI interactions serialize to basic URL operations
-* [ ] Make fast wav encoding
-* [ ] time codes as # hrefs
 * [ ] Shift + select
+* [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
   * [ ] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [ ] Highlight of playable/playing region via diff color

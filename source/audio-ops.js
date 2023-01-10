@@ -1,7 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
 
-import { decodeAudio, fetchAudio } from './audio-util.js'
+import { decodeAudio, fetchAudio, b2o } from './audio-util.js'
 
 // load file from url
 export const src =  async (buffers, url) => {
@@ -35,32 +35,21 @@ export const norm = (buffers) => {
   return buffers
 }
 
-// either add external URL or silence (count)
-export const add = (buffers, offset, src) => {
-
-}
-
-// copy offset/cout to another position (rewrites data underneath)
-export const cp = (buffers, offset, count, to) => {
-
-}
-
 // insert breaks / split
-export const br = (buffers, offset) => {
+export const br = (buffers, ...offsets) => {
+  for (let offset of offsets) {
+    let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset));
+    let buf = buffers[bufIdx]
 
-}
+    if (bufOffset > 0 && bufOffset < buf.length) {
+      let left = subBuffer(buf, 0, bufOffset)
+      let right = subBuffer(buf, bufOffset)
 
-// clip to indicated fragment
-export function clip (buffer, start, end) {
-  start = start == null ? 0 : start;
-  end = end == null ? buffer.length : end;
-
-  var data = [];
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(buffer.getChannelData(channel).subarray(start, end));
+      buffers.splice(bufIdx, 1, left, right)
+    }
   }
 
-  return create(buffer.sampleRate, data)
+  return buffers
 }
 
 export function del (buffer, start, end) {
@@ -83,18 +72,37 @@ export function mute (len, channels=2) {
   return create(data)
 }
 
-export function create (data) {
+// clip to indicated fragment
+export const clip = (buffers, from, to) => {
+
+}
+
+
+function subBuffer (buffer, start=0, end=buffer.length) {
   let newBuffer = new AudioBuffer({
-    length: data[0].length,
-    numberOfChannels: data.length,
-    sampleRate: SAMPLE_RATE
+    length: end - start,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate
   });
 
-  for (var channel = 0; channel < newBuffer.numberOfChannels; channel++) {
-    newBuffer.copyToChannel(data[channel], channel, 0)
+  for (var c = 0; c < newBuffer.numberOfChannels; c++) {
+    newBuffer.copyToChannel(
+      buffer.getChannelData(c).subarray(start, end),
+      c, 0
+    )
   }
 
   return newBuffer
+}
+
+// either add external URL or silence (count)
+export const add = (buffers, offset, src) => {
+
+}
+
+// copy offset/cout to another position (rewrites data underneath)
+export const cp = (buffers, offset, count, to) => {
+
 }
 
 export function insert (buffer, start, newBuffer) {
@@ -108,4 +116,16 @@ export function insert (buffer, start, newBuffer) {
   }
 
   return create(data)
+}
+
+// return [bufIdx, bufOffset] from absolute offset
+const bufferOffset = (buffers, offset) => {
+  if (offset === 0) return [ 0, 0 ]
+  var start = 0, end
+  for (let i = 0; i < buffers.length; i++) {
+    end = start + buffers[i].length
+    if (offset < end) return [ i, offset - start ]
+    start = end
+  }
+  return [buffers.length - 1, buffers[buffers.length - 1].length - 1]
 }

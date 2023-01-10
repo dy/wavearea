@@ -14,6 +14,7 @@ export const BLOCK_SIZE = 1024;
 export const t2o = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
 export const o2t = frame => frame * BLOCK_SIZE / SAMPLE_RATE
 export const t2b = t => Math.ceil(frame(t) / BLOCK_SIZE)
+export const b2o = block => block * BLOCK_SIZE
 
 
 // get ogg decoder
