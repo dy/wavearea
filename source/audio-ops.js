@@ -83,6 +83,10 @@ export function del (buffers, offset, count) {
   let start = bufferOffset(buffers, b2o(offset))
   let end = bufferOffset(buffers, b2o(offset + count))
 
+  // correct tail: pointing to head of the next buffer unnecessarily joins buffers in result
+  // but we may want to preserve segmentation
+  if (!end[1] && end[0]) end[0] -= 1, end[1] = buffers[end[0]].length
+
   // FIXME: account for conditions:
   // end buffer === start buffer
   // start buffer is 0

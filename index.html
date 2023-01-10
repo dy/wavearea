@@ -20,7 +20,6 @@
       <div contenteditable class="w-wavearea wavefont"
         :onclick="handleCaret"
         :onkeydown="handleKey"
-        :onchange:oninput="handleInput"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
         :each="segment, id1 in segments"

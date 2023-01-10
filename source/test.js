@@ -27,6 +27,7 @@ t('delete: all')
 // delete 2nd segment
 t('^ all delete tests')
 t('delete segment: span from 1st to second')
+t('delete from the tail of prev segment (must preserve line break)')
 
 t('silence: 1 block in the middle')
 t('silence: N blocks in the middle')
