@@ -15,6 +15,11 @@ const waveplay = document.querySelector('.waveplay')
 const wavearea = waveplay.querySelector('.w-wavearea')
 const audio = waveplay.querySelector('.w-playback')
 
+// audio buffers & applied operations
+let buffers = []
+const url = new URL(location);
+const ops = []
+
 
 // init UI state
 let state = sprae(waveplay, {
@@ -49,22 +54,37 @@ let state = sprae(waveplay, {
 
   // key pressed
   handleKey(e) {
+    if (e.key.startsWith('Arrow')) return
+
+    e.preventDefault()
+
     // insert line break manually
     if (e.key === 'Enter') {
-      e.preventDefault()
       let selection = sel()
       let segmentId = selection.startNode.dataset.id
       if (!segmentId) throw Error('Segment id is not found, strange')
-      state.segments.splice(segmentId, 1,
-        state.segments[segmentId].slice(0, selection.startNodeOffset),
-        state.segments[segmentId].slice(selection.startNodeOffset)
-      )
-      state.segments = state.segments
+
+      // push break operation
+      // FIXME: save to history
+      // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
+      let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
+      brOp.push(selection.start)
+      applyOp(['br', selection.start])
+
+      // TODO: account for existing selection that was removed (replace fragment with break)
+
+      // FIXME: reinstate caret: it gets lost
+      return
+    }
+
+    if (e.key === 'Backspace') {
+
     }
   },
 
   // enter or delete characters
   handleInput(e) {
+    /*
     let start = sel().start
     let newWaveform = wavearea.textContent
     // FIXME: this can be costly for long files
@@ -104,6 +124,7 @@ let state = sprae(waveplay, {
       renderAudio()
 
     }, 700)
+    */
   },
 
   // audio time changes
@@ -227,14 +248,11 @@ const sampleSources = [
   // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
 ]
 
-const url = new URL(location);
-
 async function init() {
   state.loading = true
 
   try {
     // collect operation from URL, like src=path/to/file&sub=from:to&br=a,b,c
-    const ops = []
     for (const [op, value] of url.searchParams) {
       console.log(op, value);
     }
@@ -248,7 +266,7 @@ async function init() {
       ops.push(['src', src], ['norm'])
     }
 
-    await applyOps(ops, []);
+    await applyOp(...ops);
   }
   catch (e) {
     console.error(e)
@@ -258,8 +276,8 @@ async function init() {
   state.loading = false
 }
 
-// apply operations from URL
-async function applyOps (ops, buffers) {
+// apply operations to buffers
+async function applyOp (...ops) {
   console.log('Apply ops', ops)
   for (let [op, ...args] of ops) {
     if (!Ops[op]) throw Error('Unknown operation `' + op + '`')
@@ -267,9 +285,8 @@ async function applyOps (ops, buffers) {
     buffers = await Ops[op]?.(buffers, ...args)
   }
 
-  // FIXME: can be done in parallel in webworkers
-  state.segments = await renderWaveform(buffers);
-  state.wavURL = await renderAudio(buffers);
+  renderWaveform(buffers);
+  renderAudio(buffers);
 }
 
 
@@ -286,7 +303,7 @@ const renderWaveform = (buffers) => {
     segments.push(waveform)
   }
 
-  return segments
+  return state.segments = segments
 }
 
 // update audio URL based on current audio buffer
@@ -298,7 +315,7 @@ const renderAudio = async (buffers) => {
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
   let wavURL = URL.createObjectURL( blob );
 
-  return wavURL;
+  return state.wavURL = wavURL;
   // keep proper start time
   // let selection = sel()
   // if (selection) audio.currentTime = o2t(selection.start);

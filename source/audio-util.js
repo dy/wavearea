@@ -13,7 +13,7 @@ export const BLOCK_SIZE = 1024;
 // conversion helpers time <-> offset <-> block
 export const t2o = t =>  Math.floor(t * SAMPLE_RATE / BLOCK_SIZE)
 export const o2t = frame => frame * BLOCK_SIZE / SAMPLE_RATE
-export const t2b = t => Math.ceil(frame(t) / BLOCK_SIZE)
+export const t2b = t => Math.ceil(t2o(t) / BLOCK_SIZE)
 export const b2o = block => block * BLOCK_SIZE
 
 
@@ -98,6 +98,13 @@ export async function encodeAudio (...audioBuffers) {
 // convert audio buffer to waveform string
 export function drawAudio (audioBuffer) {
   if (!audioBuffer) return '';
+
+  // if waveform is rendered already - return cached
+  if (
+    audioBuffer._wf &&
+    audioBuffer._wf_first === audioBuffer.getChannelData(0)[0]
+  ) return audioBuffer._wf;
+
   console.time('to waveform string')
 
   // map waveform to wavefont
@@ -127,6 +134,28 @@ export function drawAudio (audioBuffer) {
     nextBlock += BLOCK_SIZE
   }
 
+  // cache waveform
+  audioBuffer._wf = str
+  audioBuffer._wf_first = audioBuffer.getChannelData(0)[0]
+
   console.timeEnd('to waveform string')
   return str
+}
+
+
+export function sliceAudio (buffer, start=0, end=buffer.length) {
+  let newBuffer = new AudioBuffer({
+    length: end - start,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate
+  });
+
+  for (var c = 0; c < newBuffer.numberOfChannels; c++) {
+    newBuffer.copyToChannel(
+      buffer.getChannelData(c).subarray(start, end),
+      c, 0
+    )
+  }
+
+  return newBuffer
 }

@@ -19,7 +19,7 @@
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
         :onclick="handleCaret"
-        :onkeydown="e=>(![' ', 'Backspace', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(e.key) && e.preventDefault(),handleKey(e))"
+        :onkeydown="handleKey"
         :onchange:oninput="handleInput"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"

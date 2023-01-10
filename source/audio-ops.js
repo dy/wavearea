@@ -1,7 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
 
-import { decodeAudio, fetchAudio, b2o } from './audio-util.js'
+import { decodeAudio, fetchAudio, sliceAudio, b2o } from './audio-util.js'
 
 // load file from url
 export const src =  async (buffers, url) => {
@@ -42,8 +42,8 @@ export const br = (buffers, ...offsets) => {
     let buf = buffers[bufIdx]
 
     if (bufOffset > 0 && bufOffset < buf.length) {
-      let left = subBuffer(buf, 0, bufOffset)
-      let right = subBuffer(buf, bufOffset)
+      let left = sliceAudio(buf, 0, bufOffset)
+      let right = sliceAudio(buf, bufOffset)
 
       buffers.splice(bufIdx, 1, left, right)
     }
@@ -77,23 +77,6 @@ export const clip = (buffers, from, to) => {
 
 }
 
-
-function subBuffer (buffer, start=0, end=buffer.length) {
-  let newBuffer = new AudioBuffer({
-    length: end - start,
-    numberOfChannels: buffer.numberOfChannels,
-    sampleRate: buffer.sampleRate
-  });
-
-  for (var c = 0; c < newBuffer.numberOfChannels; c++) {
-    newBuffer.copyToChannel(
-      buffer.getChannelData(c).subarray(start, end),
-      c, 0
-    )
-  }
-
-  return newBuffer
-}
 
 // either add external URL or silence (count)
 export const add = (buffers, offset, src) => {
