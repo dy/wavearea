@@ -53,7 +53,7 @@ let state = sprae(waveplay, {
   },
 
   // key pressed
-  handleKey(e) {
+  async handleKey(e) {
     if (e.key.startsWith('Arrow')) return
 
     e.preventDefault()
@@ -82,10 +82,16 @@ let state = sprae(waveplay, {
       let segmentId = selection.startNode.dataset.id
       if (!segmentId) throw Error('Segment id is not found, strange')
       let count = selection.end - selection.start
+      let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
+      if (offset < 0 && !count) return
+
       let op = count ? ['del', selection.start, count] :
-        ['del', selection.start - (e.key === 'Delete' ? 0 : 1), 1]
+        ['del', offset, 1]
       ops.push(op)
-      applyOp(op)
+      await applyOp(op)
+
+      // recover selection
+      sel(offset)
     }
   },
 
@@ -147,11 +153,15 @@ let state = sprae(waveplay, {
 
 
 // get/set selection with absolute (transparent) offsets
-const sel = (start, end=start) => {
+const sel = (start, end) => {
   let s = window.getSelection()
 
   // set selection, if passed
   if (start != null) {
+    // start/end must be within limits
+    start = Math.max(0, start)
+    if (end == null) end = start
+
     let startNode, endNode
     s.removeAllRanges()
     let range = new Range()
@@ -255,6 +265,7 @@ async function applyOp (...ops) {
     buffers = await Ops[op]?.(buffers, ...args)
   }
 
+  // FIXME: these can be parallelized
   renderWaveform(buffers);
   renderAudio(buffers);
 }
@@ -273,7 +284,7 @@ const renderWaveform = (buffers) => {
     segments.push(waveform)
   }
 
-  return state.segments = segments
+  state.segments = segments
 }
 
 // update audio URL based on current audio buffer

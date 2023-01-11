@@ -92,3 +92,24 @@
 + colon is perfect separator: `#line:col`
 + one entry is one history item
 + shorturl for audio files
+
+## [ ] Store offsets in blocks or samples?
+
+1. Blocks
+- depend on block size & sample rate
+- block size can change transforms
+- no precise editing
+  ~ isn't necessarily needed
++ very short notation
+? can define `block=1024&sr=44100` in url
+
+2. Samples
+- depend on sample rate
+- longer than block
++ more precies
+
+3. Time
+- too lengthy values
+- can be mistakes identifying exact place
++ doesn't depend on zoom / sample rate levels
++ can be very precise
