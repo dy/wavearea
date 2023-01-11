@@ -16,14 +16,15 @@
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
 * [x] Make 'Enter' create segments
-  * [ ] sometimes splitting fails (like back-forth splits)
 * [x] time codes next to lines
-  * [ ] fix segments repositioning of caret
-* [ ] Make all basic operations fork from URL:
+* [ ] Make basic operations fork from URL:
   * [x] br
   * [x] del
     * [x] fix deleting tail properly
+  * [x] normalize
   * [ ] mute
+* [ ] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
+* [ ] BUG: backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
 * [x] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [x] fix playback multiple segments
 * [ ] Make UI interactions serialize to basic URL operations
