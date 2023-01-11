@@ -9,7 +9,8 @@
 <body>
   <div class="waveplay">
     <div class="w-container">
-      <div class="w-loader wavefont" :if="loading"
+      <div class="w-loader wavefont"
+        :if="loading"
         :with="{id:null, str:''}"
         :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
         :text="str"
@@ -22,7 +23,7 @@
         :onkeydown="handleKey"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
-        :each="segment, id1 in segments"
+        :each="segment, id1 in segments" :key="id1"
         :text="segment"
         :data="{
           id:id1-1,
