@@ -1,4 +1,4 @@
-# waveplay ▸
+# ▸ waveplay 
 
 Waveform player with simple editing and transforms.
 Based on [wavefont](https://github.com/dy/wavefont).
