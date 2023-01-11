@@ -1,8 +1,6 @@
 // various audio / single buffer utils
 
-import wavEncode from './lib/wav-encode';
 import storage from 'kv-storage-polyfill';
-
 
 // NOTE: oggmented doesn't support other sample rate
 export const SAMPLE_RATE = 44100;
@@ -83,16 +81,50 @@ export async function decodeAudio (arrayBuffer, ctx) {
   return audioBuffer
 }
 
-// convert audio to wav array buffer
+// convert audio buffers to wav array buffer
 export async function encodeAudio (...audioBuffers) {
-  // FIXME: it can be really done fast by pre-selecting encoding type
-  // and just copying audio buffers Float32Arrays straight to wav buffer
   console.time('wav encode')
-  let audioBuffer = audioBuffers[0]
-  let channelData = audioBuffer.getChannelData(0)
-  let res = wavEncode([channelData], { sampleRate: audioBuffer.sampleRate, float: true, bitDepth: 32 })
+
+  // extracted parts of node-wav for seamless integration with audio buffers float32
+  let sampleRate = SAMPLE_RATE;
+  let bitDepth = 32
+  let channels = audioBuffers[0].numberOfChannels;
+  let length = 0;
+  for (let audioBuffer of audioBuffers) length += audioBuffer.length;
+  let buffer = new ArrayBuffer(44 + length * channels * (bitDepth >> 3));
+  let v = new DataView(buffer);
+  let pos = 0;
+  const u8 = (x) => v.setUint8(pos++, x);
+  const u16 = (x) => (v.setUint16(pos, x, true), pos += 2)
+  const u32 = (x) => (v.setUint32(pos, x, true), pos += 4)
+  const string = (s) => { for (var i = 0; i < s.length; ++i) u8(s.charCodeAt(i));}
+  string("RIFF");
+  u32(buffer.byteLength - 8);
+  string("WAVE");
+  string("fmt ");
+  u32(16);
+  u16(3); // float
+  u16(channels);
+  u32(sampleRate);
+  u32(sampleRate * channels * (bitDepth >> 3));
+  u16(channels * (bitDepth >> 3));
+  u16(bitDepth);
+  string("data");
+  u32(buffer.byteLength - 44);
+
+  // FIXME: can just copy data for mono case (way faster)
+  let output = new Float32Array(buffer, pos);
+  for (let audioBuffer of audioBuffers) {
+    let channels = audioBuffer.numberOfChannels,
+        channelData = Array(channels),
+        length = audioBuffer.length
+    for (let ch = 0; ch < channels; ++ch) channelData[ch] = audioBuffer.getChannelData(ch)
+    for (let i = 0; i < length; ++i)
+      for (let ch = 0; ch < channels; ++ch) output[pos++] = channelData[ch][i];
+  }
+
   console.timeEnd('wav encode')
-  return res
+  return buffer;
 }
 
 // convert audio buffer to waveform string

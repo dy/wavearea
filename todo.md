@@ -24,12 +24,14 @@
   * [x] del
     * [x] fix deleting tail properly
   * [ ] mute
+* [x] faster encoder by just copying changed subbuffer data, opposed to full rerender
+* [x] fix playback multiple segments
 * [ ] Make UI interactions serialize to basic URL operations
-* [ ] Display left/right channels with a separate colors, and black is their intersection
+* [ ] Display left/right channels with half-transparent blacks, and black is their intersection
+* [ ] Add vertical shift of average
 * [ ] Shift + select
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
-  * [ ] faster encoder by just copying changed subbuffer data, opposed to full rerender
     * ? should we work straight on wav buffer maybe instead of audio buffers?
 * [ ] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
@@ -38,18 +40,25 @@
 * [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
 * [ ] move loading/decoding/encoding to worker
 * [ ] random phrase player (from URL - like thetamath) via free speech api
-* [ ] broken sprae condition of `:if :ref`
-* [ ] replace file selector with + under caret
+* [x] broken sprae condition of `:if :ref`
+* [ ] replace file selector with + under caret?
 * [ ] open file
 * [ ] Make nicer playback UI (bottom of page player)
   * [ ] Errors and loading state must be indicated there
+  * [ ] Precise current playback time
 * [ ] delete file fully -> displays open file again
-* [ ] save file in storage
+* [ ] save file in storage? -> can be done via browser caching
 * [ ] Safari: initial audio loading state displays Error (show silent buffer)
 * [ ] paste audio from outside
-* [ ] plus sign under the caret
-* [ ] ? rebuild player based on media stream to avoid preloading multiple chunks at once
 * [ ] scroll must follow the current caret position
 * [ ] save edits in URL, so that any audio URL can be opened, edited, played.
 * [ ] Make history of changes with undo/redo
-* [ ] Save history in query
+* [ ] More audio transforms
+* [ ] Make reusable (web-) component
+* [ ] Think of embeddable links
+* [ ] Recording capability
+* [ ] Add tests (playright?)
+* [ ] Add humble links: support, github, share?
+* [ ] MAE loudness measure
+* [ ] Measure via LUFS and other methods
+* [ ] Process with lino

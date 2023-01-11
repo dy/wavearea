@@ -69,11 +69,11 @@ let state = sprae(waveplay, {
       // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
       let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
       brOp.push(selection.start)
-      applyOp(['br', selection.start])
+      await applyOp(['br', selection.start])
 
       // TODO: account for existing selection that was removed (replace fragment with break)
 
-      // FIXME: reinstate caret: it gets lost
+      sel(selection.start)
       return
     }
 
@@ -169,13 +169,13 @@ const sel = (start, end) => {
     // find start/end nodes
     let startNodeOffset = start
     startNode = wavearea.firstChild
-    while (startNodeOffset > startNode.firstChild.data.length)
+    while (startNodeOffset >= startNode.firstChild.data.length)
     startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
     range.setStart(startNode.firstChild, startNodeOffset)
 
     let endNodeOffset = end
     endNode = wavearea.firstChild
-    while (endNodeOffset > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
+    while (endNodeOffset >= endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
     range.setEnd(endNode.firstChild, endNodeOffset)
 
     s.addRange(range)
@@ -294,13 +294,13 @@ const renderAudio = async (buffers) => {
   // console.trace('render', buffer.duration)
   let wavBuffer = await encodeAudio(...buffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
+  // audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
   let wavURL = URL.createObjectURL( blob );
 
   return state.wavURL = wavURL;
   // keep proper start time
   // let selection = sel()
   // if (selection) audio.currentTime = o2t(selection.start);
-  // audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
 }
 
 init();

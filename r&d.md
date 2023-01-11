@@ -102,14 +102,19 @@
   ~ isn't necessarily needed
 + very short notation
 ? can define `block=1024&sr=44100` in url
+- any zoom change recalculates full url
 
 2. Samples
 - depend on sample rate
+~ sample rate change recalculates URL
 - longer than block
 + more precies
++ zoom change doesn't change url
+- big sample rates make very long URLs
 
 3. Time
 - too lengthy values
 - can be mistakes identifying exact place
 + doesn't depend on zoom / sample rate levels
 + can be very precise
++ can have conventional short notation: br=122.1s,156.432s,
