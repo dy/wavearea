@@ -4,12 +4,6 @@ import { BLOCK_SIZE, SAMPLE_RATE, t2o, o2t, t2b, drawAudio, encodeAudio } from '
 import * as Ops from './source/audio-ops.js'
 
 
-// track if mouse is pressed - needed to workaround caret pos reset
-let isMouseDown
-document.addEventListener('mousedown', ()=> isMouseDown = true)
-document.addEventListener('mouseup', ()=> isMouseDown = false)
-
-
 // refs
 const waveplay = document.querySelector('.waveplay')
 const wavearea = waveplay.querySelector('.w-wavearea')
@@ -40,11 +34,11 @@ let state = sprae(waveplay, {
   // waveform segments
   segments: [],
 
-  // current playable audio data
-  wavURL: '',
-
   // chars per line (~5s with block==1024)
   lineWidth: 215,
+
+  // current mouse state
+  isMouseDown: false,
 
   // caret repositioned my mouse
   handleCaret(e) {
@@ -52,47 +46,50 @@ let state = sprae(waveplay, {
     // state.endFrame = sel().collapsed ? t2b(audio.duration) : sel().end;
   },
 
-  // key pressed
-  async handleKey(e) {
-    if (e.key.startsWith('Arrow')) return
+  async handleEnter(e) {
+    let selection = sel()
+    let segmentId = selection.startNode.dataset.id
+    if (!segmentId) throw Error('Segment id is not found, strange')
 
-    e.preventDefault()
+    // push break operation
+    // FIXME: save to history
+    // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
+    let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
+    brOp.push(selection.start)
+    await applyOp(['br', selection.start])
 
-    // insert line break manually
-    if (e.key === 'Enter') {
-      let selection = sel()
-      let segmentId = selection.startNode.dataset.id
-      if (!segmentId) throw Error('Segment id is not found, strange')
+    // TODO: account for existing selection that was removed (replace fragment with break)
 
-      // push break operation
-      // FIXME: save to history
-      // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
-      let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
-      brOp.push(selection.start)
-      await applyOp(['br', selection.start])
+    sel(selection.start)
 
-      // TODO: account for existing selection that was removed (replace fragment with break)
+    return
+  },
 
-      sel(selection.start)
-      return
+  async handleDelete(e) {
+    let selection = sel()
+    let segmentId = selection.startNode.dataset.id
+    if (!segmentId) throw Error('Segment id is not found, strange')
+    let count = selection.end - selection.start
+    let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
+    if (offset < 0 && !count) return // head condition
+
+    // beginning of a segment must delete segment break, not insert delete op
+    if (!selection.startNodeOffset) {
+      //FIXME: must be done after we serialize ops in URL
+      //since it modifiers set of applied ops
+      // we don't want to introduce join
     }
 
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      let selection = sel()
-      let segmentId = selection.startNode.dataset.id
-      if (!segmentId) throw Error('Segment id is not found, strange')
-      let count = selection.end - selection.start
-      let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
-      if (offset < 0 && !count) return
-
+    else {
       let op = count ? ['del', selection.start, count] :
         ['del', offset, 1]
       ops.push(op)
       await applyOp(op)
-
-      // recover selection
-      sel(offset)
     }
+
+    // recover selection
+    // FIXME: maybe when we rerender audio we just should recover last current time
+    sel(offset)
   },
 
   // audio time changes
@@ -117,7 +114,7 @@ let state = sprae(waveplay, {
       const framesPlayed = t2o(audio.currentTime) - state.startFrame
       const currentFrame = state.startFrame + framesPlayed;
       // Prevent updating during the click
-      if (!isMouseDown) sel(currentFrame)
+      if (!state.isMouseDown) sel(currentFrame)
       if (endFrame && currentFrame >= endFrame) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
@@ -292,12 +289,14 @@ const renderAudio = async (buffers) => {
   // encode into wav-able blob
   // NOTE: can't do directly source since it can be unsupported
   // console.trace('render', buffer.duration)
+  URL.revokeObjectURL(audio.src);
   let wavBuffer = await encodeAudio(...buffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
-  // audio.onload = () => { URL.revokeObjectURL(state.wavURL); }
-  let wavURL = URL.createObjectURL( blob );
+  let time = audio.currentTime
+  let url = audio.src = URL.createObjectURL( blob );
+  audio.currentTime = time
 
-  return state.wavURL = wavURL;
+  return
   // keep proper start time
   // let selection = sel()
   // if (selection) audio.currentTime = o2t(selection.start);

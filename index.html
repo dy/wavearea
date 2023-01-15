@@ -7,8 +7,11 @@
 <link href="./main.css" rel="stylesheet"/>
 
 <body>
-  <div class="waveplay">
-    <div class="w-container">
+  <div class="waveplay"
+    :onmousedown.document="e=> (isMouseDown = true)"
+    :onmouseup.document="e=> (isMouseDown = false)"
+    >
+    <div class="w-container" :onclick="handleCaret">
       <div class="w-loader wavefont"
         :if="loading"
         :with="{id:null, str:''}"
@@ -19,8 +22,9 @@
         <input type="file" multiple />
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
-        :onclick="handleCaret"
-        :onkeydown="handleKey"
+        :onkeydown.enter.prevent="handleEnter"
+        :onkeydown.backspace.prevent="handleDelete"
+        :onkeydown.delete.prevent="handleDelete"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
         :each="segment, id1 in segments" :key="id1"
@@ -33,7 +37,7 @@
           return Array.from({length: lines}, (_,i)=>timecode(i*lineWidth + offset)).join('\n')"></p></div>
     </div>
 
-    <audio :if="wavURL" class="w-playback" controls :src="wavURL" :onplay..onpause="play" :onseeking="timeChange"></audio>
+    <audio class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
   </div>
 
   <script type="module" src="./dist/waveplay.js"></script>

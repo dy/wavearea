@@ -23,7 +23,7 @@
     * [x] fix deleting tail properly
   * [x] normalize
   * [ ] mute
-* [ ] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
+* [x] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
 * [ ] BUG: backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
 * [x] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [x] fix playback multiple segments
