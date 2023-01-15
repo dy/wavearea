@@ -1,7 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
 
-import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
+import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, joinAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
 
 // load file from url
 export const src =  async (buffers, url) => {
@@ -73,6 +73,19 @@ export const br = (buffers, ...offsets) => {
       )
     }
   }
+
+  return buffers
+}
+
+export function join(buffers, offset) {
+  let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset))
+
+  if (bufOffset) return console.warn('Wrong buffer offset', offset)
+
+  let left = buffers[bufIdx-1], right = buffers[bufIdx]
+  buffers.splice(bufIdx-1, 2,
+    joinAudio(left, right)
+  )
 
   return buffers
 }

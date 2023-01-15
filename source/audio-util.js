@@ -192,6 +192,26 @@ export function sliceAudio (buffer, start=0, end=buffer.length) {
   return newBuffer
 }
 
+export function joinAudio(a, b) {
+  let newBuffer = new AudioBuffer({
+    length: a.length + b.length,
+    numberOfChannels: Math.max(a.numberOfChannels, b.numberOfChannels),
+    sampleRate: a.sampleRate
+  })
+
+  for (let ch = 0; ch < newBuffer.numberOfChannels; ch++) {
+    newBuffer.copyToChannel(
+      a.getChannelData(ch),
+      ch, 0
+    )
+    newBuffer.copyToChannel(
+      b.getChannelData(ch),
+      ch, a.length
+    )
+  }
+  return newBuffer
+}
+
 export function deleteAudio(buffer, start=0, end=buffer.length) {
   let newBuffer = new AudioBuffer({
     length: buffer.length - Math.abs(end - start),

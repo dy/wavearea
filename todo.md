@@ -17,27 +17,37 @@
 * [x] BUG: stopping drops focus
 * [x] Make 'Enter' create segments
 * [x] time codes next to lines
-* [ ] Make basic operations fork from URL:
-  * [x] br
-  * [x] del
-    * [x] fix deleting tail properly
-  * [x] normalize
-  * [ ] mute
+* [x] br
+* [x] del
+  * [x] fix deleting tail properly
+* [x] normalize
 * [x] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
-* [ ] BUG: backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
 * [x] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [x] fix playback multiple segments
-* [ ] Make UI interactions serialize to basic URL operations
+* [x] Add vertical shift of average
+* [x] Shift + select
+
+## [ ] MVP: basic dubs editor
+
+* [ ] Reflect operations in URL
+* [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
+  * [x] join operation that serializes as removing break
+* [ ] mute
+* [ ] take source from URL.
+  * [x] if there's none - take random source
+* [ ] support dropping files
+* [ ] Make history of changes with undo/redo
+* [ ] support paste fragment of itself
+* [ ] convert ops units to h/s/ms
+
+## [ ] Improvements
+
 * [ ] Display left/right channels with half-transparent blacks, and black is their intersection
-* [ ] Add vertical shift of average
-* [ ] Shift + select
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
     * ? should we work straight on wav buffer maybe instead of audio buffers?
 * [ ] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
-* [ ] take source from URL, load that and visualize.
-  * [x] if there's none - take random source
 * [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
 * [ ] move loading/decoding/encoding to worker
 * [ ] random phrase player (from URL - like thetamath) via free speech api
@@ -50,10 +60,8 @@
 * [ ] delete file fully -> displays open file again
 * [ ] save file in storage? -> can be done via browser caching
 * [ ] Safari: initial audio loading state displays Error (show silent buffer)
-* [ ] paste audio from outside
 * [ ] scroll must follow the current caret position
 * [ ] save edits in URL, so that any audio URL can be opened, edited, played.
-* [ ] Make history of changes with undo/redo
 * [ ] More audio transforms
 * [ ] Make reusable (web-) component
 * [ ] Think of embeddable links
@@ -62,4 +70,5 @@
 * [ ] Add humble links: support, github, share?
 * [ ] MAE loudness measure
 * [ ] Measure via LUFS and other methods
-* [ ] Process with lino
+* [ ] Process audio with lino?
+* [ ] Vary color based on spectrum

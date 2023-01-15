@@ -60,7 +60,7 @@ let state = sprae(waveplay, {
 
     // TODO: account for existing selection that was removed (replace fragment with break)
 
-    sel(selection.start)
+    sel(selection.start, selection.start, 1)
 
     return
   },
@@ -74,10 +74,12 @@ let state = sprae(waveplay, {
     if (offset < 0 && !count) return // head condition
 
     // beginning of a segment must delete segment break, not insert delete op
-    if (!selection.startNodeOffset) {
+    if (!selection.startNodeOffset && selection.isCollapsed) {
       //FIXME: must be done after we serialize ops in URL
       //since it modifiers set of applied ops
       // we don't want to introduce join
+      await applyOp(['join', selection.start])
+      sel(selection.start)
     }
 
     else {
@@ -85,11 +87,11 @@ let state = sprae(waveplay, {
         ['del', offset, 1]
       ops.push(op)
       await applyOp(op)
+
+      // recover selection
+      sel(offset)
     }
 
-    // recover selection
-    // FIXME: maybe when we rerender audio we just should recover last current time
-    sel(offset)
   },
 
   // audio time changes
@@ -150,7 +152,7 @@ let state = sprae(waveplay, {
 
 
 // get/set selection with absolute (transparent) offsets
-const sel = (start, end) => {
+const sel = (start, end, lineOffset=0) => {
   let s = window.getSelection()
 
   // set selection, if passed
@@ -166,13 +168,13 @@ const sel = (start, end) => {
     // find start/end nodes
     let startNodeOffset = start
     startNode = wavearea.firstChild
-    while (startNodeOffset >= startNode.firstChild.data.length)
+    while ((startNodeOffset+lineOffset) > startNode.firstChild.data.length)
     startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
     range.setStart(startNode.firstChild, startNodeOffset)
 
     let endNodeOffset = end
     endNode = wavearea.firstChild
-    while (endNodeOffset >= endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
+    while ((endNodeOffset+lineOffset) > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
     range.setEnd(endNode.firstChild, endNodeOffset)
 
     s.addRange(range)
@@ -215,7 +217,6 @@ const sel = (start, end) => {
 
 
 // ----------- init app
-
 const sampleSources = [
   // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
   // './2022.12.13 - Законы счастливой общины-6Dn9qvAfBH0.mp4'
@@ -297,9 +298,6 @@ const renderAudio = async (buffers) => {
   audio.currentTime = time
 
   return
-  // keep proper start time
-  // let selection = sel()
-  // if (selection) audio.currentTime = o2t(selection.start);
 }
 
 init();
