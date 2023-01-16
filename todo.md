@@ -29,6 +29,7 @@
 
 ## [ ] MVP: basic dubs editor
 
+* [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen.
 * [ ] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
   * [x] join operation that serializes as removing break
@@ -39,6 +40,10 @@
 * [ ] Make history of changes with undo/redo
 * [ ] support paste fragment of itself
 * [ ] convert ops units to h/s/ms
+
+## [ ] Bugs
+
+* [ ] Time-codes of following segments are messed up: make them href-able
 
 ## [ ] Improvements
 

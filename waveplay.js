@@ -72,17 +72,16 @@ let state = sprae(waveplay, {
     let count = selection.end - selection.start
     let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
     if (offset < 0 && !count) return // head condition
-
     // beginning of a segment must delete segment break, not insert delete op
     if (!selection.startNodeOffset && selection.isCollapsed) {
-      //FIXME: must be done after we serialize ops in URL
-      //since it modifiers set of applied ops
-      // we don't want to introduce join
+      // we don't want to introduce join in URL
       await applyOp(['join', selection.start])
       sel(selection.start)
     }
 
     else {
+      //FIXME: must be done after we serialize ops in URL
+      // since it modifiers set of applied ops
       let op = count ? ['del', selection.start, count] :
         ['del', offset, 1]
       ops.push(op)
@@ -92,6 +91,10 @@ let state = sprae(waveplay, {
       sel(offset)
     }
 
+  },
+
+  async handleSpace(e) {
+    console.log('space')
   },
 
   // audio time changes

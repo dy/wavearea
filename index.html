@@ -22,9 +22,11 @@
         <input type="file" multiple />
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
-        :onkeydown.enter.prevent="handleEnter"
-        :onkeydown.backspace.prevent="handleDelete"
-        :onkeydown.delete.prevent="handleDelete"
+        :onkeydown="e => !e.key.startsWith('Arrow') && e.preventDefault()"
+        :onkeydown.enter="handleEnter"
+        :onkeydown.backspace="handleDelete"
+        :onkeydown.delete="handleDelete"
+        :onkeydown.space="handleSpace"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
         :each="segment, id1 in segments" :key="id1"
