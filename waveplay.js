@@ -72,8 +72,9 @@ let state = sprae(waveplay, {
     let count = selection.end - selection.start
     let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
     if (offset < 0 && !count) return // head condition
+
     // beginning of a segment must delete segment break, not insert delete op
-    if (!selection.startNodeOffset && selection.isCollapsed) {
+    if (!selection.startNodeOffset && selection.collapsed) {
       // we don't want to introduce join in URL
       await applyOp(['join', selection.start])
       sel(selection.start)
@@ -277,11 +278,13 @@ async function applyOp (...ops) {
 // FIXME: we may not need rerendering waveform here, hoping changes to initial file are enough
 // FIXME: move to worker to check if waveform is different
 const renderWaveform = (buffers) => {
-  let segments = [];
+  let segments = [], offset = 0;
 
   for (let buffer of buffers) {
     let waveform = drawAudio(buffer)
-    waveform = waveform.replaceAll('\u0100', ' ');
+    waveform = new String(waveform.replaceAll('\u0100', ' '));
+    waveform.offset = offset
+    offset += waveform.length
     segments.push(waveform)
   }
 
