@@ -31,9 +31,7 @@
       ><p class="w-segment"
         :each="segment, id1 in segments" :key="id1"
         :text="segment"
-        :data="{
-          id: id1 - 1
-        }"
+        :data="{ id: id1 - 1 }"
         :timecodes="let offset = segment.offset, lines=Math.ceil(segment.length / lineWidth);
           return Array.from({length: lines}, (_,i)=>timecode(i*lineWidth + offset)).join('\n')"></p></div>
     </div>

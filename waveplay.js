@@ -96,6 +96,17 @@ let state = sprae(waveplay, {
 
   async handleSpace(e) {
     console.log('space')
+
+    let selection = sel()
+
+    // save op to the list
+    let op = ops.at(-1)[0] === 'mute' ? ops.pop() : ['mute']
+    op.push([selection.start, 1])
+    await applyOp(['mute', [selection.start, 1]])
+
+    // TODO: account for existing selection that was removed (replace fragment with break)
+
+    sel(selection.start + 1)
   },
 
   // audio time changes

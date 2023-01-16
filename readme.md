@@ -1,4 +1,4 @@
-# ▸ waveplay 
+# ▸ waveplay
 
 Waveform player with simple editing and transforms.
 Based on [wavefont](https://github.com/dy/wavefont).
@@ -10,8 +10,8 @@ Based on [wavefont](https://github.com/dy/wavefont).
 * [x] Delete fragments
 * [x] Download edited wave
 * [x] Insert silence
-* [ ] Timecodes
-* [ ] Line breaks
+* [x] Timecodes
+* [x] Line breaks
 * [ ] Insert fragments
 * [ ] Persist edited file
 * [ ] Custom player
@@ -22,7 +22,7 @@ Based on [wavefont](https://github.com/dy/wavefont).
 All operations on audio are stored in URL / browser history as:
 
 ```
-?src=path/to/audio&sub=300:400&br=100,200,300&del=0:10,10:20&sil=10:20&...
+?src=path/to/audio&clip=300:400&br=100,200,300&del=0:10,10:20&mute=10:20&...
 ```
 
 Operations are applied to source in turn.

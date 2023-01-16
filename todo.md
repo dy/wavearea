@@ -33,17 +33,14 @@
 * [ ] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
   * [x] join operation that serializes as removing break
-* [ ] mute
+* [x] mute
 * [ ] take source from URL.
   * [x] if there's none - take random source
 * [ ] support dropping files
 * [ ] Make history of changes with undo/redo
 * [ ] support paste fragment of itself
 * [ ] convert ops units to h/s/ms
-
-## [ ] Bugs
-
-* [ ] Time-codes of following segments are messed up: make them href-able
+* [x] Time-codes of following segments are messed up: make them href-able
 
 ## [ ] Improvements
 

@@ -73,6 +73,7 @@ body {
   position: relative;
   margin: 0;
   padding: 0;
+  white-space: pre-wrap;
   max-width: calc(var(--linew, 240) * 2ch);
 }
 .w-segment::before{

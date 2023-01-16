@@ -1,7 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
 
-import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, joinAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
+import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, insertAudio, joinAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
 
 // load file from url
 export const src =  async (buffers, url) => {
@@ -100,13 +100,6 @@ export function del (buffers, offset, count) {
   // but we may want to preserve segmentation
   if (!end[1] && end[0]) end[0] -= 1, end[1] = buffers[end[0]].length
 
-  // FIXME: account for conditions:
-  // end buffer === start buffer
-  // start buffer is 0
-  // start buffer is full length
-  // end buffer is 0
-  // end buffer is full length
-
   let startBuffer = buffers[start[0]]
   let endBuffer = buffers[end[0]]
 
@@ -133,9 +126,23 @@ export function del (buffers, offset, count) {
   return buffers
 }
 
-export function mute (len, channels=2) {
-  let data = Array.from({length:channels}, ()=>new Float32Array(len))
-  return create(data)
+export function mute (buffers, ...parts) {
+
+  for (let part of parts) {
+    let [offset, count] = part
+    let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset))
+
+    // end of segment: insert to prev buffer
+    if (!bufOffset && bufIdx) bufIdx -= 1, bufOffset = buffers[bufIdx].length
+
+    let silenceBuffer = new AudioBuffer({
+      length: BLOCK_SIZE,
+      numberOfChannels: buffers?.[0].numberOfChannels || 1,
+      sampleRate: buffers?.[0].sampleRate || SAMPLE_RATE
+    })
+    buffers[bufIdx] = insertAudio(buffers[bufIdx], bufOffset, silenceBuffer)
+  }
+  return buffers
 }
 
 // clip to indicated fragment
@@ -152,19 +159,6 @@ export const add = (buffers, offset, src) => {
 // copy offset/cout to another position (rewrites data underneath)
 export const cp = (buffers, offset, count, to) => {
 
-}
-
-export function insert (buffer, start, newBuffer) {
-  var data = [], arr;
-  for (var channel = 0; channel < buffer.numberOfChannels; channel++) {
-    data.push(arr = new Float32Array(buffer.length + newBuffer.length))
-    var channelData = buffer.getChannelData(channel)
-    arr.set(channelData.subarray(0, start), 0);
-    arr.set(newBuffer.getChannelData(channel), start)
-    arr.set(channelData.subarray(start), start + newBuffer.length);
-  }
-
-  return create(data)
 }
 
 // return [bufIdx, bufOffset] from absolute offset

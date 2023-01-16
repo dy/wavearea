@@ -135,7 +135,7 @@ export function drawAudio (audioBuffer) {
   if (
     audioBuffer._wf &&
     audioBuffer._wf_first === audioBuffer.getChannelData(0)[0]
-  ) return audioBuffer._wf;
+    ) return audioBuffer._wf;
 
   console.time('to waveform string')
 
@@ -209,6 +209,7 @@ export function joinAudio(a, b) {
       ch, a.length
     )
   }
+
   return newBuffer
 }
 
@@ -227,4 +228,32 @@ export function deleteAudio(buffer, start=0, end=buffer.length) {
   }
 
   return newBuffer
+}
+
+
+export function insertAudio (a, offset, b) {
+  if (offset >= a.length) return joinAudio(a, b)
+  if (!offset) return joinAudio(b, a)
+
+  let buffer = new AudioBuffer({
+    length: a.length + b.length,
+    numberOfChannels: Math.max(a.numberOfChannels, b.numberOfChannels),
+    sampleRate: a.sampleRate
+  })
+
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    buffer.copyToChannel(
+      a.getChannelData(ch).subarray(0, offset),
+      ch, 0
+    )
+    buffer.copyToChannel(
+      b.getChannelData(ch),
+      ch, offset
+    )
+    buffer.copyToChannel(
+      a.getChannelData(ch).subarray(offset),
+      ch, offset + b.length
+    )
+  }
+  return buffer
 }

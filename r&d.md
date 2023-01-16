@@ -118,3 +118,6 @@
 + doesn't depend on zoom / sample rate levels
 + can be very precise
 + can have conventional short notation: br=122.1s,156.432s,
+
+4. Mix of 3 and 1: units indicate time, values indicate block
+- lazy solution: can be fixed on experimental stage
