@@ -127,16 +127,15 @@ export function del (buffers, offset, count) {
 }
 
 export function mute (buffers, ...parts) {
-
   for (let part of parts) {
     let [offset, count] = part
     let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset))
 
-    // end of segment: insert to prev buffer
+    // end of segment: insert to prev buffer - conventionally better have end space than have spaced beginning
     if (!bufOffset && bufIdx) bufIdx -= 1, bufOffset = buffers[bufIdx].length
 
     let silenceBuffer = new AudioBuffer({
-      length: BLOCK_SIZE,
+      length: count * BLOCK_SIZE,
       numberOfChannels: buffers?.[0].numberOfChannels || 1,
       sampleRate: buffers?.[0].sampleRate || SAMPLE_RATE
     })

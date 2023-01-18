@@ -91,22 +91,22 @@ let state = sprae(waveplay, {
       // recover selection
       sel(offset)
     }
-
   },
 
   async handleSpace(e) {
-    console.log('space')
 
     let selection = sel()
+    let segment = state.segments[selection.startNode.dataset.id]
+    let count = selection.startNode.textContent.length - segment.length
+    let offset = selection.start - count
 
     // save op to the list
     let op = ops.at(-1)[0] === 'mute' ? ops.pop() : ['mute']
-    op.push([selection.start, 1])
-    await applyOp(['mute', [selection.start, 1]])
+    op.push([offset, count])
+    await applyOp(['mute', [offset, count]])
 
     // TODO: account for existing selection that was removed (replace fragment with break)
-
-    sel(selection.start + 1)
+    sel(selection.start)
   },
 
   // audio time changes

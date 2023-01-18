@@ -41,6 +41,7 @@
 * [ ] support paste fragment of itself
 * [ ] convert ops units to h/s/ms
 * [x] Time-codes of following segments are messed up: make them href-able
+* [x] Bug: insert silence at the beginning of new segment -> feature
 
 ## [ ] Improvements
 
