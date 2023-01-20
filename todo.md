@@ -75,3 +75,4 @@
 * [ ] Measure via LUFS and other methods
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum
+* [ ] Use timing object https://github.com/chrisguttandin/timing-object
