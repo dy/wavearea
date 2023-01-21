@@ -36,15 +36,20 @@
 * [x] mute
 * [ ] take source from URL.
   * [x] if there's none - take random source
-* [ ] support dropping files
+* [x] support dropping files
+  * [ ] save dropped files to storage
 * [ ] Make history of changes with undo/redo
 * [ ] support paste fragment of itself
 * [ ] convert ops units to h/s/ms
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
+* [ ] Save local file edits to kv-storage
 
 ## [ ] Improvements
 
+* [ ] Loudness weighting
+  * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
+  * https://github.com/domchristie/needles
 * [ ] Display left/right channels with half-transparent blacks, and black is their intersection
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)

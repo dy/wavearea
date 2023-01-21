@@ -31,11 +31,11 @@ const audioCtx = await (async () => {
 export async function loadAudio (key=DB_KEY) {
   let blob = await storage.get(key)
   if (!blob) return
-  let arrayBuf = await blobToAB(blob)
+  let arrayBuf = await fileToArrayBuffer(blob)
   return arrayBuf
 }
 const DB_KEY = 'waveplay-audio'
-const blobToAB = (file) => {
+export const fileToArrayBuffer = (file) => {
   return new Promise((y,n) => {
     const reader = new FileReader();
     reader.addEventListener('loadend', (event) => {
@@ -146,22 +146,30 @@ export function drawAudio (audioBuffer) {
 
   // create wavefont string
   // amp coef brings up value a bit
-  const VISUAL_AMP = 2
+    const VISUAL_AMP = 2
   for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
     let ssum = 0, sum = 0
 
     // avg amp method - waveform is too small
-    // for (; i < nextBlock; i++) sum += Math.abs(i > channelData.length ? 0 : channelData[i])
+    // for (; i < nextBlock; i++) sum += Math.abs(i >= channelData.length ? 0 : channelData[i])
     // const avg = sum / BLOCK_SIZE
     // str += String.fromCharCode(0x0100 + Math.ceil(avg * 100))
 
-    // rms method:
+    // rms method
     // drawback: waveform is smaller than needed
     for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    // replace 0 with space
     let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))
     str += String.fromCharCode(0x0100 + v)
+
+    // signal energy loudness
+    // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
+    // same as RMS essentially, different power
+    // const STEVENS_POW = 0.67
+    // for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
+    // const value = (ssum / BLOCK_SIZE) ** STEVENS_POW
+    // let v =  Math.min(100, Math.ceil(value * 100 * VISUAL_AMP))
+    // str += String.fromCharCode(0x0100 + v)
 
     nextBlock += BLOCK_SIZE
   }

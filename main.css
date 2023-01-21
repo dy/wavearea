@@ -67,6 +67,10 @@ body {
   border: none;
   resize: none;
   background: none;
+  padding: 1rem;
+}
+.w-wavearea.dragover {
+  border: 2px dashed rgba(20,20,20,.08);
 }
 
 .w-segment {

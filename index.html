@@ -27,6 +27,8 @@
         :onkeydown.backspace.prevent="handleDelete"
         :onkeydown.delete.prevent="handleDelete"
         :onkeydown.space.debounce-500="handleSpace"
+        :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
+        :ondrop.prevent="handleDrop"
         :="this.style.setProperty('--linew', lineWidth)"
       ><p class="w-segment"
         :each="segment, id1 in segments" :key="id1"

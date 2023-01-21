@@ -1,6 +1,6 @@
 // import '@github/file-attachment-element';
 import sprae from 'sprae';
-import { BLOCK_SIZE, SAMPLE_RATE, t2o, o2t, t2b, drawAudio, encodeAudio } from './source/audio-util.js';
+import { BLOCK_SIZE, SAMPLE_RATE, t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './source/audio-util.js';
 import * as Ops from './source/audio-ops.js'
 
 
@@ -94,7 +94,6 @@ let state = sprae(waveplay, {
   },
 
   async handleSpace(e) {
-
     let selection = sel()
     let segment = state.segments[selection.startNode.dataset.id]
     let count = selection.startNode.textContent.length - segment.length
@@ -107,6 +106,23 @@ let state = sprae(waveplay, {
 
     // TODO: account for existing selection that was removed (replace fragment with break)
     sel(selection.start)
+  },
+
+  async handleDrop(e) {
+    let files = e.dataTransfer.files
+    let file = files[0]
+    if (!file.type.startsWith('audio')) return false;
+    // FIXME: save file to storage under the name
+
+    // recode into wav
+    let arrayBuf = await fileToArrayBuffer(file)
+    let audioBuf = await decodeAudio(arrayBuf)
+    let wavBuffer = await encodeAudio(audioBuf);
+    let blob = new Blob([wavBuffer], {type:'audio/wav'});
+    let url = URL.createObjectURL( blob );
+    applyOp(['src', url])
+
+    return arrayBuf
   },
 
   // audio time changes
