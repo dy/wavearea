@@ -1,6 +1,7 @@
-# ▸ waveplay
+# ▸ waev
 
 Waveform player with simple editing and transforms.
+Provides minimal ergonomic means to open, edit and save audio pieces, perfect for speech chunks.
 Based on [wavefont](https://github.com/dy/wavefont).
 
 ## Features
