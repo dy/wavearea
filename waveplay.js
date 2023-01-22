@@ -5,9 +5,9 @@ import * as Ops from './source/audio-ops.js'
 
 
 // refs
-const waveplay = document.querySelector('.waveplay')
-const wavearea = waveplay.querySelector('.w-wavearea')
-const audio = waveplay.querySelector('.w-playback')
+const waev = document.querySelector('.waev')
+const wavearea = waev.querySelector('.w-wavearea')
+const audio = waev.querySelector('.w-playback')
 
 // audio buffers & applied operations
 let buffers = []
@@ -16,7 +16,7 @@ const ops = []
 
 
 // init UI state
-let state = sprae(waveplay, {
+let state = sprae(waev, {
   // params
   loading: false,
   recording: false,
@@ -42,7 +42,8 @@ let state = sprae(waveplay, {
 
   // caret repositioned my mouse
   handleCaret(e) {
-    state.startFrame = t2o(audio.currentTime = o2t(sel().start));
+    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+    audio.currentTime = o2t(state.startFrame = sel().start);
     // state.endFrame = sel().collapsed ? t2b(audio.duration) : sel().end;
   },
 
@@ -115,12 +116,17 @@ let state = sprae(waveplay, {
     // FIXME: save file to storage under the name
 
     // recode into wav
+    state.loading = true
+    state.segments = []
+
     let arrayBuf = await fileToArrayBuffer(file)
     let audioBuf = await decodeAudio(arrayBuf)
     let wavBuffer = await encodeAudio(audioBuf);
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     let url = URL.createObjectURL( blob );
-    applyOp(['src', url])
+    await applyOp(['src', url])
+
+    state.loading = false
 
     return arrayBuf
   },
@@ -144,7 +150,7 @@ let state = sprae(waveplay, {
     let animId;
 
     const syncCaret = () => {
-      const framesPlayed = t2o(audio.currentTime) - state.startFrame
+      const framesPlayed = Math.max(t2o(audio.currentTime) - state.startFrame, 0)
       const currentFrame = state.startFrame + framesPlayed;
       // Prevent updating during the click
       if (!state.isMouseDown) sel(currentFrame)
@@ -177,7 +183,7 @@ let state = sprae(waveplay, {
   // produce display time from frames
   timecode(frame) {
     let time = o2t(frame)
-    return `${Math.floor(time/60).toFixed(0)}:${(time%60).toFixed(0).padStart(2,0)}`
+    return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
   }
 });
 

@@ -5,7 +5,6 @@ html, body {
   height: 100%;
 }
 body {
-  margin: 0;
   font-family: sans-serif;
 }
 
@@ -14,13 +13,7 @@ body {
 	font-display: block;
 	src: url(./asset/wavefont.woff2) format('woff2');
 }
-.waveplay {
-  height: 100%;
-  margin: 0;
-  padding: 0 2rem;
-  display: flex;
-  flex-direction: column;
-}
+
 .wavefont {
   display: block;
 	--wght: 25;
@@ -30,6 +23,14 @@ body {
   line-height: 1.4;
 	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
   word-break: break-all;
+}
+
+.waev {
+  height: 100%;
+  margin: 0;
+  padding: 0 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .w-container {

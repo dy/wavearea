@@ -4,8 +4,8 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild waveplay.js --bundle --sourcemap --loader:.svg=text --format=esm --outfile=dist/waveplay.js --servedir=.",
-    "build": "rm -rf ./dist/* && esbuild waveplay.js --bundle --splitting --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
+    "start": "esbuild waev.js --bundle --sourcemap --loader:.svg=text --format=esm --outfile=dist/waev.js --servedir=.",
+    "build": "rm -rf ./dist/* && esbuild waev.js --bundle --splitting --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
   },
   "repository": {
     "type": "git",

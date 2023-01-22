@@ -44,6 +44,7 @@
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
 * [ ] Save local file edits to kv-storage
+* [x] BUG: 0:60 in timing
 
 ## [ ] Improvements
 

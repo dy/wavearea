@@ -2,12 +2,12 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waveplay</title>
+<title>Waev</title>
 
 <link href="./main.css" rel="stylesheet"/>
 
 <body>
-  <div class="waveplay"
+  <div class="waev"
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
@@ -38,8 +38,8 @@
           return Array.from({length: lines}, (_,i)=>timecode(i*lineWidth + offset)).join('\n')"></p></div>
     </div>
 
-    <audio class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
+    <audio :disabled="!segments.length || loading" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
   </div>
 
-  <script type="module" src="./dist/waveplay.js"></script>
+  <script type="module" src="./dist/waev.js"></script>
 </body>
