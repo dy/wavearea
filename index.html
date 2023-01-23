@@ -23,19 +23,15 @@
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
         :onkeydown.character.prevent
-        :onkeydown.enter.prevent="handleEnter"
+        :oninput="updateTimecodes"
+        :onkeydown.enter="handleEnter"
         :onkeydown.backspace.prevent="handleDelete"
         :onkeydown.delete.prevent="handleDelete"
         :onkeydown.space.debounce-500="handleSpace"
         :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
         :ondrop.prevent="handleDrop"
-        :="this.style.setProperty('--linew', lineWidth)"
-      ><p class="w-segment"
-        :each="segment, id1 in segments" :key="id1"
-        :text="segment"
-        :data="{ id: id1 - 1 }"
-        :timecodes="let offset = segment.offset, lines=Math.ceil(segment.length / lineWidth);
-          return Array.from({length: lines}, (_,i)=>timecode(i*lineWidth + offset)).join('\n')"></p></div>
+        :="this.style.setProperty('--linew', lineWidth), segments, requestAnimationFrame(updateTimecodes)"
+      ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
     </div>
 
     <audio :disabled="!segments.length || loading" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>

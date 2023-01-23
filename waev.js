@@ -35,7 +35,7 @@ let state = sprae(waev, {
   segments: [],
 
   // chars per line (~5s with block==1024)
-  lineWidth: 215,
+  lineWidth: 216,
 
   // current mouse state
   isMouseDown: false,
@@ -47,6 +47,18 @@ let state = sprae(waev, {
     // state.endFrame = sel().collapsed ? t2b(audio.duration) : sel().end;
   },
 
+  // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
+  updateTimecodes() {
+    let offset = 0, i = 0
+    for (let el of wavearea.children) {
+      let content = el.textContent.trim()
+      let lines = Math.ceil(content.length / state.lineWidth)
+      el.dataset.id = i++
+      el.setAttribute('timecodes', Array.from({length: lines}, (_,i) => timecode(i*state.lineWidth + offset)).join('\n'))
+      offset += content.length
+    }
+  },
+
   async handleEnter(e) {
     let selection = sel()
     let segmentId = selection.startNode.dataset.id
@@ -55,13 +67,13 @@ let state = sprae(waev, {
     // push break operation
     // FIXME: save to history
     // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
-    let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
-    brOp.push(selection.start)
-    await applyOp(['br', selection.start])
-
-    // TODO: account for existing selection that was removed (replace fragment with break)
-
-    sel(selection.start, selection.start, 1)
+    setTimeout(async () => {
+      let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
+      brOp.push(selection.start)
+      await applyOp(['br', selection.start])
+      // TODO: account for existing selection that was removed (replace fragment with break)
+      sel(selection.start, selection.start, 1)
+    }, 500)
 
     return
   },
@@ -178,12 +190,6 @@ let state = sprae(waev, {
 
       wavearea.focus()
     }
-  },
-
-  // produce display time from frames
-  timecode(frame) {
-    let time = o2t(frame)
-    return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
   }
 });
 
@@ -252,6 +258,12 @@ const sel = (start, end, lineOffset=0) => {
 }
 
 
+  // produce display time from frames
+const timecode = (frame) => {
+  let time = o2t(frame)
+  return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
+}
+
 
 // ----------- init app
 const sampleSources = [
@@ -311,13 +323,11 @@ async function applyOp (...ops) {
 // FIXME: we may not need rerendering waveform here, hoping changes to initial file are enough
 // FIXME: move to worker to check if waveform is different
 const renderWaveform = (buffers) => {
-  let segments = [], offset = 0;
+  let segments = [];
 
   for (let buffer of buffers) {
     let waveform = drawAudio(buffer)
-    waveform = new String(waveform.replaceAll('\u0100', ' '));
-    waveform.offset = offset
-    offset += waveform.length
+    waveform = waveform.replaceAll('\u0100', ' ');
     segments.push(waveform)
   }
 
