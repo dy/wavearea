@@ -58,18 +58,21 @@ let state = sprae(waev, {
       offset += content.length
     }
   },
+  cleanup() {
+    // remove empty breaks (result of multiple enter keys)
+    for (let el of wavearea.children) if (!el.textContent.trim()) el.remove()
+  },
 
   async handleEnter(e) {
     let selection = sel()
     let segmentId = selection.startNode.dataset.id
     if (!segmentId) throw Error('Segment id is not found, strange')
-
     // push break operation
     // FIXME: save to history
     // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
+    let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
+    brOp.push(selection.start)
     setTimeout(async () => {
-      let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
-      brOp.push(selection.start)
       await applyOp(['br', selection.start])
       // TODO: account for existing selection that was removed (replace fragment with break)
       sel(selection.start, selection.start, 1)

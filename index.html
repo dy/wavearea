@@ -23,8 +23,8 @@
       </file-attachment> -->
       <div contenteditable class="w-wavearea wavefont"
         :onkeydown.character.prevent
-        :oninput="updateTimecodes"
-        :onkeydown.enter="handleEnter"
+        :oninput="() => (updateTimecodes(),cleanup())"
+        :onkeydown.enter.debounce-500="handleEnter"
         :onkeydown.backspace.prevent="handleDelete"
         :onkeydown.delete.prevent="handleDelete"
         :onkeydown.space.debounce-500="handleSpace"
@@ -34,7 +34,7 @@
       ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
     </div>
 
-    <audio :disabled="!segments.length || loading" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
+    <audio :hidden="loading" :disabled="!segments.length" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
   </div>
 
   <script type="module" src="./dist/waev.js"></script>
