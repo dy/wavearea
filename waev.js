@@ -1,7 +1,7 @@
 // import '@github/file-attachment-element';
 import sprae from 'sprae';
 import { BLOCK_SIZE, SAMPLE_RATE, t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './source/audio-util.js';
-import * as Ops from './source/audio-ops.js'
+import applyOp from './source/audio-ops.js'
 
 
 // refs
@@ -12,8 +12,9 @@ const audio = waev.querySelector('.w-playback')
 // audio buffers & applied operations
 let buffers = []
 const url = new URL(location);
-const ops = []
 
+// current set of applied ops
+const ops = []
 
 // init UI state
 let state = sprae(waev, {
@@ -35,6 +36,7 @@ let state = sprae(waev, {
   segments: [],
 
   // chars per line (~5s with block==1024)
+  // FIXME: make responsive
   lineWidth: 216,
 
   // current mouse state
@@ -54,13 +56,20 @@ let state = sprae(waev, {
       let content = el.textContent.trim()
       let lines = Math.ceil(content.length / state.lineWidth)
       el.dataset.id = i++
+      el.dataset.offset = offset
       el.setAttribute('timecodes', Array.from({length: lines}, (_,i) => timecode(i*state.lineWidth + offset)).join('\n'))
       offset += content.length
     }
   },
-  cleanup() {
-    // remove empty breaks (result of multiple enter keys)
-    for (let el of wavearea.children) if (!el.textContent.trim()) el.remove()
+  // cleanup() {
+  //   // remove empty breaks (result of multiple enter keys)
+  //   // FIXME: move to beforeinput event
+  //   for (let el of wavearea.children) if (!el.textContent.trim()) el.remove()
+  // },
+
+  async handleBeforeInput(e) {
+    let handler = inputHandlers[e.inputType]
+    if (!handler) e.preventDefault(); else handler(e)
   },
 
   async handleEnter(e) {
@@ -72,41 +81,43 @@ let state = sprae(waev, {
     // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
     let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
     brOp.push(selection.start)
-    setTimeout(async () => {
-      await applyOp(['br', selection.start])
-      // TODO: account for existing selection that was removed (replace fragment with break)
-      sel(selection.start, selection.start, 1)
-    }, 500)
+    await applyOp(buffers, ['br', selection.start])
+    // TODO: account for existing selection that was removed (replace fragment with break)
+    sel(selection.start, selection.start, 1)
 
     return
   },
-
-  async handleDelete(e) {
+  async handleBackspace(e) {
+    console.log(123)
     let selection = sel()
-    let segmentId = selection.startNode.dataset.id
-    if (!segmentId) throw Error('Segment id is not found, strange')
-    let count = selection.end - selection.start
-    let offset = selection.start - (e.key === 'Delete' ? 0 : 1)
+    let segment = state.segments[selection.startNode.dataset.id]
+    let offset = selection.start
+    let count = wavearea.textContent.length - state.segments.reduce((sum, seg) => sum += seg.length, 0)
+    console.log(count)
+
     if (offset < 0 && !count) return // head condition
 
-    // beginning of a segment must delete segment break, not insert delete op
-    if (!selection.startNodeOffset && selection.collapsed) {
-      // we don't want to introduce join in URL
-      await applyOp(['join', selection.start])
-      sel(selection.start)
-    }
 
-    else {
-      //FIXME: must be done after we serialize ops in URL
-      // since it modifiers set of applied ops
-      let op = count ? ['del', selection.start, count] :
-        ['del', offset, 1]
-      ops.push(op)
-      await applyOp(op)
+  },
+  async handleDelete(e) {
+    // // beginning of a segment must delete segment break, not insert delete op
+    // if (!selection.startNodeOffset && selection.collapsed) {
+    //   // we don't want to introduce join in URL
+    //   await applyOp(['join', selection.start])
+    //   sel(selection.start)
+    // }
 
-      // recover selection
-      sel(offset)
-    }
+    // else {
+    //   //FIXME: must be done after we serialize ops in URL
+    //   // since it modifiers set of applied ops
+    //   let op = count ? ['del', selection.start, count] :
+    //     ['del', offset, 1]
+    //   ops.push(op)
+    //   await applyOp(op)
+
+    //   // recover selection
+    //   sel(offset)
+    // }
   },
 
   async handleSpace(e) {
@@ -195,6 +206,43 @@ let state = sprae(waev, {
     }
   }
 });
+
+const inputHandlers = {
+  // insertText(){},
+  // insertReplacementText(){},
+  // insertLineBreak(){},
+  // insertParagraph(){},
+  // insertFromDrop(){},
+  // insertFromPaste(){},
+  // insertLink(){},
+  // deleteWordBackward(){},
+  // deleteWordForward(){},
+  // deleteSoftLineBackward(){},
+  // deleteSoftLineForward(){},
+  // deleteEntireSoftLine(){},
+  // deleteHardLineBackward(){},
+  // deleteHardLineForward(){},
+  // deleteByDrag(){},
+  // deleteByCut(){},
+  // deleteContent(){},
+  async deleteContentBackward(e){
+    let range = e.getTargetRanges()[0]
+    let from = range.startOffset + Number(range.startContainer.parentNode.dataset.offset),
+        to = range.endOffset + Number(range.endContainer.parentNode.dataset.offset),
+        count = to - from
+
+    let lastOp = ops.at(-1)
+    if (lastOp[0] === 'del') lastOp[2]++; else ops.push(lastOp = ['del', from, count]);
+    buffers = await applyOp(buffers, ['del',from, count])
+
+    // FIXME: these can be parallelized
+    renderWaveform(buffers);
+    renderAudio(buffers);
+  },
+  // deleteContentForward(){},
+  // historyUndo(){},
+  // historyRedo(){},
+}
 
 
 // get/set selection with absolute (transparent) offsets
@@ -296,7 +344,9 @@ async function init() {
       ops.push(['src', src], ['norm'])
     }
 
-    await applyOp(...ops);
+    buffers = await applyOp(buffers, ...ops);
+    renderWaveform(buffers);
+    renderAudio(buffers);
   }
   catch (e) {
     console.error(e)
@@ -306,21 +356,6 @@ async function init() {
   state.loading = false
 }
 
-// apply operations to buffers
-async function applyOp (...ops) {
-  console.log('Apply ops', ops)
-  for (let [op, ...args] of ops) {
-    if (!Ops[op]) throw Error('Unknown operation `' + op + '`')
-
-    buffers = await Ops[op]?.(buffers, ...args)
-  }
-
-  // FIXME: these can be parallelized
-  renderWaveform(buffers);
-  renderAudio(buffers);
-}
-
-
 // render waveform
 // FIXME: can rerender only diffing part
 // FIXME: we may not need rerendering waveform here, hoping changes to initial file are enough
@@ -328,13 +363,16 @@ async function applyOp (...ops) {
 const renderWaveform = (buffers) => {
   let segments = [];
 
+  let selection = sel()
+
   for (let buffer of buffers) {
     let waveform = drawAudio(buffer)
     waveform = waveform.replaceAll('\u0100', ' ');
     segments.push(waveform)
   }
-
   state.segments = segments
+
+  if (selection) sel(selection.start)
 }
 
 // update audio URL based on current audio buffer

@@ -2,9 +2,39 @@
 // acts on list of buffers
 
 import { decodeAudio, fetchAudio, sliceAudio, deleteAudio, insertAudio, joinAudio, b2o, SAMPLE_RATE, BLOCK_SIZE } from './audio-util.js'
+// import worker from './ops-worker.js';
+
+// // listen for myWorker to transfer the buffer back to main
+// worker.addEventListener("message", function handleMessageFromWorker(msg) {
+//   console.log("message from worker received in main:", msg);
+
+//   const bufTransferredBackFromWorker = msg.data;
+
+//   console.log(
+//     "buf.byteLength in main AFTER transfer back from worker:",
+//     bufTransferredBackFromWorker.byteLength
+//   );
+// });
+
+
+// apply operations to buffers immediately
+export default async function applyOp (buffers, ...ops) {
+  console.log('Apply ops', ops)
+  // const sab = new SharedArrayBuffer(1024);
+  // worker.postMessage(sab);
+
+  for (let [op, ...args] of ops) {
+    if (!Ops[op]) throw Error('Unknown operation `' + op + '`')
+    buffers = await Ops[op]?.(buffers, ...args)
+  }
+
+  return buffers
+}
+
+const Ops = {}
 
 // load file from url
-export const src =  async (buffers, url) => {
+Ops.src =  async (buffers, url) => {
   // try loading persisted audio, if any
   let arrayBuffer = await fetchAudio(url);
 
@@ -15,7 +45,7 @@ export const src =  async (buffers, url) => {
 }
 
 // normalize audio
-export const norm = (buffers) => {
+Ops.norm = (buffers) => {
   // remove static - calculate avg and subtract
   let sum = 0, total = 0
   for (let buffer of buffers) {
@@ -59,7 +89,7 @@ export const norm = (buffers) => {
 }
 
 // insert breaks / split
-export const br = (buffers, ...offsets) => {
+Ops.br = (buffers, ...offsets) => {
   for (let offset of offsets) {
     let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset));
     let buf = buffers[bufIdx]
@@ -77,7 +107,7 @@ export const br = (buffers, ...offsets) => {
   return buffers
 }
 
-export function join(buffers, offset) {
+Ops.join = (buffers, offset) => {
   let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset))
 
   if (bufOffset) return console.warn('Wrong buffer offset', offset)
@@ -90,7 +120,7 @@ export function join(buffers, offset) {
   return buffers
 }
 
-export function del (buffers, offset, count) {
+Ops.del = (buffers, offset, count) => {
   if (!count) return buffers
 
   let start = bufferOffset(buffers, b2o(offset))
@@ -126,7 +156,7 @@ export function del (buffers, offset, count) {
   return buffers
 }
 
-export function mute (buffers, ...parts) {
+Ops.mute = (buffers, ...parts) => {
   for (let part of parts) {
     let [offset, count] = part
     let [bufIdx, bufOffset] = bufferOffset(buffers, b2o(offset))
@@ -145,18 +175,18 @@ export function mute (buffers, ...parts) {
 }
 
 // clip to indicated fragment
-export const clip = (buffers, from, to) => {
+Ops.clip = (buffers, from, to) => {
 
 }
 
 
 // either add external URL or silence (count)
-export const add = (buffers, offset, src) => {
+Ops.add = (buffers, offset, src) => {
 
 }
 
 // copy offset/cout to another position (rewrites data underneath)
-export const cp = (buffers, offset, count, to) => {
+Ops.cp = (buffers, offset, count, to) => {
 
 }
 

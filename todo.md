@@ -45,9 +45,12 @@
 * [x] Bug: insert silence at the beginning of new segment -> feature
 * [ ] Save local file edits to kv-storage
 * [x] BUG: 0:60 in timing
+* [ ] OPTIMIZATION: use onbeforeinput/oninput for handling operations
+* [ ] BUG: deleting from left & then from right of caret is different
 
 ## [ ] Improvements
 
+* [ ] use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
   * https://github.com/domchristie/needles

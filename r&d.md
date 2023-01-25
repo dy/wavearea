@@ -12,6 +12,7 @@
   + wæv
   + anagram
   + free
+  + refers to sprae
 * wavea
   + wavearea
 * wavescope
@@ -41,7 +42,7 @@
 * Drop any audio chunk at specific caret location.
 * Generate speech at specific location.
 
-## [ ] Editing cases: what's the method of identifying changes? -> detect from operation
+## [x] Editing cases: what's the method of identifying changes? -> detect from onbeforeinput inputType
 
 * Delete part (selection)
 * Delete single block
