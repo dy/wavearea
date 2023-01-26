@@ -113,6 +113,7 @@ export async function encodeAudio (...audioBuffers) {
   u32(buffer.byteLength - 44);
 
   // FIXME: can just copy data for mono case (way faster)
+  // FIXME: should we instead to just directly work with wav buffer instead of audio buffers?
   let output = new Float32Array(buffer, pos);
   for (let audioBuffer of audioBuffers) {
     let channels = audioBuffer.numberOfChannels,
