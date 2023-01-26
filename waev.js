@@ -1,7 +1,6 @@
 // import '@github/file-attachment-element';
 import sprae from 'sprae';
-import { BLOCK_SIZE, SAMPLE_RATE, t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './source/audio-util.js';
-import applyOp from './source/audio-ops.js'
+import applyOp, { t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './source/planar-ops.js';
 
 
 // refs

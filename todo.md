@@ -27,6 +27,13 @@
 * [x] Add vertical shift of average
 * [x] Shift + select
 
+## [ ] Rewrite
+
+* [ ] interleaved buffers pointing to chunks of wav file, rather than audiobuffers
+* [ ] immediate audio ops via copy
+* [ ] worker processor
+* [ ] actions via beforeinput inputType
+
 ## [ ] MVP: basic dubs editor
 
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen.
