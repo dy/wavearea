@@ -1,5 +1,7 @@
 // dict of operations on waveform/audio supported by waveplay
 // acts on list of buffers
+// implements planar data strategy via AudioBuffer
+// considered to become a legacy in favor of interleaved strategy
 
 import storage from 'kv-storage-polyfill';
 

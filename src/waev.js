@@ -1,7 +1,11 @@
 // import '@github/file-attachment-element';
 import sprae from 'sprae';
-import applyOp, { t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './source/planar-ops.js';
+import applyOp, { t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './planar-ops.js';
 
+const worker = new Worker('./dist/worker.js', { type: "module" });
+
+// worker.postMessage('xxx', {x:1})
+worker.addEventListener('message', (e) => console.log('received url', audio.src = e.data))
 
 // refs
 const waev = document.querySelector('.waev')
@@ -15,7 +19,7 @@ const url = new URL(location);
 // current set of applied ops
 const ops = []
 
-// init UI state
+// UI state
 let state = sprae(waev, {
   // params
   loading: false,
@@ -27,9 +31,6 @@ let state = sprae(waev, {
   startFrame: 0,
 
   volume: 1,
-
-  // TODO: display error and state in audio element
-  error: null,
 
   // waveform segments
   segments: [],
@@ -60,79 +61,12 @@ let state = sprae(waev, {
       offset += content.length
     }
   },
-  // cleanup() {
-  //   // remove empty breaks (result of multiple enter keys)
-  //   // FIXME: move to beforeinput event
-  //   for (let el of wavearea.children) if (!el.textContent.trim()) el.remove()
-  // },
 
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType]
     if (!handler) e.preventDefault(); else handler(e)
   },
 
-  async handleEnter(e) {
-    let selection = sel()
-    let segmentId = selection.startNode.dataset.id
-    if (!segmentId) throw Error('Segment id is not found, strange')
-    // push break operation
-    // FIXME: save to history
-    // FIXME: this logic (multiple same-ops) can be done in push-history function to any ops
-    let brOp = ops.at(-1)[0] === 'br' ? ops.pop() : ['br']
-    brOp.push(selection.start)
-    await applyOp(buffers, ['br', selection.start])
-    // TODO: account for existing selection that was removed (replace fragment with break)
-    sel(selection.start, selection.start, 1)
-
-    return
-  },
-  async handleBackspace(e) {
-    console.log(123)
-    let selection = sel()
-    let segment = state.segments[selection.startNode.dataset.id]
-    let offset = selection.start
-    let count = wavearea.textContent.length - state.segments.reduce((sum, seg) => sum += seg.length, 0)
-    console.log(count)
-
-    if (offset < 0 && !count) return // head condition
-
-
-  },
-  async handleDelete(e) {
-    // // beginning of a segment must delete segment break, not insert delete op
-    // if (!selection.startNodeOffset && selection.collapsed) {
-    //   // we don't want to introduce join in URL
-    //   await applyOp(['join', selection.start])
-    //   sel(selection.start)
-    // }
-
-    // else {
-    //   //FIXME: must be done after we serialize ops in URL
-    //   // since it modifiers set of applied ops
-    //   let op = count ? ['del', selection.start, count] :
-    //     ['del', offset, 1]
-    //   ops.push(op)
-    //   await applyOp(op)
-
-    //   // recover selection
-    //   sel(offset)
-    // }
-  },
-
-  async handleSpace(e) {
-    let selection = sel()
-    let segment = state.segments[selection.startNode.dataset.id]
-    let count = selection.startNode.textContent.length - segment.length
-    let offset = selection.start - count
-
-    // save op to the list
-    let op = ops.at(-1)[0] === 'mute' ? ops.pop() : ['mute']
-    op.push([offset, count])
-    await applyOp(['mute', [offset, count]])
-
-    // TODO: account for existing selection that was removed (replace fragment with break)
-    sel(selection.start)
-  },
 
   async handleDrop(e) {
     let files = e.dataTransfer.files
@@ -307,19 +241,16 @@ const sel = (start, end, lineOffset=0) => {
   }
 }
 
-
-  // produce display time from frames
+// produce display time from frames
 const timecode = (frame) => {
   let time = o2t(frame)
   return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
 }
 
 
+
 // ----------- init app
 const sampleSources = [
-  // './asset/Krsna book 33_ rasa dance description (enhanced).wav'
-  // './2022.12.13 - Законы счастливой общины-6Dn9qvAfBH0.mp4'
-  // './2019.02.12 - SB 1.6.21 - Conversation between Narada and Vyasadeva (Adilabad)-EKGiwd8Y2gI.m4a'
   // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
   'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
   // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
@@ -389,4 +320,4 @@ const renderAudio = async (buffers) => {
   return
 }
 
-init();
+// init();

@@ -33,5 +33,11 @@
     <audio :hidden="loading" :disabled="!segments.length" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
   </div>
 
+  <script type="importmap">
+    {
+      "decoder/mp3": "./dist/decoder/mp3.js",
+      "decoder/ogg": "./dist/decoder/ogg.js"
+    }
+  </script>
   <script type="module" src="./dist/waev.js"></script>
 </body>

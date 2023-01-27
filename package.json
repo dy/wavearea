@@ -4,8 +4,8 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild waev.js --bundle --sourcemap --loader:.svg=text --format=esm --outfile=dist/waev.js --servedir=.",
-    "build": "rm -rf ./dist/* && esbuild waev.js --bundle --splitting --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
+    "start": "esbuild ./src/waev.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --sourcemap --loader:.svg=text --format=esm --outdir=dist --servedir=.",
+    "build": "rm -rf ./dist/* && esbuild ./src/waev.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
   },
   "repository": {
     "type": "git",
@@ -26,11 +26,14 @@
   "dependencies": {
     "@github/file-attachment-element": "^3.1.0",
     "@github/textarea-autosize": "^0.3.1",
+    "audio-type": "^1.0.2",
     "audioworklet-polyfill": "^1.1.2",
     "base64-arraybuffer": "^1.0.2",
     "kv-storage-polyfill": "^2.0.0",
+    "mpg123-decoder": "^0.4.2",
     "nanopop": "^2.1.0",
     "node-wav": "^0.0.2",
+    "ogg-opus-decoder": "^1.5.2",
     "oggmented": "^1.0.1",
     "sprae": "^2.11.1"
   },
