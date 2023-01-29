@@ -1,4 +1,4 @@
-// UI part of waev
+// UI part of waveplae
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
@@ -8,9 +8,9 @@ import sprae from 'sprae';
 export const KEY_DEBOUNCE = 1080;
 
 // refs
-const waev = document.querySelector('.waev')
-const wavearea = waev.querySelector('.w-wavearea')
-const audio = waev.querySelector('.w-playback')
+const waveplae = document.querySelector('.waveplae')
+const wavearea = waveplae.querySelector('.w-wavearea')
+const audio = waveplae.querySelector('.w-playback')
 
 
 // init backend
@@ -65,7 +65,7 @@ function pushOp (...ops) {
 
 
 // UI state
-let state = sprae(waev, {
+let state = sprae(waveplae, {
   // params
   loading: true,
   recording: false,

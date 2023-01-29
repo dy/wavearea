@@ -1,11 +1,11 @@
 {
-  "name": "wavearea",
+  "name": "waveplae",
   "version": "1.0.0",
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild ./src/waev.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --sourcemap --loader:.svg=text --format=esm --outdir=dist --servedir=.",
-    "build": "rm -rf ./dist/* && esbuild ./src/waev.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
+    "start": "esbuild ./src/waveplae.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --sourcemap --loader:.svg=text --format=esm --outdir=dist --servedir=.",
+    "build": "rm -rf ./dist/* && esbuild ./src/waveplae.js ./src/worker.js ./src/decoder/*.js --bundle --external:./src/decoder/* --minify --sourcemap --loader:.svg=text --format=esm --outdir=dist"
   },
   "repository": {
     "type": "git",

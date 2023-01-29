@@ -4,7 +4,7 @@ Waveform player with simple editing and transforms: trim, delete, mute, normaliz
 Provides minimal ergonomic means to open, edit and save audio pieces.
 Perfect for speech fragments editing.
 
-[Demo](https://dy.github.io/waev).
+[Demo](https://dy.github.io/waveplae).
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
