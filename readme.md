@@ -1,32 +1,19 @@
-# ▸ wæv
+# ▸ waveplæ
 
-Waveform player with simple editing and transforms.
-Provides minimal ergonomic means to open, edit and save audio pieces, perfect for speech chunks.
+Waveform player with simple editing and transforms: trim, delete, mute, normalize, split.
+Provides minimal ergonomic means to open, edit and save audio pieces.
+Perfect for speech fragments editing.
 
 [Demo](https://dy.github.io/waev).
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
-## Features
-
-* [x] Playback
-* [x] Load file from `?src=url` param
-* [x] Delete fragments
-* [x] Download edited wave
-* [x] Insert silence
-* [x] Timecodes
-* [x] Line breaks
-* [ ] Insert fragments
-* [ ] Persist edited file
-* [ ] Custom player
-* [ ] Undo / redo
-
 ## Operations
 
-All operations on audio are stored in URL / browser history as:
+All operations on audio are reflected in URL as:
 
 ```
-?src=path/to/audio&clip=300-400&br=100,200,300&del=0-10,10-20&mute=10-20&...
+?src=path/to/audio&clip=300-400&br=100~200~300&del=0-10~10-20&mute=10-20&...
 ```
 
 Operations are applied to source in turn.
@@ -34,10 +21,10 @@ Supported operations are (measured in blocks, each block is 1024 samples wide):
 
 * `src=path/to/audio` – load source file by URL. Can be wav, mp3 or ogg, or any other format supported by browser.
 * `norm` – normalize audio - make sure max volume is 1. <!-- TODO: normalize to indicated db value -->
-* `clip=offset-count` – slice audio to indicated range.
-* `br=offset,offset,...` – break audio by segments at indicated points.
-* `del=offset-len,offset-len,...` – delete fragments of audio at `offset`s of length `len`.
-* `mute=offset-len,offset-len,...` – insert silence at indicated points.
+* `clip=offset-to` – slice audio to indicated range.
+* `br=offset-offset-` – break audio by segments at indicated points.
+* `del=offset-len...offset-len...` – delete fragments of audio at `offset`s of length `len`.
+* `mute=offset-len...offset-len...` – insert silence at indicated points.
 <!-- * `fadein=start:duration`, `fadeout=start:duration` -->
 
 

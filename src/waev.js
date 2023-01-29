@@ -45,7 +45,7 @@ if (url.search.length < 2) {
 }
 // apply operations from URL, like src=path/to/file&clip=from:to&br=a,b,c
 else {
-  for (const [op, arg] of url.searchParams) arg.split('~').map(arg =>
+  for (const [op, arg] of url.searchParams) arg.split('...').map(arg =>
     worker.postMessage([op, ...(arg.includes(':') ? [arg] : arg.split('-'))])
   )
 }
@@ -56,7 +56,7 @@ else {
 function pushOp (...ops) {
   for (let op of ops) {
     let [name, ...args] = op
-    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}~${args.join('-')}` )
+    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}...${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
     worker.postMessage(op)
   }

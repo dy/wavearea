@@ -17,6 +17,9 @@
   + wavearea
 * wavescope
 * waveview
+* waveplae
+  + refers to sprae (ostensibly better than waev)
+  + refers to waveplay - better association than waev
 
 ## [ ] Demo cases
 
