@@ -19,7 +19,7 @@ body {
 	--wght: 25;
 	font-family: wavefont;
   letter-spacing: 1ch;
-  font-size: 50px;
+  font-size: 4rem;
   line-height: 1.4;
 	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
   word-break: break-all;
@@ -60,6 +60,7 @@ body {
   left: 0;
   right: 0;
   text-align: center;
+  padding: 1rem;
 }
 
 .w-wavearea {
@@ -93,7 +94,7 @@ body {
   word-break: keep-all;
   white-space: pre;
   opacity: .5;
-  line-height: calc(50px*1.4); /* FIXME: make depend on w-segment font-style */
+  line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
 }
 
 .w-playback {

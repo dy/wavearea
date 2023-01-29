@@ -26,6 +26,7 @@
   "dependencies": {
     "@github/file-attachment-element": "^3.1.0",
     "@github/textarea-autosize": "^0.3.1",
+    "audio-buffer": "^5.0.0",
     "audio-type": "^1.0.2",
     "audioworklet-polyfill": "^1.1.2",
     "base64-arraybuffer": "^1.0.2",

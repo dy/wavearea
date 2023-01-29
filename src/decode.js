@@ -1,9 +1,10 @@
 // audio decoders
 import audioType from 'audio-type'
+import AudioBuffer from 'audio-buffer'
 
 const decoders = {}
 
-const decode = async (arrayBuffer) => {
+const decodeAudio = async (arrayBuffer) => {
   const u8buf = new Uint8Array(arrayBuffer)
   const type = audioType(u8buf)
   let decode = await loadDecoder(type)
@@ -18,29 +19,45 @@ const decode = async (arrayBuffer) => {
 const loadDecoder = async (type) => {
   if (decoders[type]) return decoders[type]
 
-  console.time('load decoder ' + type)
-
-  let decode
-  if (type === 'mp3') {
-    let { MPEGDecoder } = await importDecoder('mp3')
-    let decoder = new MPEGDecoder()
-    await decoder.ready
-    decode = (buf) => decoder.decode(buf)
+  let decoder
+  switch (type) {
+    // TODO: add opus, flac etc
+    case 'mp3':
+      let { MPEGDecoderWebWorker } = await importDecoder('mp3')
+      decoder = new MPEGDecoderWebWorker()
+      break;
+    case 'ogg':
+    case 'oga':
+      let { OGGDecoder } = await importDecoder('ogg')
+      decoder = new OGGDecoder()
+      break;
+    default:
+      throw Error(type ? 'Unsupported codec ' + type : 'Unknown codec')
   }
-  else if (type === 'oga') {
-    let ogg = await importDecoder('ogg')
-    decode = ogg.default
+  // compile decoder
+  await decoder.ready;
+
+  // cache
+  return decoders[type] = async (buf) => {
+    let {channelData, sampleRate,...x} = await decoder.decode(buf)
+
+    let audioBuffer = new AudioBuffer({
+      sampleRate,
+      length: channelData[0].length,
+      numberOfChannels: channelData.length
+    })
+    for (let ch = 0; ch < channelData.length; ch++) audioBuffer.getChannelData(ch).set(channelData[ch])
+
+    return audioBuffer
   }
-
-  // TODO: add opus, flac etc
-  console.timeEnd('load decoder ' + type)
-
-  if (!decode) throw Error(type ? 'Unsupported codec ' + type : 'Unknown codec')
-
-  return decoders[type] = decode
 }
 
-// we need this function to mute esbuild
-const importDecoder = (type) => import('./decoder/' + type + '.js')
+// we need this function to bypass esbuild path rewrite, since decoders are bundled separately
+const importDecoder = (type) => {
+  console.time('load decoder ' + type)
+  let module = import('./decoder/' + type + '.js')
+  console.timeEnd('load decoder ' + type)
+  return module
+}
 
-export default decode;
+export default decodeAudio;

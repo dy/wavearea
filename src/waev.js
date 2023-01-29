@@ -1,39 +1,86 @@
-// import '@github/file-attachment-element';
+// UI part of waev
+// handles user interactions and sends commands to worker
+// all the data is stored and processed in worker
 import sprae from 'sprae';
-import applyOp, { t2o, o2t, t2b, drawAudio, encodeAudio, fileToArrayBuffer, decodeAudio } from './planar-ops.js';
 
-const worker = new Worker('./dist/worker.js', { type: "module" });
 
-// worker.postMessage('xxx', {x:1})
-worker.addEventListener('message', (e) => console.log('received url', audio.src = e.data))
+// wait this interval before triggering update
+export const KEY_DEBOUNCE = 1080;
 
 // refs
 const waev = document.querySelector('.waev')
 const wavearea = waev.querySelector('.w-wavearea')
 const audio = waev.querySelector('.w-playback')
 
-// audio buffers & applied operations
-let buffers = []
+
+// init backend
+const worker = new Worker('./dist/worker.js', { type: "module" });
+let lastId = 0
+worker.addEventListener('message', (e) => {
+  let {id, url, segments, duration} = e.data
+  if (id < lastId) return // skip older responses
+  lastId = id
+  audio.src = url
+  // assert waveform same as current content (must be!)
+  state.loading = false
+  if (!state.total) state.segments = segments
+  else console.assert(segments.join('') === wavearea.textContent, 'Rendered waveform is different from UI')
+  state.total = segments.reduce((total, seg) => total += seg.length, 0);
+  state.duration = duration
+})
+
+
+// operations
 const url = new URL(location);
 
-// current set of applied ops
-const ops = []
+// if URL has no operations - put random sample
+if (url.search.length < 2) {
+  const sampleSources = [
+    // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
+    'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
+    // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+  ]
+  let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
+  pushOp(['src', src])
+}
+// apply operations from URL, like src=path/to/file&clip=from:to&br=a,b,c
+else {
+  for (const [op, arg] of url.searchParams) arg.split('~').map(arg =>
+    worker.postMessage([op, ...(arg.includes(':') ? [arg] : arg.split('-'))])
+  )
+}
+
+// update history, post operation & schedule update
+// NOTE: we imply that ops are applied once and not multiple times
+// so that ops can be combined as del=0:10,20:30 instead of del=0:10&del=20:30
+function pushOp (...ops) {
+  for (let op of ops) {
+    let [name, ...args] = op
+    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}~${args.join('-')}` )
+    else url.searchParams.append(name, args.join('-'))
+    worker.postMessage(op)
+  }
+  history.pushState(null, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
+}
+
 
 // UI state
 let state = sprae(waev, {
   // params
-  loading: false,
+  loading: true,
   recording: false,
   playing: false,
   selecting: false,
 
   // current playback start/end time
-  startFrame: 0,
+  playbackStart: 0,
 
   volume: 1,
 
   // waveform segments
   segments: [],
+  total: 0, // # segments
+  duration: 0, // duration (received from backend)
 
   // chars per line (~5s with block==1024)
   // FIXME: make responsive
@@ -45,8 +92,9 @@ let state = sprae(waev, {
   // caret repositioned my mouse
   handleCaret(e) {
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    audio.currentTime = o2t(state.startFrame = sel().start);
-    // state.endFrame = sel().collapsed ? t2b(audio.duration) : sel().end;
+    state.playbackStart = sel().start;
+    audio.currentTime = state.playbackStart / state.total
+    // state.playbackEnd = sel().collapsed ? timeBlock(state.duration) : sel().end;
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
@@ -57,16 +105,18 @@ let state = sprae(waev, {
       let lines = Math.ceil(content.length / state.lineWidth)
       el.dataset.id = i++
       el.dataset.offset = offset
-      el.setAttribute('timecodes', Array.from({length: lines}, (_,i) => timecode(i*state.lineWidth + offset)).join('\n'))
+      el.setAttribute('timecodes', Array.from(
+        {length: lines},
+        (_,i) => timecode(i*state.lineWidth + offset)).join('\n')
+      )
       offset += content.length
     }
   },
 
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType]
-    if (!handler) e.preventDefault(); else handler(e)
+    if (!handler) e.preventDefault(); else handler.call(this, e)
   },
-
 
   async handleDrop(e) {
     let files = e.dataTransfer.files
@@ -94,7 +144,7 @@ let state = sprae(waev, {
   timeChange(e) {
     // ignore if event comes from wavearea
     if (document.activeElement === wavearea) return
-    sel(state.startFrame = t2o(audio.currentTime))
+    sel(state.playbackStart = Math.floor(state.total * audio.currentTime / state.duration))
     wavearea.focus()
   },
 
@@ -103,17 +153,17 @@ let state = sprae(waev, {
     let selection = sel();
     if (!selection) selection = sel(0);
 
-    let startFrame = selection.start;
-    let endFrame = !selection.collapsed ? selection.end : t2o(audio.duration);
+    let playbackStart = selection.start;
+    let playbackEnd = !selection.collapsed ? selection.end : state.total;
 
     let animId;
 
     const syncCaret = () => {
-      const framesPlayed = Math.max(t2o(audio.currentTime) - state.startFrame, 0)
-      const currentFrame = state.startFrame + framesPlayed;
+      const blocksPlayed = Math.max((state.total * audio.currentTime / state.duration) - state.playbackStart, 0)
+      const playbackCurrent = state.playbackStart + blocksPlayed;
       // Prevent updating during the click
-      if (!state.isMouseDown) sel(currentFrame)
-      if (endFrame && currentFrame >= endFrame) audio.pause();
+      if (!state.isMouseDown) sel(playbackCurrent)
+      if (playbackEnd && playbackCurrent >= playbackEnd) audio.pause();
       else animId = requestAnimationFrame(syncCaret)
     }
     syncCaret();
@@ -127,12 +177,12 @@ let state = sprae(waev, {
 
       // return selection if there was any
       if (selection.start !== selection.end) {
-        sel(startFrame, endFrame)
+        sel(playbackStart, playbackEnd)
       }
 
       // adjust end caret position
-      if (audio.currentTime >= audio.duration) {
-        sel(t2b(audio.duration).length)
+      if (audio.currentTime >= state.duration) {
+        sel(state.total)
       }
 
       wavearea.focus()
@@ -164,13 +214,18 @@ const inputHandlers = {
         to = range.endOffset + Number(range.endContainer.parentNode.dataset.offset),
         count = to - from
 
-    let lastOp = ops.at(-1)
-    if (lastOp[0] === 'del') lastOp[2]++; else ops.push(lastOp = ['del', from, count]);
-    buffers = await applyOp(buffers, ['del',from, count])
+    // debounce push op to collect multiple deletes
+    if (this._deleteTimeout) {
+      clearTimeout(this._deleteTimeout)
+      this._deleteOp[1]--
+      this._deleteOp[2]++
+    }
+    else this._deleteOp = ['del', from, count]
 
-    // FIXME: these can be parallelized
-    renderWaveform(buffers);
-    renderAudio(buffers);
+    this._deleteTimeout = setTimeout(() => {
+      pushOp(this._deleteOp)
+      this._deleteOp = this._deleteTimeout = null
+    }, KEY_DEBOUNCE)
   },
   // deleteContentForward(){},
   // historyUndo(){},
@@ -242,82 +297,7 @@ const sel = (start, end, lineOffset=0) => {
 }
 
 // produce display time from frames
-const timecode = (frame) => {
-  let time = o2t(frame)
+const timecode = (block) => {
+  let time = (block / state.total) * state.duration
   return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
 }
-
-
-
-// ----------- init app
-const sampleSources = [
-  // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
-  'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
-  // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
-]
-
-async function init() {
-  state.loading = true
-
-  try {
-    // collect operation from URL, like src=path/to/file&sub=from:to&br=a,b,c
-    for (const [op, value] of url.searchParams) {
-      console.log(op, value);
-    }
-
-    // if URL has no operations - put random sample
-    if (!ops.length) {
-      let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
-      // TODO: make a history entry
-      // url.searchParams.set('src', src);
-      // history.pushState(null, '', url);
-      ops.push(['src', src], ['norm'])
-    }
-
-    buffers = await applyOp(buffers, ...ops);
-    renderWaveform(buffers);
-    renderAudio(buffers);
-  }
-  catch (e) {
-    console.error(e)
-    state.error = e.message
-  }
-
-  state.loading = false
-}
-
-// render waveform
-// FIXME: can rerender only diffing part
-// FIXME: we may not need rerendering waveform here, hoping changes to initial file are enough
-// FIXME: move to worker to check if waveform is different
-const renderWaveform = (buffers) => {
-  let segments = [];
-
-  let selection = sel()
-
-  for (let buffer of buffers) {
-    let waveform = drawAudio(buffer)
-    waveform = waveform.replaceAll('\u0100', ' ');
-    segments.push(waveform)
-  }
-  state.segments = segments
-
-  if (selection) sel(selection.start)
-}
-
-// update audio URL based on current audio buffer
-const renderAudio = async (buffers) => {
-  // encode into wav-able blob
-  // NOTE: can't do directly source since it can be unsupported
-  // console.trace('render', buffer.duration)
-  URL.revokeObjectURL(audio.src);
-  let wavBuffer = await encodeAudio(...buffers);
-  let blob = new Blob([wavBuffer], {type:'audio/wav'});
-  let time = audio.currentTime
-  let url = audio.src = URL.createObjectURL( blob );
-  audio.currentTime = time
-
-  return
-}
-
-// init();

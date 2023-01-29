@@ -27,21 +27,21 @@
 * [x] Add vertical shift of average
 * [x] Shift + select
 
-## [ ] Rewrite
+## [x] Rewrite
 
-* [ ] interleaved buffers pointing to chunks of wav file, rather than audiobuffers
-* [ ] immediate audio ops via copy
-* [ ] worker processor
-* [ ] actions via beforeinput inputType
+* [x] ~~interleaved buffers pointing to chunks of wav file, rather than audiobuffers~~ same as below
+* [x] ~~immediate audio ops via copy~~ - saves 15ms, takes a lot in terms of losing AudioBuffer primitive
+* [x] worker processor
+* [x] actions via beforeinput inputType
 
 ## [ ] MVP: basic dubs editor
 
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen.
-* [ ] Reflect operations in URL
+* [x] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
   * [x] join operation that serializes as removing break
 * [x] mute
-* [ ] take source from URL.
+* [x] take source from URL.
   * [x] if there's none - take random source
 * [x] support dropping files
   * [ ] save dropped files to storage
@@ -50,10 +50,10 @@
 * [ ] convert ops units to h/s/ms
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
-* [ ] Save local file edits to kv-storage
+* [x] ~~Save local file edits to kv-storage~~ - saved in history
 * [x] BUG: 0:60 in timing
-* [ ] OPTIMIZATION: use onbeforeinput/oninput for handling operations
-* [ ] BUG: deleting from left & then from right of caret is different
+* [x] OPTIMIZATION: use onbeforeinput/oninput for handling operations
+* [x] BUG: deleting from left & then from right of caret is different
 
 ## [ ] Improvements
 
