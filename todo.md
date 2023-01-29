@@ -26,9 +26,6 @@
 * [x] fix playback multiple segments
 * [x] Add vertical shift of average
 * [x] Shift + select
-
-## [x] Rewrite
-
 * [x] ~~interleaved buffers pointing to chunks of wav file, rather than audiobuffers~~ same as below
 * [x] ~~immediate audio ops via copy~~ - saves 15ms, takes a lot in terms of losing AudioBuffer primitive
 * [x] worker processor
@@ -55,7 +52,11 @@
 * [x] OPTIMIZATION: use onbeforeinput/oninput for handling operations
 * [x] BUG: deleting from left & then from right of caret is different
 
-## [ ] Improvements
+## Bugs
+
+* [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
+
+## Improvements
 
 * [ ] use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker
 * [ ] Loudness weighting

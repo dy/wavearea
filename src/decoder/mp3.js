@@ -1,1 +1,1 @@
-export * from 'mpg123-decoder'
+export { MPEGDecoder } from 'mpg123-decoder'

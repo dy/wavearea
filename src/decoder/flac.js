@@ -1,0 +1,1 @@
+export { FLACDecoder } from '@wasm-audio-decoders/flac';

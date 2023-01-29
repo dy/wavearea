@@ -21,15 +21,23 @@ const loadDecoder = async (type) => {
 
   let decoder
   switch (type) {
-    // TODO: add opus, flac etc
+    // TODO: wav, webm
     case 'mp3':
-      let { MPEGDecoderWebWorker } = await importDecoder('mp3')
-      decoder = new MPEGDecoderWebWorker()
+      let { MPEGDecoder } = await importDecoder('mp3')
+      decoder = new MPEGDecoder()
       break;
     case 'ogg':
     case 'oga':
       let { OGGDecoder } = await importDecoder('ogg')
       decoder = new OGGDecoder()
+      break;
+    case 'flac':
+      let { FLACDecoder } = await importDecoder('flac')
+      decoder = new FLACDecoder()
+      break;
+    case 'opus':
+      let { OpusDecoder } = await importDecoder('opus')
+      decoder = new OpusDecoder()
       break;
     default:
       throw Error(type ? 'Unsupported codec ' + type : 'Unknown codec')
