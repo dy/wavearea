@@ -21,7 +21,7 @@ const loadDecoder = async (type) => {
 
   let decoder
   switch (type) {
-    // TODO: wav, webm
+    // TODO: wav, webm, aiff, aac, vob, voc, m4a
     case 'mp3':
       let { MPEGDecoder } = await importDecoder('mp3')
       decoder = new MPEGDecoder()
