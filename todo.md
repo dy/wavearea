@@ -55,6 +55,7 @@
 ## Bugs
 
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
+* [ ] Small screens wrongly wrap waveform timing
 
 ## Improvements
 

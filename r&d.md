@@ -17,11 +17,11 @@
   + wavearea
 * wavescope
 * waveview
-* waveplae
+* > waveplae
   + refers to sprae (ostensibly better than waev)
   + refers to waveplay - better association than waev
 
-## [ ] Demo cases
+## [ ] Random files / demo cases
 
 * Classics?
 * Famous quotes?
@@ -33,6 +33,16 @@
 * The most popular songs of all time?
 * Vedas?
 
+## [ ] Intro screen: ideas?
+
+* recent history of files
+* random file?
+* record mic
+* generate speech (some free API)
+* generate signal
+* some AI stuff (generate from prompt)
+* open file(s), drop file(s)
+
 ## [ ] Use cases?
 
 * Drop [Prabhupada] audio (paste by URL, by file, drop file), have multiline waveform with time markers.
@@ -40,7 +50,6 @@
   * Delete apparent long pauses.
   * Apply normalizer plugin.
   * Select start, apply fade-in; select end, apply fade-out.
-
 * Put cursor at any place: record own speech.
 * Drop any audio chunk at specific caret location.
 * Generate speech at specific location.
