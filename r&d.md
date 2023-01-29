@@ -17,9 +17,13 @@
   + wavearea
 * wavescope
 * waveview
-* > waveplae
+* waveplae
   + refers to sprae (ostensibly better than waev)
   + refers to waveplay - better association than waev
+* plae
+  + player
+  + refers to waveplae
+  + refers to sprae
 
 ## [ ] Random files / demo cases
 
@@ -35,13 +39,14 @@
 
 ## [ ] Intro screen: ideas?
 
-* recent history of files
-* random file?
-* record mic
-* generate speech (some free API)
-* generate signal
-* some AI stuff (generate from prompt)
-* open file(s), drop file(s)
+* !recent history of files
+* !random file?
+* !record mic
+* !generate speech (some free API)
+* !generate signal
+* !some AI stuff (generate from prompt)
+* !open file(s), drop file(s)
+* It must be meaningful & entertaining: each time educative content, like voiced aphorism etc.
 
 ## [ ] Use cases?
 

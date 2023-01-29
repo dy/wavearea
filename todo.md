@@ -59,7 +59,8 @@
 
 ## Improvements
 
-* [ ] use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker
+* [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
+* [ ] use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
   * https://github.com/domchristie/needles
@@ -85,12 +86,12 @@
 * [ ] save edits in URL, so that any audio URL can be opened, edited, played.
 * [ ] More audio transforms
 * [ ] Make reusable (web-) component
+  * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
 * [ ] Think of embeddable links
 * [ ] Recording capability
-* [ ] Add tests (playright?)
+* [ ] Add tests (playwright?)
 * [ ] Add humble links: support, github, share?
-* [ ] MAE loudness measure
 * [ ] Measure via LUFS and other methods
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum
-* [ ] Use timing object https://github.com/chrisguttandin/timing-object
+* [x] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
