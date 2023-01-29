@@ -25,7 +25,7 @@ body {
   word-break: break-all;
 }
 
-.waveplae {
+.wavearea {
   height: 100%;
   margin: 0;
   padding: 0 2rem;
@@ -63,7 +63,7 @@ body {
   padding: 1rem;
 }
 
-.w-wavearea {
+.w-editable {
   word-break: break-all;
   outline: none;
   border: none;
@@ -71,7 +71,7 @@ body {
   background: none;
   padding: 1rem;
 }
-.w-wavearea.dragover {
+.w-editable.dragover {
   border: 2px dashed rgba(20,20,20,.08);
 }
 

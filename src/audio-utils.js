@@ -210,7 +210,7 @@ export async function loadAudio (key=DB_KEY) {
   let arrayBuf = await fileToArrayBuffer(blob)
   return arrayBuf
 }
-const DB_KEY = 'waveplae-audio'
+const DB_KEY = 'wavearea-audio'
 export const fileToArrayBuffer = (file) => {
   return new Promise((y,n) => {
     const reader = new FileReader();

@@ -1,4 +1,4 @@
-// UI part of waveplae
+// UI part of wavearea
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
@@ -8,9 +8,9 @@ import sprae from 'sprae';
 export const KEY_DEBOUNCE = 1080;
 
 // refs
-const waveplae = document.querySelector('.waveplae')
-const wavearea = waveplae.querySelector('.w-wavearea')
-const audio = waveplae.querySelector('.w-playback')
+const wavearea = document.querySelector('.wavearea')
+const editarea = wavearea.querySelector('.w-editable')
+const audio = wavearea.querySelector('.w-playback')
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -24,7 +24,7 @@ worker.addEventListener('message', (e) => {
   // assert waveform same as current content (must be!)
   state.loading = false
   if (!state.total) state.segments = segments
-  else console.assert(segments.join('') === wavearea.textContent, 'Rendered waveform is different from UI')
+  else console.assert(segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
   state.total = segments.reduce((total, seg) => total += seg.length, 0);
   state.duration = duration
 })
@@ -65,7 +65,7 @@ function pushOp (...ops) {
 
 
 // UI state
-let state = sprae(waveplae, {
+let state = sprae(wavearea, {
   // params
   loading: true,
   recording: false,
@@ -100,7 +100,7 @@ let state = sprae(waveplae, {
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
   updateTimecodes() {
     let offset = 0, i = 0
-    for (let el of wavearea.children) {
+    for (let el of editarea.children) {
       let content = el.textContent.trim()
       let lines = Math.ceil(content.length / state.lineWidth)
       el.dataset.id = i++
@@ -142,10 +142,10 @@ let state = sprae(waveplae, {
 
   // audio time changes
   timeChange(e) {
-    // ignore if event comes from wavearea
-    if (document.activeElement === wavearea) return
+    // ignore if event comes from editarea
+    if (document.activeElement === editarea) return
     sel(state.playbackStart = Math.floor(state.total * audio.currentTime / state.duration))
-    wavearea.focus()
+    editarea.focus()
   },
 
   play (e) {
@@ -168,7 +168,7 @@ let state = sprae(waveplae, {
     }
     syncCaret();
 
-    wavearea.focus();
+    editarea.focus();
 
     // onstop
     return () => {
@@ -185,7 +185,7 @@ let state = sprae(waveplae, {
         sel(state.total)
       }
 
-      wavearea.focus()
+      editarea.focus()
     }
   }
 });
@@ -249,13 +249,13 @@ const sel = (start, end, lineOffset=0) => {
 
     // find start/end nodes
     let startNodeOffset = start
-    startNode = wavearea.firstChild
+    startNode = editarea.firstChild
     while ((startNodeOffset+lineOffset) > startNode.firstChild.data.length)
     startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
     range.setStart(startNode.firstChild, startNodeOffset)
 
     let endNodeOffset = end
-    endNode = wavearea.firstChild
+    endNode = editarea.firstChild
     while ((endNodeOffset+lineOffset) > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
     range.setEnd(endNode.firstChild, endNodeOffset)
 
@@ -268,7 +268,7 @@ const sel = (start, end, lineOffset=0) => {
     }
   }
 
-  if (!s.anchorNode || s.anchorNode.parentNode.parentNode !== wavearea) return
+  if (!s.anchorNode || s.anchorNode.parentNode.parentNode !== editarea) return
 
   // collect start/end offsets
   start = s.anchorOffset, end = s.focusOffset

@@ -2,12 +2,12 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waveplae</title>
+<title>Wavearea</title>
 
 <link href="./main.css" rel="stylesheet"/>
 
 <body>
-  <div class="waveplae"
+  <div class="wavearea"
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
@@ -21,7 +21,7 @@
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
-      <div contenteditable class="w-wavearea wavefont"
+      <div contenteditable class="w-editable wavefont"
         :oninput="updateTimecodes"
         :onbeforeinput="handleBeforeInput"
         :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
@@ -39,5 +39,5 @@
       "decoder/ogg": "./dist/decoder/ogg.js"
     }
   </script>
-  <script type="module" src="./dist/waveplae.js"></script>
+  <script type="module" src="./dist/wavearea.js"></script>
 </body>

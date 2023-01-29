@@ -1,10 +1,10 @@
-# ▸ waveplæ
+# ▸ wavearea
 
 Waveform player with simple editing and transforms: trim, delete, mute, normalize, split.
 Provides minimal ergonomic means to open, edit and save audio pieces.
 Perfect for speech fragments editing.
 
-[Demo](https://dy.github.io/waveplae).
+[Demo](https://dy.github.io/wavearea).
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
