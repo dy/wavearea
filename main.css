@@ -63,6 +63,7 @@ body {
 .w-editable {
   word-break: break-all;
   padding: 1rem;
+  outline: none;
 }
 .w-editable.dragover {
   border: 2px dashed rgba(20,20,20,.08);

@@ -27,7 +27,7 @@ const loadDecoder = async (type) => {
     case 'ogg':
     case 'oga':
       let { OggVorbisDecoder } = await importDecoder('ogg')
-      decoder = new OggVorbisDecoder().de
+      decoder = new OggVorbisDecoder()
       break;
     case 'flac':
       let { FLACDecoder } = await importDecoder('flac')
@@ -46,7 +46,7 @@ const loadDecoder = async (type) => {
   // cache
   return decoders[type] = async (buf) => {
     console.time('decode')
-    let {channelData, sampleRate} = await decoder.decodeFile(new Uint8Array(buf))
+    let {channelData, sampleRate} = decoder.decodeFile ? await decoder.decodeFile(new Uint8Array(buf)) : await decoder.decode(buf)
     console.timeEnd('decode')
 
     let audioBuffer = new AudioBuffer({

@@ -93,7 +93,7 @@ let state = sprae(wavearea, {
   handleCaret(e) {
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
     state.playbackStart = sel().start;
-    audio.currentTime = state.playbackStart / state.total
+    audio.currentTime = state.duration * state.playbackStart / state.total
     // state.playbackEnd = sel().collapsed ? timeBlock(state.duration) : sel().end;
   },
 
