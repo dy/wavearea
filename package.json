@@ -27,6 +27,7 @@
     "@github/file-attachment-element": "^3.1.0",
     "@github/textarea-autosize": "^0.3.1",
     "@wasm-audio-decoders/flac": "^0.1.2",
+    "@wasm-audio-decoders/ogg-vorbis": "^0.0.1",
     "audio-buffer": "^5.0.0",
     "audio-type": "^1.0.2",
     "audioworklet-polyfill": "^1.1.2",

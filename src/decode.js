@@ -9,9 +9,7 @@ const decodeAudio = async (arrayBuffer) => {
   const type = audioType(u8buf)
   let decode = await loadDecoder(type)
 
-  console.time('decode')
   let data = await decode(arrayBuffer)
-  console.timeEnd('decode')
 
   return data
 }
@@ -28,16 +26,16 @@ const loadDecoder = async (type) => {
       break;
     case 'ogg':
     case 'oga':
-      let { OGGDecoder } = await importDecoder('ogg')
-      decoder = new OGGDecoder()
+      let { OggVorbisDecoder } = await importDecoder('ogg')
+      decoder = new OggVorbisDecoder().de
       break;
     case 'flac':
       let { FLACDecoder } = await importDecoder('flac')
-      decoder = new FLACDecoder()
+      decoder = new FLACDecoder().decodeFile
       break;
     case 'opus':
       let { OpusDecoder } = await importDecoder('opus')
-      decoder = new OpusDecoder()
+      decoder = new OpusDecoder().decode
       break;
     default:
       throw Error(type ? 'Unsupported codec ' + type : 'Unknown codec')
@@ -47,7 +45,9 @@ const loadDecoder = async (type) => {
 
   // cache
   return decoders[type] = async (buf) => {
-    let {channelData, sampleRate,...x} = await decoder.decode(buf)
+    console.time('decode')
+    let {channelData, sampleRate} = await decoder.decodeFile(new Uint8Array(buf))
+    console.timeEnd('decode')
 
     let audioBuffer = new AudioBuffer({
       sampleRate,

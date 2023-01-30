@@ -55,20 +55,13 @@ body {
 }
 
 .w-loader {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   text-align: center;
   padding: 1rem;
+  word-break: break-all;
 }
 
 .w-editable {
   word-break: break-all;
-  outline: none;
-  border: none;
-  resize: none;
-  background: none;
   padding: 1rem;
 }
 .w-editable.dragover {
