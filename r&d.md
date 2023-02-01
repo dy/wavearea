@@ -120,6 +120,7 @@
 - no precise editing
   ~ isn't necessarily needed
 + very short notation
++ very natural to what you see
 ? can define `block=1024&sr=44100` in url
 - any zoom change recalculates full url
 
@@ -140,3 +141,29 @@
 
 4. Mix of 3 and 1: units indicate time, values indicate block
 - lazy solution: can be fixed on experimental stage
+
+## [x] Looping method -> custom UI for audio element: we need better UI anyways
+
+0. Same way we observe currentTime via raf, we can loop
+- short pieces are not loopable nicely
++ solves long pieces
+
+1. Create a clone of audio with selected fragment and loop it
+- keeping UI in sync
++ standard API
++ natural extension
+- can be costly to immediately create a big slice
+  ~ there's no difference perf-wise between set & loop
+-> yes, create bg wav buffer onselection, and fully intercept audio
+  * may need alternative UI, since original UI can fail
+
+2. -> Custom UI for audio tag
++ anyways we were going to do that
++ better control over displayed data
++ it can allow removin unusable parts
+
+3. Custom UI via AudioSourceNode
++ better integration with audio buffers
++ no need to constantly (re) encode wav
+- requires sending audio buffers to main thread
+- not as reliable as just audio

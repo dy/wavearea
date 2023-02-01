@@ -7,6 +7,9 @@ html, body {
 body {
   font-family: sans-serif;
 }
+[hidden] {
+  display: none!important;
+}
 
 @font-face {
 	font-family: wavefont;
@@ -54,19 +57,22 @@ body {
   z-index: 1;
 }
 
+.w-waveform {
+  margin: 1rem;
+  position: relative;
+}
+.w-waveform.dragover {
+  border: 2px dashed rgba(20,20,20,.08);
+}
+
 .w-loader {
   text-align: center;
-  padding: 1rem;
   word-break: break-all;
 }
 
 .w-editable {
   word-break: break-all;
-  padding: 1rem;
   outline: none;
-}
-.w-editable.dragover {
-  border: 2px dashed rgba(20,20,20,.08);
 }
 
 .w-segment {
@@ -89,6 +95,21 @@ body {
   white-space: pre;
   opacity: .5;
   line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
+}
+
+.w-play {
+  position: absolute;
+  left: -5.6rem;
+  width: 2rem;
+  height: 5.6rem;
+  align-items: center;
+  padding: 0;
+  text-align: center;
+  display: flex;
+  appearance: none;
+  border: none;
+  background: none;
+  top: calc(var(--carety) * 4rem * 1.4);
 }
 
 .w-playback {

@@ -11,26 +11,34 @@
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
-    <div class="w-container" :onclick="handleCaret">
-      <div class="w-loader wavefont"
-        :if="loading"
-        :with="{id:null, str:''}"
-        :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
-        :text="str"
-      >...</div>
+    <div class="w-container" :onselectstart="handleCaret">
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
-      <div contenteditable class="w-editable wavefont"
-        :oninput="updateTimecodes"
-        :onbeforeinput="handleBeforeInput"
-        :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
-        :ondrop.prevent="handleDrop"
-        :="this.style.setProperty('--linew', lineWidth), segments, requestAnimationFrame(updateTimecodes)"
-      ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
+      <div class="w-waveform">
+        <div class="w-loader wavefont"
+          :if="loading"
+          :with="{id:null, str:''}"
+          :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
+          :text="str"
+        >...</div>
+        <div contenteditable class="w-editable wavefont"
+          :oninput="updateTimecodes"
+          :onbeforeinput="handleBeforeInput"
+          :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
+          :ondrop.prevent="handleDrop"
+          :style="{'--linew': lineWidth}"
+          :="segments, requestAnimationFrame(updateTimecodes)"
+        ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
+
+        <button :hidden="loading" class="w-play" :onclick..onclick="play" :style="{'--carety': Math.floor(caretOffset/lineWidth)}">
+          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
+          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+      </div>
     </div>
 
-    <audio :hidden="loading" :disabled="!segments.length" class="w-playback" controls :onplay..onpause="play" :onseeking="timeChange"></audio>
+    <audio :disabled="!segments.length" class="w-playback" ></audio>
   </div>
 
   <script type="importmap">

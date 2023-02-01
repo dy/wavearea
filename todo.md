@@ -51,7 +51,10 @@
 * [x] BUG: 0:60 in timing
 * [x] OPTIMIZATION: use onbeforeinput/oninput for handling operations
 * [x] BUG: deleting from left & then from right of caret is different
-* [ ] BUG: fix playback from caret
+* [x] BUG: fix playback from caret
+* [ ] Ctrl-z/y
+* [ ] Space for start/stop
+* [ ] Loop play selection
 
 ## Bugs
 

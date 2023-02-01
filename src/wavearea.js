@@ -11,6 +11,7 @@ export const KEY_DEBOUNCE = 1080;
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const audio = wavearea.querySelector('.w-playback')
+const playButton = wavearea.querySelector('.w-play')
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -74,6 +75,8 @@ let state = sprae(wavearea, {
 
   // current playback start/end time
   playbackStart: 0,
+  loop: false,
+  playbackEnd: null,
 
   volume: 1,
 
@@ -81,6 +84,9 @@ let state = sprae(wavearea, {
   segments: [],
   total: 0, // # segments
   duration: 0, // duration (received from backend)
+
+  // current caret offset
+  caretOffset: 0,
 
   // chars per line (~5s with block==1024)
   // FIXME: make responsive
@@ -91,10 +97,17 @@ let state = sprae(wavearea, {
 
   // caret repositioned my mouse
   handleCaret(e) {
-    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    state.playbackStart = sel().start;
-    audio.currentTime = state.duration * state.playbackStart / state.total
-    // state.playbackEnd = sel().collapsed ? timeBlock(state.duration) : sel().end;
+    // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
+    document.addEventListener('selectionchange', e=> {
+      let selection = sel()
+      if (!selection) return
+      state.caretOffset = selection.start;
+      state.playbackStart = selection.start;
+      state.loop = !selection.collapsed;
+      state.playbackEnd = state.loop ? selection.end : null;
+      // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+      audio.currentTime = state.duration * state.playbackStart / state.total;
+    }, { once: true })
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
@@ -153,25 +166,28 @@ let state = sprae(wavearea, {
     let selection = sel();
     if (!selection) selection = sel(0);
 
-    let playbackStart = selection.start;
+    let playbackStart = state.caretOffset;
     let playbackEnd = !selection.collapsed ? selection.end : state.total;
 
     let animId;
 
     const syncCaret = () => {
-      const blocksPlayed = Math.max((state.total * audio.currentTime / state.duration) - state.playbackStart, 0)
+      const blocksPlayed = Math.max(Math.ceil(state.total * audio.currentTime / state.duration) - state.playbackStart, 0)
       const playbackCurrent = state.playbackStart + blocksPlayed;
       // Prevent updating during the click
-      if (!state.isMouseDown) sel(playbackCurrent)
-      if (playbackEnd && playbackCurrent >= playbackEnd) audio.pause();
+      sel(state.caretOffset = playbackCurrent)
+      if (playbackEnd && playbackCurrent >= playbackEnd) playButton.click();
       else animId = requestAnimationFrame(syncCaret)
     }
     syncCaret();
 
     editarea.focus();
 
+    audio.play();
+
     // onstop
     return () => {
+      audio.pause();
       state.playing = false
       cancelAnimationFrame(animId), animId = null
 

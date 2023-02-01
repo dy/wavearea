@@ -39,7 +39,7 @@
     "ogg-opus-decoder": "^1.5.2",
     "oggmented": "^1.0.1",
     "opus-decoder": "^0.6.2",
-    "sprae": "^2.11.1"
+    "sprae": "^2.11.2"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"
