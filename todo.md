@@ -63,6 +63,7 @@
 
 ## Improvements
 
+* [ ] make playback sticky to avoid hiding
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
 * [ ] use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs
 * [ ] Loudness weighting

@@ -110,6 +110,7 @@ body {
   border: none;
   background: none;
   top: calc(var(--carety) * 4rem * 1.4);
+  cursor: pointer;
 }
 
 .w-playback {

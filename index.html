@@ -11,7 +11,7 @@
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
-    <div class="w-container" :onselectstart="handleCaret">
+    <div class="w-container" :onselectstart..onselectionchange.document.once="handleCaret">
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
