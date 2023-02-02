@@ -99,7 +99,7 @@ body {
 
 .w-play {
   position: absolute;
-  left: -5.6rem;
+  margin-left: -5.6rem;
   width: 2rem;
   height: 5.6rem;
   align-items: center;

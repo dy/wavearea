@@ -60,11 +60,12 @@
 
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
 * [ ] Small screens wrongly wrap waveform timing
+* [ ] Trimming audio screws up play button position
 
 ## Improvements
 
-* [ ] make player responsive
-* [ ] make playback sticky to avoid hiding
+* [ ] make player responsive in mobile as bottom play button with overlay
+* [ ] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
 * [ ] use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs
 * [ ] Loudness weighting
