@@ -33,7 +33,7 @@
 
 ## [ ] MVP: basic dubs editor
 
-* [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen.
+* [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
 * [x] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
   * [x] join operation that serializes as removing break
@@ -43,6 +43,7 @@
 * [x] support dropping files
   * [ ] save dropped files to storage
 * [ ] Make history of changes with undo/redo
+  * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [ ] convert ops units to h/s/ms
 * [x] Time-codes of following segments are messed up: make them href-able
@@ -52,8 +53,7 @@
 * [x] OPTIMIZATION: use onbeforeinput/oninput for handling operations
 * [x] BUG: deleting from left & then from right of caret is different
 * [x] BUG: fix playback from caret
-* [ ] Ctrl-z/y
-* [ ] Space for start/stop
+* [x] Alt-Space for start/stop
 * [ ] Loop play selection
 
 ## Bugs
@@ -63,6 +63,7 @@
 
 ## Improvements
 
+* [ ] make player responsive
 * [ ] make playback sticky to avoid hiding
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
 * [ ] use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs

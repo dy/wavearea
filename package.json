@@ -24,22 +24,15 @@
   },
   "homepage": "https://github.com/audio-lab/wavearea#readme",
   "dependencies": {
-    "@github/file-attachment-element": "^3.1.0",
-    "@github/textarea-autosize": "^0.3.1",
     "@wasm-audio-decoders/flac": "^0.1.2",
     "@wasm-audio-decoders/ogg-vorbis": "^0.0.1",
     "audio-buffer": "^5.0.0",
     "audio-type": "^1.0.2",
-    "audioworklet-polyfill": "^1.1.2",
-    "base64-arraybuffer": "^1.0.2",
     "kv-storage-polyfill": "^2.0.0",
     "mpg123-decoder": "^0.4.2",
-    "nanopop": "^2.1.0",
-    "node-wav": "^0.0.2",
     "ogg-opus-decoder": "^1.5.2",
-    "oggmented": "^1.0.1",
     "opus-decoder": "^0.6.2",
-    "sprae": "^2.11.2"
+    "sprae": "^2.12.2"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"

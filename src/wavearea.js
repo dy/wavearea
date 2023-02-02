@@ -98,16 +98,14 @@ let state = sprae(wavearea, {
   // caret repositioned my mouse
   handleCaret(e) {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
-    return e => {
-      let selection = sel()
-      if (!selection) return
-      state.caretOffset = selection.start;
-      state.playbackStart = selection.start;
-      state.loop = !selection.collapsed;
-      state.playbackEnd = state.loop ? selection.end : null;
-      // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-      audio.currentTime = state.duration * state.playbackStart / state.total;
-    }
+    let selection = sel()
+    if (!selection) return
+    state.caretOffset = selection.start;
+    state.playbackStart = selection.start;
+    state.loop = !selection.collapsed;
+    state.playbackEnd = state.loop ? selection.end : null;
+    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+    audio.currentTime = state.duration * state.playbackStart / state.total;
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
