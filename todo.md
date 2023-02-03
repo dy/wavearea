@@ -78,7 +78,7 @@
 * [ ] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
 * [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
-* [ ] move loading/decoding/encoding to worker
+* [x] move loading/decoding/encoding to worker
 * [ ] random phrase player (from URL - like thetamath) via free speech api
 * [x] broken sprae condition of `:if :ref`
 * [ ] replace file selector with + under caret?
@@ -88,16 +88,16 @@
   * [ ] Precise current playback time
 * [ ] delete file fully -> displays open file again
 * [ ] save file in storage? -> can be done via browser caching
-* [ ] Safari: initial audio loading state displays Error (show silent buffer)
-* [ ] scroll must follow the current caret position
-* [ ] save edits in URL, so that any audio URL can be opened, edited, played.
+* [x] ~~Safari: initial audio loading state displays Error (show silent buffer)~~
+* [x] scroll must follow the current caret position
+* [x] save edits in URL, so that any audio URL can be opened, edited, played.
 * [ ] More audio transforms
 * [ ] Make reusable (web-) component
   * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
 * [ ] Think of embeddable links
 * [ ] Recording capability
 * [ ] Add tests (playwright?)
-* [ ] Add humble links: support, github, share?
+* [ ] Add info icon: support, github, brahman, tips
 * [ ] Measure via LUFS and other methods
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum
