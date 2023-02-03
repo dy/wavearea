@@ -97,7 +97,7 @@ body {
   line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
 }
 
-.w-play {
+.w-play, .w-line {
   position: absolute;
   margin-left: -5.6rem;
   width: 2rem;
@@ -111,6 +111,9 @@ body {
   background: none;
   top: calc(var(--carety) * 4rem * 1.4);
   cursor: pointer;
+}
+.w-line {
+  pointer-events: none;
 }
 
 .w-playback {

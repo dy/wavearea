@@ -65,9 +65,10 @@
 ## Improvements
 
 * [ ] make player responsive in mobile as bottom play button with overlay
-* [ ] make playback sticky to avoid hiding playback (intersection observer + position change)
+* [x] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
-* [ ] use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs
+* [x] ~~use decodeAudioData main thread "worker" for faster decode, detect supported natice codecs~~
+  nah, worker is good
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
   * https://github.com/domchristie/needles

@@ -12,14 +12,18 @@ const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const audio = wavearea.querySelector('.w-playback')
 const playButton = wavearea.querySelector('.w-play')
+const currentLine = wavearea.querySelector('.w-line')
 const xObserver = new IntersectionObserver(([item]) => {
-  state.caretVisible = item.isIntersecting
+  state.caretOffscreen = item.isIntersecting ? 0 :
+    (item.intersectionRect.top <= item.rootBounds.top ? 1 :
+    item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
+    0);
 }, {
   root: document,
   threshold: 1,
   rootMargin: '0px'
 })
-xObserver.observe(playButton);
+xObserver.observe(currentLine);
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -93,9 +97,8 @@ let state = sprae(wavearea, {
   total: 0, // # segments
   duration: 0, // duration (received from backend)
 
-  // current caret offset
-  caretVisible: false,
-  caretOffset: 0,
+  caretOffscreen: 0, // +1 if caret is below, -1 above viewport
+  caretOffset: 0, // current caret offset
   caretLine: 0,
 
   // chars per line (~5s with block==1024)
@@ -171,7 +174,7 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (!state.caretVisible) playButton.scrollIntoView({ behavior: 'smooth', block: 'center'});
+    if (state.caretOffscreen) currentLine.scrollIntoView({ behavior: 'smooth', block: 'center'});
   },
 
   play (e) {
