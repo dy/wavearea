@@ -97,7 +97,7 @@ body {
   line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
 }
 
-.w-play, .w-line {
+.w-play, .w-caret-line {
   position: absolute;
   margin-left: -5.6rem;
   width: 2rem;
@@ -112,7 +112,7 @@ body {
   top: calc(var(--carety) * 4rem * 1.4);
   cursor: pointer;
 }
-.w-line {
+.w-caret-line {
   pointer-events: none;
 }
 

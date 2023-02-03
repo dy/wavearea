@@ -12,8 +12,8 @@ const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const audio = wavearea.querySelector('.w-playback')
 const playButton = wavearea.querySelector('.w-play')
-const currentLine = wavearea.querySelector('.w-line')
-const xObserver = new IntersectionObserver(([item]) => {
+const caretLineRef = wavearea.querySelector('.w-caret-line')
+const caretObserver = new IntersectionObserver(([item]) => {
   state.caretOffscreen = item.isIntersecting ? 0 :
     (item.intersectionRect.top <= item.rootBounds.top ? 1 :
     item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
@@ -23,7 +23,7 @@ const xObserver = new IntersectionObserver(([item]) => {
   threshold: 1,
   rootMargin: '0px'
 })
-xObserver.observe(currentLine);
+caretObserver.observe(caretLineRef);
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -59,6 +59,7 @@ if (url.search.length < 2) {
 // apply operations from URL, like src=path/to/file&clip=from:to&br=a,b,c
 else {
   for (const [op, arg] of url.searchParams) arg.split('..').map(arg =>
+    // skip https:// as single argument
     worker.postMessage([op, ...(arg.includes(':') ? [arg] : arg.split('-'))])
   )
 }
@@ -120,6 +121,11 @@ let state = sprae(wavearea, {
     state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
     audio.currentTime = state.duration * state.playbackStart / state.total;
+
+    // create loopable audio fragment
+    if (state.loop) {
+
+    }
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
@@ -174,7 +180,7 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen) currentLine.scrollIntoView({ behavior: 'smooth', block: 'center'});
+    if (state.caretOffscreen) caretLineRef.scrollIntoView({ behavior: 'smooth', block: 'center'});
   },
 
   play (e) {
