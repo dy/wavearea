@@ -11,7 +11,7 @@
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
-    <div class="w-container" :onkeydown.arrow.debounce-1="handleCaret" :onselectstart..onselectionchange.document.once="e => handleCaret">
+    <div class="w-container" :onkeydown.arrow.debounce-0="handleCaret" :onselectstart..onselectionchange.document.once="e => handleCaret">
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
@@ -19,8 +19,8 @@
         <button class="w-play" :title="`${playing ? 'Pause' : 'Play'} (Alt+Space)`"
           :hidden="loading"
           :onclick..onclick="play"
-          :onkeydown.document.alt-space..onkeydown.document.alt-space="play"
-          :style="{'--carety': Math.floor(caretOffset/lineWidth)}">
+          :onkeydown.document.alt-space="e=>this.click(e)"
+          :style="{'--carety': caretLine }">
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>

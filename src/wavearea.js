@@ -12,6 +12,14 @@ const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const audio = wavearea.querySelector('.w-playback')
 const playButton = wavearea.querySelector('.w-play')
+const xObserver = new IntersectionObserver(([item]) => {
+  state.caretVisible = item.isIntersecting
+}, {
+  root: document,
+  threshold: 1,
+  rootMargin: '0px'
+})
+xObserver.observe(playButton);
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -86,7 +94,9 @@ let state = sprae(wavearea, {
   duration: 0, // duration (received from backend)
 
   // current caret offset
+  caretVisible: false,
   caretOffset: 0,
+  caretLine: 0,
 
   // chars per line (~5s with block==1024)
   // FIXME: make responsive
@@ -104,6 +114,7 @@ let state = sprae(wavearea, {
     state.playbackStart = selection.start;
     state.loop = !selection.collapsed;
     state.playbackEnd = state.loop ? selection.end : null;
+    state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
     audio.currentTime = state.duration * state.playbackStart / state.total;
   },
@@ -159,10 +170,16 @@ let state = sprae(wavearea, {
     editarea.focus()
   },
 
+  scrollIntoCaret() {
+    if (!state.caretVisible) playButton.scrollIntoView({ behavior: 'smooth', block: 'center'});
+  },
+
   play (e) {
     state.playing = true;
     let selection = sel();
     if (!selection) selection = sel(0);
+
+    state.scrollIntoCaret();
 
     let playbackStart = state.caretOffset;
     let playbackEnd = !selection.collapsed ? selection.end : state.total;
@@ -174,6 +191,8 @@ let state = sprae(wavearea, {
       const playbackCurrent = state.playbackStart + blocksPlayed;
       // Prevent updating during the click
       sel(state.caretOffset = playbackCurrent)
+      let caretLine = Math.floor(state.caretOffset / state.lineWidth);
+      if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
       if (playbackEnd && playbackCurrent >= playbackEnd) playButton.click();
       else animId = requestAnimationFrame(syncCaret)
     }

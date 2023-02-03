@@ -32,7 +32,7 @@
     "mpg123-decoder": "^0.4.2",
     "ogg-opus-decoder": "^1.5.2",
     "opus-decoder": "^0.6.2",
-    "sprae": "^2.12.2"
+    "sprae": "^2.12.3"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"
