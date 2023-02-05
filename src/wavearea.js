@@ -10,37 +10,25 @@ export const KEY_DEBOUNCE = 1080;
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
-const audio = wavearea.querySelector('.w-playback')
 const playButton = wavearea.querySelector('.w-play')
 const caretLineRef = wavearea.querySelector('.w-caret-line')
 const caretObserver = new IntersectionObserver(([item]) => {
   state.caretOffscreen = item.isIntersecting ? 0 :
-    (item.intersectionRect.top <= item.rootBounds.top ? 1 :
+  (item.intersectionRect.top <= item.rootBounds.top ? 1 :
     item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
     0);
-}, {
-  root: document,
-  threshold: 1,
-  rootMargin: '0px'
-})
+  }, {
+    root: document,
+    threshold: 1,
+    rootMargin: '0px'
+  });
 caretObserver.observe(caretLineRef);
+const audio = new Audio, loopAudio = new Audio;
+loopAudio.loop = true
 
 
 // init backend - receives messages from worker with rendered audio & waveform
 const worker = new Worker('./dist/worker.js', { type: "module" });
-let lastId = 0
-worker.addEventListener('message', (e) => {
-  let {id, url, segments, duration} = e.data
-  if (id < lastId) return // skip older responses
-  lastId = id
-  audio.src = url
-  // assert waveform same as current content (must be!)
-  state.loading = false
-  if (!state.total) state.segments = segments
-  else console.assert(segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
-  state.total = segments.reduce((total, seg) => total += seg.length, 0);
-  state.duration = duration
-})
 
 
 // load operations
@@ -56,27 +44,48 @@ if (url.search.length < 2) {
   let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
   pushOp(['src', src])
 }
-// apply operations from URL, like src=path/to/file&clip=from:to&br=a,b,c
+// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
 else {
-  for (const [op, arg] of url.searchParams) arg.split('..').map(arg =>
+  let ops = []
+  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
     // skip https:// as single argument
-    worker.postMessage([op, ...(arg.includes(':') ? [arg] : arg.split('-'))])
-  )
+    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
+  ))
+  runOp(...ops).then(renderAudio)
 }
 
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
-// so that ops can be combined as del=0:10,20:30 instead of del=0:10&del=20:30
-function pushOp (...ops) {
+// so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
+async function pushOp (...ops) {
   for (let op of ops) {
     let [name, ...args] = op
     if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
-    worker.postMessage(op)
   }
   history.pushState(null, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
+  return renderAudio(await runOp(...ops))
 }
 
+// post op message and wait for update response
+function runOp (...ops) {
+  return new Promise(resolve => {
+    worker.postMessage(ops)
+    worker.addEventListener('message', e => resolve(e.data), {once: true})
+  })
+}
+
+// update audio url & assert waveform
+function renderAudio ({url, segments, duration}) {
+  URL.revokeObjectURL(audio.src)
+  audio.src = url
+  // assert waveform same as current content (must be!)
+  state.loading = false
+  if (!state.total) state.segments = segments
+  else console.assert(segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
+  state.total = segments.reduce((total, seg) => total += seg.length, 0);
+  state.duration = duration
+}
 
 // UI state
 let state = sprae(wavearea, {
@@ -106,26 +115,26 @@ let state = sprae(wavearea, {
   // FIXME: make responsive
   lineWidth: 216,
 
-  // current mouse state
-  isMouseDown: false,
-
   // caret repositioned my mouse
-  handleCaret(e) {
+  async handleCaret(e) {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
     let selection = sel()
     if (!selection) return
     state.caretOffset = selection.start;
-    state.playbackStart = selection.start;
-    state.loop = !selection.collapsed;
-    state.playbackEnd = state.loop ? selection.end : null;
     state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
-    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    audio.currentTime = state.duration * state.playbackStart / state.total;
 
-    // create loopable audio fragment
-    if (state.loop) {
-
+    if (!state.playing) {
+      state.playbackStart = selection.start;
+      state.playbackEnd = !selection.collapsed ? selection.end : state.total;
+      state.loop = !selection.collapsed;
+      // create loopable audio fragment
+      if (state.loop) inputHandlers.selectionChange()
     }
+
+    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+    if (state.loop) loopAudio.currentTime = loopAudio.duration *
+      (Math.max(state.playbackStart, Math.min(selection.start, state.playbackEnd)) - state.playbackStart) / (state.playbackEnd - state.playbackStart)
+    else audio.currentTime = audio.duration * selection.start / state.total;
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
@@ -145,8 +154,8 @@ let state = sprae(wavearea, {
   },
 
   async handleBeforeInput(e) {
-    let handler = inputHandlers[e.inputType]
-    if (!handler) e.preventDefault(); else handler.call(this, e)
+    let handler = inputHandlers[e.inputType];
+    if (!handler) e.preventDefault(); else handler.call(this, e);
   },
 
   async handleDrop(e) {
@@ -156,19 +165,19 @@ let state = sprae(wavearea, {
     // FIXME: save file to storage under the name
 
     // recode into wav
-    state.loading = true
-    state.segments = []
+    state.loading = true;
+    state.segments = [];
 
-    let arrayBuf = await fileToArrayBuffer(file)
-    let audioBuf = await decodeAudio(arrayBuf)
+    let arrayBuf = await fileToArrayBuffer(file);
+    let audioBuf = await decodeAudio(arrayBuf);
     let wavBuffer = await encodeAudio(audioBuf);
     let blob = new Blob([wavBuffer], {type:'audio/wav'});
     let url = URL.createObjectURL( blob );
-    await applyOp(['src', url])
+    await applyOp(['src', url]);
 
-    state.loading = false
+    state.loading = false;
 
-    return arrayBuf
+    return arrayBuf;
   },
 
   // audio time changes
@@ -185,47 +194,48 @@ let state = sprae(wavearea, {
 
   play (e) {
     state.playing = true;
-    let selection = sel();
-    if (!selection) selection = sel(0);
 
     state.scrollIntoCaret();
 
-    let playbackStart = state.caretOffset;
-    let playbackEnd = !selection.collapsed ? selection.end : state.total;
+    let playbackStart = state.playbackStart;
+    let playbackEnd = state.playbackEnd;
 
     let animId;
 
     const syncCaret = () => {
-      const blocksPlayed = Math.max(Math.ceil(state.total * audio.currentTime / state.duration) - state.playbackStart, 0)
+      const blocksPlayed = state.loop ?
+        Math.ceil((state.playbackEnd - state.playbackStart) * loopAudio.currentTime / loopAudio.duration) :
+        Math.max(Math.ceil(state.total * audio.currentTime / audio.duration) - state.playbackStart, 0)
       const playbackCurrent = state.playbackStart + blocksPlayed;
-      // Prevent updating during the click
+
       sel(state.caretOffset = playbackCurrent)
+
       let caretLine = Math.floor(state.caretOffset / state.lineWidth);
       if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
-      if (playbackEnd && playbackCurrent >= playbackEnd) playButton.click();
+
+      // stop if end reached
+      if (!state.loop && playbackEnd && playbackCurrent >= playbackEnd) playButton.click();
       else animId = requestAnimationFrame(syncCaret)
     }
     syncCaret();
 
     editarea.focus();
 
-    audio.play();
+    (state.loop ? loopAudio : audio).play();
+    // TODO: markLoopRange()
 
     // onstop
     return () => {
-      audio.pause();
+      (state.loop ? loopAudio : audio).pause();
       state.playing = false
       cancelAnimationFrame(animId), animId = null
 
       // return selection if there was any
-      if (selection.start !== selection.end) {
-        sel(playbackStart, playbackEnd)
-      }
+      //TODO: unmarkLoopRange()
+      if (state.loop) sel(playbackStart, playbackEnd)
 
       // adjust end caret position
-      if (audio.currentTime >= state.duration) {
-        sel(state.total)
-      }
+      else if (audio.currentTime >= state.duration) sel(state.total)
 
       editarea.focus()
     }
@@ -272,6 +282,18 @@ const inputHandlers = {
   // deleteContentForward(){},
   // historyUndo(){},
   // historyRedo(){},
+
+  // non-input handler for loop (need to debounce)
+  selectionChange(e) {
+    if (this._loopTimeout) clearTimeout(this._loopTimeout)
+
+    this._loopTimeout = setTimeout(async () => {
+      this._loopTimeout = null
+      let { url } = await runOp(['loop', state.playbackStart, state.playbackEnd]);
+      if (loopAudio.src) URL.revokeObjectURL(loopAudio.src)
+      loopAudio.src = url
+    }, 280)
+  }
 }
 
 

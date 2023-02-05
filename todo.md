@@ -54,7 +54,7 @@
 * [x] BUG: deleting from left & then from right of caret is different
 * [x] BUG: fix playback from caret
 * [x] Alt-Space for start/stop
-* [ ] Loop play selection
+* [x] Loop play selection
 
 ## Bugs
 

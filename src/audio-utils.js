@@ -70,7 +70,7 @@ export function drawAudio (audioBuffer) {
   // if waveform is rendered already - return cached
   if (audioBuffer._wf) return audioBuffer._wf;
 
-  console.time('to waveform string')
+  // console.time('draw string')
 
   // map waveform to wavefont
   let channelData = audioBuffer.getChannelData(0), str = ''
@@ -111,7 +111,7 @@ export function drawAudio (audioBuffer) {
   // cache waveform
   audioBuffer._wf = str
 
-  console.timeEnd('to waveform string')
+  // console.timeEnd('draw string')
   return str
 }
 

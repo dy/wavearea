@@ -1,53 +1,107 @@
 // main audio processing API / backend
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
-import { fetchAudio, cloneAudio, drawAudio, encodeAudio } from "./audio-utils.js";
+import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio } from "./audio-utils.js";
 import AudioBuffer from "audio-buffer";
 
-// sequence of applied ops with revert actions
-const ops = []
 
 // ops worker - schedules message processing with debounced update
-let id = 0, queue = []
 self.onmessage = async e => {
-  queue.push(e.data)
-  if (queue.length === 1) handleStack()
-};
-const handleStack = async () => {
-  let op = queue[0]
+  let ops = e.data, resultBuffers
 
   // apply op
-  console.log('Apply op', op)
-  let [name, ...args] = op
-  let undo = await Ops[name]?.(...args);
-  ops.push(undo)
-
-  // skip render, if there's messages in queue
-  queue.shift()
-  if (queue.length) return handleStack()
+  for (let op of ops) {
+    console.log('Apply op', op)
+    let [name, ...args] = op
+    resultBuffers = await Ops[name]?.(...args);
+  }
 
   // render waveform & audio
-  let segments = buffers.map(buffer => drawAudio(buffer).replaceAll('\u0100', ' '))
-  let duration = buffers.reduce((total, {duration}) => total + duration, 0)
-  let wavBuffer = await encodeAudio(...buffers);
+  let segments = resultBuffers.map(buffer => drawAudio(buffer).replaceAll('\u0100', ' '))
+  let duration = resultBuffers.reduce((total, {duration}) => total + duration, 0)
+  let wavBuffer = await encodeAudio(...resultBuffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
   let url = URL.createObjectURL( blob );
 
-  id++
-  self.postMessage({id, url, segments, duration});
-}
+  self.postMessage({url, segments, duration});
+};
 
 
-// audio data corresponding to segments
+// sequence of applied ops with revert actions
+const history = []
+
+// current audio data (which segments correspond to)
 let buffers = []
 
-// dict of transforms to audio buffers list, return revert operation
+// dict of operations - supposed to update history & current buffers
 const Ops = {
   // load file from url
   async src (...urls) {
+    history.push(() => buffers = [])
     buffers = await Promise.all(urls.map(fetchAudio))
-    return () => buffers = []
+    return buffers
   },
 
+  del(offset, count) {
+    offset = Number(offset), count = Number(count)
+    if (!count) return buffers
+
+    let start = bufferIndex(offset)
+    let end = bufferIndex(offset+ count)
+
+    // correct tail: pointing to head of the next buffer unnecessarily joins buffers in result
+    // but we may want to preserve segmentation
+    if (!end[1] && end[0]) end[0] -= 1, end[1] = buffers[end[0]].length
+
+    let startBuffer = buffers[start[0]]
+    let endBuffer = buffers[end[0]]
+
+    let outBuffer = new AudioBuffer({
+      length: start[1] + (endBuffer.length - end[1]),
+      sampleRate: startBuffer.sampleRate,
+      numberOfChannels: startBuffer.numberOfChannels
+    })
+
+    for (let c = 0; c < startBuffer.numberOfChannels; c++) {
+      let i = 0,
+        outData = outBuffer.getChannelData(c),
+        startData = startBuffer.getChannelData(c),
+        endData = endBuffer.getChannelData(c)
+
+      // transfer remaining head samples
+      for (i = 0; i < start[1]; i++) outData[i] = startData[i]
+      // transfer remaining tail samples
+      for (let j = end[1]; j < endData.length; j++) outData[i] = endData[j], i++
+    }
+
+    let deleted = buffers.splice(start[0], end[0]-start[0]+1, outBuffer)
+
+    history.push(() => {
+      // TODO: reinsert deleted buffers
+    })
+
+    return buffers
+  },
+
+  // create loop buffers (doesn't overwrite history / buffers)
+  loop(from, to) {
+    from = Number(from), to = Number(to)
+
+    let start = bufferIndex(from)
+    let end = bufferIndex(to)
+
+    if (start[0] === end[0]) return [sliceAudio(buffers[start[0]], start[1], end[1])]
+    if (start[0] === end[0]-1) return [
+      sliceAudio(buffers[start[0]], start[1]),
+      sliceAudio(buffers[end[0]], 0, end[1])
+    ]
+    return [
+      sliceAudio(buffers[start[0]], start[1]),
+      ...buffers.slice(start[0]+1, end[0]-1),
+      sliceAudio(buffers[end[0]], 0, end[1])
+    ]
+  },
+
+  /*
   // normalize audio
   norm() {
     let origBuffers = buffers.map(buffer => cloneAudio(buffer))
@@ -127,45 +181,6 @@ const Ops = {
     return buffers
   },
 
-  del(offset, count) {
-    offset = Number(offset), count = Number(count)
-    if (!count) return buffers
-
-    let start = bufferIndex(offset)
-    let end = bufferIndex(offset+ count)
-
-    // correct tail: pointing to head of the next buffer unnecessarily joins buffers in result
-    // but we may want to preserve segmentation
-    if (!end[1] && end[0]) end[0] -= 1, end[1] = buffers[end[0]].length
-
-    let startBuffer = buffers[start[0]]
-    let endBuffer = buffers[end[0]]
-
-    let outBuffer = new AudioBuffer({
-      length: start[1] + (endBuffer.length - end[1]),
-      sampleRate: startBuffer.sampleRate,
-      numberOfChannels: startBuffer.numberOfChannels
-    })
-
-    for (let c = 0; c < startBuffer.numberOfChannels; c++) {
-      let i = 0,
-        outData = outBuffer.getChannelData(c),
-        startData = startBuffer.getChannelData(c),
-        endData = endBuffer.getChannelData(c)
-
-      // transfer remaining head samples
-      for (i = 0; i < start[1]; i++) outData[i] = startData[i]
-      // transfer remaining tail samples
-      for (let j = end[1]; j < endData.length; j++) outData[i] = endData[j], i++
-    }
-
-    let deleted = buffers.splice(start[0], end[0]-start[0]+1, outBuffer)
-
-    return () => {
-      // TODO: reinsert deleted buffers
-    }
-  },
-
   mute(...parts) {
     for (let part of parts) {
       let [offset, count] = part
@@ -189,7 +204,6 @@ const Ops = {
 
   },
 
-
   // either add external URL or silence (count)
   add(offset, src) {
 
@@ -203,6 +217,7 @@ const Ops = {
   undo() {
 
   }
+  */
 }
 
 
