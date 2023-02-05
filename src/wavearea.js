@@ -89,6 +89,10 @@ function renderAudio ({url, segments, duration}) {
 
 // UI state
 let state = sprae(wavearea, {
+  // interaction state
+  isMouseDown: false,
+  isKeyDown: false,
+
   // params
   loading: true,
   recording: false,
@@ -128,7 +132,7 @@ let state = sprae(wavearea, {
       state.playbackEnd = !selection.collapsed ? selection.end : state.total;
       state.loop = !selection.collapsed;
       // create loopable audio fragment
-      if (state.loop) inputHandlers.selectionChange()
+      if (state.loop) inputHandlers.createLoop()
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
@@ -265,36 +269,40 @@ const inputHandlers = {
   async deleteContentBackward(e){
     let range = e.getTargetRanges()[0]
     let from = range.startOffset + Number(range.startContainer.parentNode.dataset.offset),
-        to = range.endOffset + Number(range.endContainer.parentNode.dataset.offset),
-        count = to - from
+        to = range.endOffset + Number(range.endContainer.parentNode.dataset.offset)
 
     // debounce push op to collect multiple deletes
     if (this._deleteTimeout) {
       clearTimeout(this._deleteTimeout)
       this._deleteOp[1]--
-      this._deleteOp[2]++
     }
-    else this._deleteOp = ['del', from, count]
+    else this._deleteOp = ['del', from, to]
 
-    this._deleteTimeout = setTimeout(() => {
+    const pushDeleteOp = () => {
+      // postpone updating delete until key is up
+      if (state.isKeyDown) return this._deleteTimeout = setTimeout(pushDeleteOp, 50)
       pushOp(this._deleteOp)
       this._deleteOp = this._deleteTimeout = null
-    }, 280)
+    }
+    this._deleteTimeout = setTimeout(pushDeleteOp, 280)
   },
   // deleteContentForward(){},
   // historyUndo(){},
   // historyRedo(){},
 
   // non-input handler for loop (need to debounce)
-  selectionChange(e) {
+  createLoop(e) {
     if (this._loopTimeout) clearTimeout(this._loopTimeout)
 
-    this._loopTimeout = setTimeout(async () => {
+    const pushLoopOp = async () => {
+      if (state.isMouseDown || state.isKeyDown) return this._loopTimeout = setTimeout(pushLoopOp, 50)
       this._loopTimeout = null
       let { url } = await runOp(['loop', state.playbackStart, state.playbackEnd]);
       if (loopAudio.src) URL.revokeObjectURL(loopAudio.src)
       loopAudio.src = url
-    }, 280)
+    }
+
+    this._loopTimeout = setTimeout(pushLoopOp, 280)
   }
 }
 

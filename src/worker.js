@@ -41,12 +41,12 @@ const Ops = {
     return buffers
   },
 
-  del(offset, count) {
-    offset = Number(offset), count = Number(count)
-    if (!count) return buffers
+  del(from, to) {
+    from = Number(from), to = Number(to)
+    if (from === to) return buffers
 
-    let start = bufferIndex(offset)
-    let end = bufferIndex(offset+ count)
+    let start = bufferIndex(from)
+    let end = bufferIndex(to)
 
     // correct tail: pointing to head of the next buffer unnecessarily joins buffers in result
     // but we may want to preserve segmentation

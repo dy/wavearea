@@ -8,8 +8,8 @@
 
 <body>
   <div class="wavearea"
-    :onmousedown.document="e=> (isMouseDown = true)"
-    :onmouseup.document="e=> (isMouseDown = false)"
+    :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
+    :onkeydown.document..onkeyup.document="e => (isKeyDown = true, e=> isKeyDown = false)"
     >
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"

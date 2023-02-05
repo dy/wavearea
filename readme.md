@@ -21,10 +21,9 @@ Supported operations are (measured in blocks, each block is 1024 samples wide):
 
 * `src=path/to/audio` – load source file by URL. Can be wav, mp3 or ogg, or any other format supported by browser.
 * `norm` – normalize audio - make sure max volume is 1. <!-- TODO: normalize to indicated db value -->
-* `clip=offset-to` – slice audio to indicated range.
-* `br=offset..offset..offset...` – break audio by segments at indicated points.
-* `del=offset-len..offset-len..offset-len...` – delete fragments of audio at `offset`s of length `len`.
-* `mute=offset-len..offset-len..offset-len...` – insert silence at indicated points.
+* `clip=from-to` – slice audio to indicated range.
+* `br=at..at..at...` – break audio by segments at indicated points.
+* `del=from-to..from-to..from-to...` – delete fragments of audio.
 <!-- * `fadein=start-duration`, `fadeout=start-duration` -->
 
 

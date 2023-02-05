@@ -1,8 +1,9 @@
-## [ ] Name
+## [x] Name -> wavearea
 
 * waveedit
 * wavearea
   + alliteration ea ea
+  + canonical direct name
 * waver
 * wavee
 * waveplay
@@ -142,6 +143,13 @@
 4. Mix of 3 and 1: units indicate time, values indicate block
 - lazy solution: can be fixed on experimental stage
 
+## [ ] From-to vs at-count
+
++ `del=from-to` is more logical as range indicator
+  + also easier from code perspective
+- `sil=at-count` is more logical to insert silence
+
+
 ## [x] Looping method -> custom UI for audio element: we need better UI anyways
 
 0. Same way we observe currentTime via raf, we can loop
@@ -161,9 +169,17 @@
 + anyways we were going to do that
 + better control over displayed data
 + it can allow removin unusable parts
++ we have raw data anyways
 
 3. Custom UI via AudioSourceNode
 + better integration with audio buffers
 + no need to constantly (re) encode wav
 - requires sending audio buffers to main thread
 - not as reliable as just audio
+
+4. media-offset
++ separates concern nicely
++ doesn't require worker slicing delay
++ can be messy on small chunks
+- small chunks defects
+- rough api yet

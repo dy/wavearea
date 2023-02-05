@@ -33,6 +33,9 @@
 
 ## [ ] MVP: basic dubs editor
 
+* [ ] Mark loop selection
+* [ ] Make delete: from to signature instead of from, count
+* [x] Debounce delete better
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
 * [x] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
@@ -64,6 +67,7 @@
 ## Improvements
 
 * [x] Make play button clickable area _big_
+* [ ] use media-offset for looping -> waiting for the update
 * [ ] detect cmd/ctrl key depending on platform
 * [ ] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
