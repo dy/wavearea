@@ -136,9 +136,11 @@ let state = sprae(wavearea, {
 
     let playbackStart = state.playbackStart;
     let playbackEnd = state.playbackEnd;
+    let currentAudio = state.loop ? loopAudio : audio;
+
+    const toggleStop = () => playButton.click()
 
     let animId;
-
     const syncCaret = () => {
       const playbackCurrent = state.loop ?
         state.playbackStart + Math.ceil((state.playbackEnd - state.playbackStart) * loopAudio.currentTime / loopAudio.duration) :
@@ -149,20 +151,20 @@ let state = sprae(wavearea, {
       let caretLine = Math.floor(state.caretOffset / state.lineWidth);
       if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
 
-      // stop if end reached
-      if (!state.loop && playbackEnd && playbackCurrent >= playbackEnd) playButton.click();
-      else animId = requestAnimationFrame(syncCaret)
+      animId = requestAnimationFrame(syncCaret)
     }
     syncCaret();
 
+
     editarea.focus();
 
-    (state.loop ? loopAudio : audio).play();
+    currentAudio.play();
     // TODO: markLoopRange()
 
-    // onstop
-    return () => {
-      (state.loop ? loopAudio : audio).pause();
+    currentAudio.addEventListener('ended', toggleStop, {once: true});
+    const stop = () => {
+      currentAudio.removeEventListener('ended', toggleStop)
+      currentAudio.pause();
       state.playing = false
       cancelAnimationFrame(animId), animId = null
 
@@ -175,6 +177,8 @@ let state = sprae(wavearea, {
 
       editarea.focus()
     }
+
+    return stop
   },
 
   // navigate to history state

@@ -10,6 +10,9 @@ body {
 [hidden] {
   display: none!important;
 }
+[disabled] {
+  opacity: .33;
+}
 
 @font-face {
 	font-family: wavefont;
@@ -34,6 +37,10 @@ body {
   padding: 0 2rem;
   display: flex;
   flex-direction: column;
+}
+
+.w-loading {
+  cursor: wait!important;
 }
 
 .w-container {

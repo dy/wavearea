@@ -7,7 +7,9 @@ import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
 // fetch audio source from URL
 export async function fetchAudio(src) {
   console.time('fetch')
-  let resp = await fetch(src);
+  let resp = await fetch(src, {
+    cache: 'force-cache'
+  });
   if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
 
   let arrayBuffer = await resp.arrayBuffer();

@@ -19,9 +19,10 @@
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
-      <div class="w-waveform">
+      <div class="w-waveform" :class="{'w-loading':loading}">
         <button class="w-play" :title="`${playing ? 'Pause' : 'Play'} ⌘-↵`"
-          :hidden="loading"
+          :hidden="!segments.length"
+          :disabled="loading"
           :onclick..onclick="play"
           :onkeydown.document.meta-enter="e=>this.click(e)"
           :style="{
@@ -35,7 +36,6 @@
         </button>
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader wavefont"
-          :if="loading"
           :with="{id:null, str:''}"
           :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
           :text="str"

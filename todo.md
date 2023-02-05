@@ -34,6 +34,7 @@
 ## [ ] MVP: basic dubs editor
 
 * [ ] Mark loop selection
+* [ ] Reconstruct non-existent history entry from history path
 * [x] Make delete: `from-to` signature instead of `from-count`
 * [x] Debounce delete better
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
@@ -63,6 +64,7 @@
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
 * [ ] Small screens wrongly wrap waveform timing
 * [ ] Deleting part of audio screws up play button position
+* [ ] End of file caret positioning is wrong
 
 ## Improvements
 

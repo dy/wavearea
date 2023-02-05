@@ -3,7 +3,6 @@ import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
 import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio } from "./audio-utils.js";
 import AudioBuffer from "audio-buffer";
 
-
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
   let {id, ops} = e.data, resultBuffers
