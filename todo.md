@@ -63,6 +63,7 @@
 
 ## Improvements
 
+* [x] Make play button clickable area _big_
 * [ ] detect cmd/ctrl key depending on platform
 * [ ] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)

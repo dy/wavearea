@@ -28,6 +28,7 @@
             position: !caretOffscreen ? 'absolute' : 'fixed',
             ...(!caretOffscreen ? {} : caretOffscreen > 0 ? {top:0} : {bottom:0,top:'auto'})
           }">
+          <span class="w-play-clickarea"></span>
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>

@@ -116,6 +116,13 @@ body {
   pointer-events: none;
 }
 
+.w-play-clickarea {
+  height: 300%;
+  width: 100%;
+  position: absolute;
+  top: -100%;
+}
+
 .w-playback {
   position: fixed;
   bottom: 2rem;
