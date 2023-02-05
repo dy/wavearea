@@ -132,8 +132,9 @@ let state = sprae(wavearea, {
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    if (state.loop) loopAudio.currentTime = loopAudio.duration *
-      (Math.max(state.playbackStart, Math.min(selection.start, state.playbackEnd)) - state.playbackStart) / (state.playbackEnd - state.playbackStart)
+    if (state.loop) loopAudio.currentTime = !state.playing ? 0 : loopAudio.duration *
+      (Math.max(state.playbackStart, Math.min(selection.start, state.playbackEnd)) - state.playbackStart) /
+      (state.playbackEnd - state.playbackStart);
     else audio.currentTime = audio.duration * selection.start / state.total;
   },
 
@@ -203,10 +204,9 @@ let state = sprae(wavearea, {
     let animId;
 
     const syncCaret = () => {
-      const blocksPlayed = state.loop ?
-        Math.ceil((state.playbackEnd - state.playbackStart) * loopAudio.currentTime / loopAudio.duration) :
-        Math.max(Math.ceil(state.total * audio.currentTime / audio.duration) - state.playbackStart, 0)
-      const playbackCurrent = state.playbackStart + blocksPlayed;
+      const playbackCurrent = state.loop ?
+        state.playbackStart + Math.ceil((state.playbackEnd - state.playbackStart) * loopAudio.currentTime / loopAudio.duration) :
+        Math.max(Math.ceil(state.total * audio.currentTime / audio.duration), 0)
 
       sel(state.caretOffset = playbackCurrent)
 

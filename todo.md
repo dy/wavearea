@@ -45,7 +45,6 @@
 * [ ] Make history of changes with undo/redo
   * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
-* [ ] convert ops units to h/s/ms
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
 * [x] ~~Save local file edits to kv-storage~~ - saved in history
@@ -60,10 +59,11 @@
 
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
 * [ ] Small screens wrongly wrap waveform timing
-* [ ] Trimming audio screws up play button position
+* [ ] Deleting part of audio screws up play button position
 
 ## Improvements
 
+* [ ] detect cmd/ctrl key depending on platform
 * [ ] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
@@ -81,6 +81,7 @@
 * [x] move loading/decoding/encoding to worker
 * [ ] random phrase player (from URL - like thetamath) via free speech api
 * [x] broken sprae condition of `:if :ref`
+* [ ] convert ops units to h/s/ms
 * [ ] replace file selector with + under caret?
 * [ ] open file
 * [ ] Make nicer playback UI (bottom of page player)

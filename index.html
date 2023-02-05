@@ -38,6 +38,7 @@
         <div contenteditable class="w-editable wavefont"
           :oninput="updateTimecodes"
           :onbeforeinput="handleBeforeInput"
+          :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
           :ondrop.prevent="handleDrop"
           :style="{'--linew': lineWidth}"
