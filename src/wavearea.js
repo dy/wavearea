@@ -9,17 +9,6 @@ const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const playButton = wavearea.querySelector('.w-play')
 const caretLineRef = wavearea.querySelector('.w-caret-line')
-const caretObserver = new IntersectionObserver(([item]) => {
-  state.caretOffscreen = item.isIntersecting ? 0 :
-  (item.intersectionRect.top <= item.rootBounds.top ? 1 :
-    item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
-    0);
-  }, {
-    root: document,
-    threshold: 1,
-    rootMargin: '0px'
-  });
-caretObserver.observe(caretLineRef);
 const audio = new Audio, loopAudio = new Audio;
 loopAudio.loop = true
 
@@ -27,65 +16,6 @@ loopAudio.loop = true
 // init backend - receives messages from worker with rendered audio & waveform
 const worker = new Worker('./dist/worker.js', { type: "module" });
 
-
-// load operations
-const url = new URL(location);
-
-// if URL has no operations - put random sample
-if (url.search.length < 2) {
-  const sampleSources = [
-    // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
-    'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
-    // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
-  ]
-  let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
-  pushOp(['src', src])
-}
-// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-else {
-  let ops = []
-  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
-    // skip https:// as single argument
-    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
-  ))
-  runOp(...ops).then(renderAudio)
-}
-
-// update history, post operation & schedule update
-// NOTE: we imply that ops are applied once and not multiple times
-// so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
-async function pushOp (...ops) {
-  for (let op of ops) {
-    let [name, ...args] = op
-    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
-    else url.searchParams.append(name, args.join('-'))
-  }
-  history.pushState(null, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
-  return renderAudio(await runOp(...ops))
-}
-
-// post op message and wait for update response
-function runOp (...ops) {
-  return new Promise(resolve => {
-    worker.postMessage(ops)
-    worker.addEventListener('message', e => resolve(e.data), {once: true})
-  })
-}
-
-// update audio url & assert waveform
-function renderAudio ({url, segments, duration}) {
-  let currentTime = audio.currentTime
-  URL.revokeObjectURL(audio.src)
-  audio.src = url
-  audio.addEventListener('canplay', e => audio.currentTime = currentTime, {once: true});
-
-  // assert waveform same as current content (must be!)
-  state.loading = false
-  if (!state.total) state.segments = segments
-  else console.assert(segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
-  state.total = segments.reduce((total, seg) => total += seg.length, 0);
-  state.duration = duration
-}
 
 // UI state
 let state = sprae(wavearea, {
@@ -126,7 +56,6 @@ let state = sprae(wavearea, {
     if (!selection) return
     state.caretOffset = selection.start;
     state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
-
     if (!state.playing) {
       state.playbackStart = selection.start;
       state.playbackEnd = !selection.collapsed ? selection.end : state.total;
@@ -199,6 +128,7 @@ let state = sprae(wavearea, {
     if (state.caretOffscreen) caretLineRef.scrollIntoView({ behavior: 'smooth', block: 'center'});
   },
 
+  // start playback
   play (e) {
     state.playing = true;
 
@@ -245,6 +175,12 @@ let state = sprae(wavearea, {
 
       editarea.focus()
     }
+  },
+
+  // navigate to history state
+  goto (params) {
+    renderAudio(params)
+    sel(state.caretOffset)
   }
 });
 
@@ -268,8 +204,8 @@ const inputHandlers = {
   // deleteContent(){},
   async deleteContentBackward(e){
     let range = e.getTargetRanges()[0]
-    let from = range.startOffset + Number(range.startContainer.parentNode.dataset.offset),
-        to = range.endOffset + Number(range.endContainer.parentNode.dataset.offset)
+    let from = range.startOffset + Number(range.startContainer.parentNode.closest('.w-segment').dataset.offset),
+        to = range.endOffset + Number(range.endContainer.parentNode.closest('.w-segment').dataset.offset)
 
     // debounce push op to collect multiple deletes
     if (this._deleteTimeout) {
@@ -342,18 +278,18 @@ const sel = (start, end, lineOffset=0) => {
     }
   }
 
-  if (!s.anchorNode || s.anchorNode.parentNode.parentNode !== editarea) return
+  if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
 
   // collect start/end offsets
   start = s.anchorOffset, end = s.focusOffset
-  let prevNode = s.anchorNode.parentNode
+  let prevNode = s.anchorNode.parentNode.closest('.w-segment')
   while (prevNode = prevNode.previousSibling) start += prevNode.firstChild.data.length
-  prevNode = s.focusNode.parentNode
+  prevNode = s.focusNode.parentNode.closest('.w-segment')
   while (prevNode = prevNode.previousSibling) end += prevNode.firstChild.data.length
 
   // swap selection direction
-  let startNode = s.anchorNode.parentNode, startNodeOffset = s.anchorOffset,
-      endNode = s.focusNode.parentNode, endNodeOffset = s.focusOffset;
+  let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
+      endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
   if (start > end) {
     [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
     [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
@@ -374,4 +310,86 @@ const sel = (start, end, lineOffset=0) => {
 const timecode = (block) => {
   let time = (block / state.total) * state.duration
   return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
+}
+
+// create play button observer
+const caretObserver = new IntersectionObserver(([item]) => {
+  state.caretOffscreen = item.isIntersecting ? 0 :
+  (item.intersectionRect.top <= item.rootBounds.top ? 1 :
+    item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
+    0);
+  }, {
+    root: document,
+    threshold: 1,
+    rootMargin: '0px'
+  });
+caretObserver.observe(caretLineRef);
+
+
+
+
+// load operations
+const url = new URL(location);
+
+// if URL has no operations - put random sample
+if (url.search.length < 2) {
+  const sampleSources = [
+    // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
+    'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
+    // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+  ]
+  let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
+  pushOp(['src', src])
+}
+// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
+else {
+  let ops = []
+  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
+    // skip https:// as single argument
+    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
+  ))
+  let params = await runOp(...ops)
+  history.replaceState(params, '', decodeURI(url))
+  renderAudio(params)
+}
+
+// update history, post operation & schedule update
+// NOTE: we imply that ops are applied once and not multiple times
+// so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
+async function pushOp (...ops) {
+  for (let op of ops) {
+    let [name, ...args] = op
+    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
+    else url.searchParams.append(name, args.join('-'))
+  }
+  let params = await runOp(...ops)
+  history.pushState(params, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
+
+  console.assert(params.segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
+
+  return renderAudio(params)
+}
+
+// post op message and wait for update response
+function runOp (...ops) {
+  return new Promise(resolve => {
+    worker.postMessage(ops)
+    worker.addEventListener('message', e => resolve(e.data), {once: true})
+  })
+}
+
+// update audio url & assert waveform
+function renderAudio ({url, segments, duration}) {
+  // assert waveform same as current content (must be!)
+  state.loading = false
+  state.total = segments.reduce((total, seg) => total += seg.length, 0);
+  state.duration = duration
+  state.segments = segments
+
+  return new Promise(ok => {
+    let currentTime = audio.currentTime
+    // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
+    audio.src = url
+    audio.addEventListener('canplay', e => ok(audio.currentTime = currentTime), {once: true});
+  })
 }

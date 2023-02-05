@@ -34,7 +34,7 @@
 ## [ ] MVP: basic dubs editor
 
 * [ ] Mark loop selection
-* [ ] Make delete: from to signature instead of from, count
+* [x] Make delete: `from-to` signature instead of `from-count`
 * [x] Debounce delete better
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
 * [x] Reflect operations in URL

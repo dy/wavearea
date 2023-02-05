@@ -22,11 +22,11 @@ self.onmessage = async e => {
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
   let url = URL.createObjectURL( blob );
 
-  self.postMessage({url, segments, duration});
+  self.postMessage({id: history.length, url, segments, duration});
 };
 
 
-// sequence of applied ops with revert actions
+// sequence of buffers states
 const history = []
 
 // current audio data (which segments correspond to)
@@ -43,7 +43,11 @@ const Ops = {
 
   del(from, to) {
     from = Number(from), to = Number(to)
-    if (from === to) return buffers
+
+    let origBuffers = [...buffers]
+    history.push(() => {
+      buffers = origBuffers
+    })
 
     let start = bufferIndex(from)
     let end = bufferIndex(to)
@@ -74,10 +78,6 @@ const Ops = {
     }
 
     let deleted = buffers.splice(start[0], end[0]-start[0]+1, outBuffer)
-
-    history.push(() => {
-      // TODO: reinsert deleted buffers
-    })
 
     return buffers
   },
@@ -212,12 +212,13 @@ const Ops = {
   // copy offset/cout to another position (rewrites data underneath)
   cp(offset, count, to) {
 
-  },
-
-  undo() {
-
   }
   */
+
+  // apply ops to history
+  goto(id) {
+
+  }
 }
 
 

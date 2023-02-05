@@ -8,6 +8,7 @@
 
 <body>
   <div class="wavearea"
+    :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
     :onkeydown.document..onkeyup.document="e => (isKeyDown = true, e=> isKeyDown = false)"
     >
