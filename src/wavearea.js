@@ -373,7 +373,8 @@ async function pushOp (...ops) {
 // post op message and wait for update response
 function runOp (...ops) {
   return new Promise(resolve => {
-    worker.postMessage(ops)
+    // worker manages history, so id indicates which point in history we commit changes to
+    worker.postMessage({id: history.state?.id || 0, ops})
     worker.addEventListener('message', e => resolve(e.data), {once: true})
   })
 }
@@ -386,10 +387,11 @@ function renderAudio ({url, segments, duration}) {
   state.duration = duration
   state.segments = segments
 
+  let currentTime = audio.currentTime
+  // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
+  audio.src = url
+
   return new Promise(ok => {
-    let currentTime = audio.currentTime
-    // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
-    audio.src = url
     audio.addEventListener('canplay', e => ok(audio.currentTime = currentTime), {once: true});
   })
 }

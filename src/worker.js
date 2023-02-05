@@ -6,7 +6,10 @@ import AudioBuffer from "audio-buffer";
 
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
-  let ops = e.data, resultBuffers
+  let {id, ops} = e.data, resultBuffers
+
+  // revert history if needed
+  while (id < history.length) history.pop()()
 
   // apply op
   for (let op of ops) {
@@ -27,7 +30,7 @@ self.onmessage = async e => {
 
 
 // sequence of buffers states
-const history = []
+let history = []
 
 // current audio data (which segments correspond to)
 let buffers = []
