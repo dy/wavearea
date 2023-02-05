@@ -4,9 +4,6 @@
 import sprae from 'sprae';
 
 
-// wait this interval before triggering update
-export const KEY_DEBOUNCE = 1080;
-
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
@@ -77,8 +74,11 @@ function runOp (...ops) {
 
 // update audio url & assert waveform
 function renderAudio ({url, segments, duration}) {
+  let currentTime = audio.currentTime
   URL.revokeObjectURL(audio.src)
   audio.src = url
+  audio.addEventListener('canplay', e => audio.currentTime = currentTime, {once: true});
+
   // assert waveform same as current content (must be!)
   state.loading = false
   if (!state.total) state.segments = segments
@@ -156,7 +156,9 @@ let state = sprae(wavearea, {
 
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType];
-    if (!handler) e.preventDefault(); else handler.call(this, e);
+    if (!handler) e.preventDefault(); else {
+      handler.call(this, e);
+    }
   },
 
   async handleDrop(e) {
@@ -277,7 +279,7 @@ const inputHandlers = {
     this._deleteTimeout = setTimeout(() => {
       pushOp(this._deleteOp)
       this._deleteOp = this._deleteTimeout = null
-    }, KEY_DEBOUNCE)
+    }, 280)
   },
   // deleteContentForward(){},
   // historyUndo(){},

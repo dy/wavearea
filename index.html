@@ -11,7 +11,10 @@
     :onmousedown.document="e=> (isMouseDown = true)"
     :onmouseup.document="e=> (isMouseDown = false)"
     >
-    <div class="w-container" :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)" :onselectstart..onselectionchange.document.once="e => handleCaret" :onselectionchange.document.debounce-108="/*debounce prevents programmatic selectionchanges*/handleCaret">
+    <div class="w-container"
+      :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
+      :onselectstart..onselectionchange.document.once="e => handleCaret"
+      :onselectionchange.document.debounce-108="/*debounce prevents programmatic selectionchanges*/handleCaret">
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
@@ -36,7 +39,7 @@
           :text="str"
         >...</div>
         <div contenteditable class="w-editable wavefont"
-          :oninput="updateTimecodes"
+          :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"

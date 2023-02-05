@@ -98,7 +98,7 @@
 * [ ] Think of embeddable links
 * [ ] Recording capability
 * [ ] Add tests (playwright?)
-* [ ] Add info icon: support, github, brahman, tips
+* [ ] Add info icon: support, github, brahman, tips, generate theme
 * [ ] Measure via LUFS and other methods
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum
