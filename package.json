@@ -1,6 +1,6 @@
 {
   "name": "wavearea",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
