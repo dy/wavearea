@@ -13,7 +13,7 @@ Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.c
 All operations on audio are reflected in URL as:
 
 ```
-?src=path/to/audio&clip=300-400&br=100...200...300&del=0-10...10-20&mute=10-20&...
+?src=path/to/audio&clip=300-400&br=100..200..300&del=0-10..10-20&mute=10-20&...
 ```
 
 Operations are applied to source in turn.
