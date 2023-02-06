@@ -75,6 +75,7 @@
 * [x] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
+* [ ] Separate history from browser history: we may want to have a component
 * [ ] use decodeAudioData main thread "worker" for faster decode, detect supported native codecs & video
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
@@ -104,6 +105,10 @@
 * [ ] More audio transforms
 * [ ] Make reusable (web-) component
   * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
+  * [ ] Adjustable timecodes
+  * [ ] Adjustable menu
+  * [ ] Adjustable theme
+  * [ ] Adjustable line breaks / ops
 * [ ] Think of embeddable links
 * [ ] Recording capability
 * [ ] Add tests (playwright?)

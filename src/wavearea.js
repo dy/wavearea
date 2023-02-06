@@ -365,10 +365,11 @@ if (location.search.length < 2) {
     // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
   ]
   let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
-  pushOp(['src', src]).then(() => state.loading = false)
+  location.search = `?src=${src}`
 }
+
 // apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-else loadAudioFromURL()
+loadAudioFromURL()
 
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
@@ -386,7 +387,7 @@ async function pushOp (...ops) {
   history.pushState(params, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
   state.loading = false
 
-  console.assert(params.segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
+  if (editarea.textContent) console.assert(params.segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
 
   return renderAudio(params)
 }
