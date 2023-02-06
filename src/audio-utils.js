@@ -10,10 +10,10 @@ export async function fetchAudio(src) {
   let resp = await fetch(src, {
     cache: 'force-cache'
   });
+  console.timeEnd('fetch')
   if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
 
   let arrayBuffer = await resp.arrayBuffer();
-  console.timeEnd('fetch')
 
   return decodeAudio(arrayBuffer);
 }

@@ -3,12 +3,13 @@
 // all the data is stored and processed in worker
 import sprae from 'sprae';
 
+history.scrollRestoration = 'manual'
 
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const playButton = wavearea.querySelector('.w-play')
-const caretLineRef = wavearea.querySelector('.w-caret-line')
+const caretLinePointer = wavearea.querySelector('.w-caret-line')
 const audio = new Audio, loopAudio = new Audio;
 loopAudio.loop = true
 
@@ -21,10 +22,10 @@ const worker = new Worker('./dist/worker.js', { type: "module" });
 let state = sprae(wavearea, {
   // interaction state
   isMouseDown: false,
-  isKeyDown: false,
+  isKeyDown: 0,
 
   // params
-  loading: true,
+  loading: 'Initializing...',
   recording: false,
   playing: false,
   selecting: false,
@@ -125,7 +126,7 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen) caretLineRef.scrollIntoView({ behavior: 'smooth', block: 'center'});
+    if (state.caretOffscreen) caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'});
   },
 
   // start playback
@@ -182,8 +183,15 @@ let state = sprae(wavearea, {
   },
 
   // navigate to history state
-  goto (params) {
-    renderAudio(params)
+  async goto (params) {
+    try {
+      await renderAudio(params)
+    }
+    catch (e) {
+      // failed to load audio means likely history is discontinuous:
+      // try updating blob in history state by rebuilding audio
+      await loadAudioFromURL()
+    }
     sel(state.caretOffset)
   }
 });
@@ -318,56 +326,48 @@ const timecode = (block) => {
 
 // create play button observer
 const caretObserver = new IntersectionObserver(([item]) => {
-  state.caretOffscreen = item.isIntersecting ? 0 :
-  (item.intersectionRect.top <= item.rootBounds.top ? 1 :
-    item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
-    0);
+    state.caretOffscreen = item.isIntersecting ? 0 :
+    (item.intersectionRect.top <= item.rootBounds.top ? 1 :
+      item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
+      0);
   }, {
     root: document,
     threshold: 1,
     rootMargin: '0px'
   });
-caretObserver.observe(caretLineRef);
+caretObserver.observe(caretLinePointer);
 
 
 
-
-// load operations
-const url = new URL(location);
 
 // if URL has no operations - put random sample
-if (url.search.length < 2) {
+if (location.search.length < 2) {
   const sampleSources = [
     // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
     'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
     // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
   ]
   let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
-  pushOp(['src', src])
+  pushOp(['src', src]).then(() => state.loading = false)
 }
 // apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-else {
-  let ops = []
-  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
-    // skip https:// as single argument
-    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
-  ))
-  let params = await runOp(...ops)
-  history.replaceState(params, '', decodeURI(url))
-  renderAudio(params)
-}
+else loadAudioFromURL()
 
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
 // so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
 async function pushOp (...ops) {
+  let url = new URL(location)
+
   for (let op of ops) {
     let [name, ...args] = op
     if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
   }
+  state.loading = 'Calculating audio...'
   let params = await runOp(...ops)
   history.pushState(params, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
+  state.loading = false
 
   console.assert(params.segments.join('') === editarea.textContent, 'Rendered waveform is different from UI')
 
@@ -379,14 +379,15 @@ function runOp (...ops) {
   return new Promise(resolve => {
     // worker manages history, so id indicates which point in history we commit changes to
     worker.postMessage({id: history.state?.id || 0, ops})
-    worker.addEventListener('message', e => resolve(e.data), {once: true})
+    worker.addEventListener('message', e => {
+      resolve(e.data)
+    }, {once: true})
   })
 }
 
 // update audio url & assert waveform
 function renderAudio ({url, segments, duration}) {
   // assert waveform same as current content (must be!)
-  state.loading = false
   state.total = segments.reduce((total, seg) => total += seg.length, 0);
   state.duration = duration
   state.segments = segments
@@ -395,7 +396,22 @@ function renderAudio ({url, segments, duration}) {
   // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
   audio.src = url
 
-  return new Promise(ok => {
+  return new Promise((ok, nok) => {
+    audio.addEventListener('error', nok)
     audio.addEventListener('canplay', e => ok(audio.currentTime = currentTime), {once: true});
   })
+}
+
+// reconstruct audio from url
+async function loadAudioFromURL (url = new URL(location)) {
+  state.loading = 'Reconstructing audio...'
+  let ops = []
+  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
+    // skip https:// as single argument
+    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
+  ))
+  let params = await runOp(...ops)
+  history.replaceState(params, '', decodeURI(url))
+  renderAudio(params)
+  state.loading = false
 }

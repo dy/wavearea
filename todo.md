@@ -33,8 +33,8 @@
 
 ## [ ] MVP: basic dubs editor
 
+* [x] Reconstruct non-existent history entry from history path
 * [ ] Mark loop selection
-* [ ] Reconstruct non-existent history entry from history path
 * [x] Make delete: `from-to` signature instead of `from-count`
 * [x] Debounce delete better
 * [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
@@ -65,6 +65,7 @@
 * [ ] Small screens wrongly wrap waveform timing
 * [ ] Deleting part of audio screws up play button position
 * [ ] End of file caret positioning is wrong
+* [ ] Delete-all case doesn't get saved
 
 ## Improvements
 
@@ -78,6 +79,7 @@
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
   * https://github.com/domchristie/needles
+* [ ] Better loudness display: it is inadequate now
 * [ ] Display left/right channels with half-transparent blacks, and black is their intersection
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)

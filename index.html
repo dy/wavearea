@@ -10,7 +10,7 @@
   <div class="wavearea"
     :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
-    :onkeydown.document..onkeyup.document="e => (isKeyDown = true, e=> isKeyDown = false)"
+    :onkeydown.document..onkeyup.document="(e) => (isKeyDown++, e=> (e.stopImmediatePropagation(), isKeyDown--))"
     >
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
@@ -19,11 +19,13 @@
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
-      <div class="w-waveform" :class="{'w-loading':loading}">
-        <button class="w-play" :title="`${playing ? 'Pause' : 'Play'} ⌘-↵`"
+      <div class="w-waveform">
+        <button class="w-play"
+          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} ⌘↵`"
+          :class="{'w-loading':loading}"
           :hidden="!segments.length"
           :disabled="loading"
-          :onclick..onclick="play"
+          :onclick.toggle="play"
           :onkeydown.document.meta-enter="e=>this.click(e)"
           :style="{
             '--carety': caretLine,
@@ -36,6 +38,7 @@
         </button>
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader wavefont"
+          :if="!segments.length"
           :with="{id:null, str:''}"
           :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
           :text="str"
@@ -53,11 +56,5 @@
     </div>
   </div>
 
-  <script type="importmap">
-    {
-      "decoder/mp3": "./dist/decoder/mp3.js",
-      "decoder/ogg": "./dist/decoder/ogg.js"
-    }
-  </script>
   <script type="module" src="./dist/wavearea.js"></script>
 </body>
