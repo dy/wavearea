@@ -50,6 +50,17 @@ let state = sprae(wavearea, {
   // FIXME: make responsive
   lineWidth: 216,
 
+  // loader measures average char width
+  charWidth: 0,
+  measureCharWidth(el) {
+    let rect = el.getClientRects()[0]
+    if (!rect || !state.loading) return
+    let width = rect.width
+    let charWidth = width / el.textContent.length
+    if (!state.charWidth) state.charWidth = charWidth
+    else state.charWidth = (state.charWidth + charWidth) / 2
+  },
+
   // caret repositioned my mouse
   async handleCaret(e) {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
@@ -324,7 +335,7 @@ const timecode = (block) => {
   return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
 }
 
-// create play button observer
+// create play button position observer
 const caretObserver = new IntersectionObserver(([item]) => {
     state.caretOffscreen = item.isIntersecting ? 0 :
     (item.intersectionRect.top <= item.rootBounds.top ? 1 :
@@ -338,6 +349,12 @@ const caretObserver = new IntersectionObserver(([item]) => {
 caretObserver.observe(caretLinePointer);
 
 
+// create line width observer
+const resizeObserver = new ResizeObserver((entries) => {
+  let width = entries[0].contentRect.width
+  state.lineWidth = Math.floor(width / state.charWidth)
+})
+resizeObserver.observe(editarea);
 
 
 // if URL has no operations - put random sample

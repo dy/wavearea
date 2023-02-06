@@ -46,7 +46,7 @@
   * [x] if there's none - take random source
 * [x] support dropping files
   * [ ] save dropped files to storage
-* [ ] Make history of changes with undo/redo
+* [x] Make history of changes with undo/redo
   * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [x] Time-codes of following segments are messed up: make them href-able
@@ -62,9 +62,9 @@
 ## Bugs
 
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
-* [ ] Small screens wrongly wrap waveform timing
-* [ ] Deleting part of audio screws up play button position
-* [ ] End of file caret positioning is wrong
+* [x] Small screens wrongly wrap waveform timing
+* [x] Deleting part of audio screws up play button position
+* [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
 
 ## Improvements
@@ -72,7 +72,7 @@
 * [x] Make play button clickable area _big_
 * [ ] use media-offset for looping -> waiting for the update
 * [ ] detect cmd/ctrl key depending on platform
-* [ ] make player responsive in mobile as bottom play button with overlay
+* [x] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
 * [ ] use decodeAudioData main thread "worker" for faster decode, detect supported native codecs & video

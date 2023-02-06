@@ -39,8 +39,8 @@
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader wavefont"
           :if="!segments.length"
-          :with="{id:null, str:''}"
-          :="if (loading) id=setInterval(()=>str+='.', 50); else clearInterval(id), str = '';"
+          :with="{str:''}"
+          :="clearInterval(this._id), loading ? (this._id = setInterval(()=>(str+='.', measureCharWidth(this)), 50)) : str = ''"
           :text="str"
         >...</div>
         <div contenteditable class="w-editable wavefont"
@@ -50,7 +50,7 @@
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
           :ondrop.prevent="handleDrop"
           :style="{'--linew': lineWidth}"
-          :="segments, requestAnimationFrame(updateTimecodes)"
+          :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
         ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
       </div>
     </div>

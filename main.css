@@ -64,14 +64,16 @@ body {
 
 .w-loader {
   word-break: break-all;
-  width: 100%;
+  width: auto;
+  display: inline-block;
 }
 
 .w-editable {
   word-break: break-all;
   outline: none;
-  width: calc(var(--linew, 240) * 2ch + 0.5ch); /* this 1ch fixes inconsistent breaking, seemingly round error */
-  max-width: 100%;
+  /* this 1ch fixes inconsistent breaking, seemingly round error */
+  max-width: calc(216 * 2ch + 0.5ch);
+  width: 100%;
 }
 
 .w-segment {
@@ -126,17 +128,10 @@ body {
   .w-play {
     z-index: 1;
     width: 3rem;
-    height: 3rem;
-    margin-top: 1.3rem;
-    margin-bottom: 1.3rem;
+    height: 5.6rem;
     margin-left: -3.8rem;
     justify-content: center;
-    border-radius: 2rem;
     background: white;
-    box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
-  }
-  .w-play-clickarea {
-    display: none;
   }
 }
 
