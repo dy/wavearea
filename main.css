@@ -12,7 +12,7 @@ body {
   display: none!important;
 }
 [disabled] {
-  opacity: .25;
+  opacity: .5;
 }
 
 @font-face {
@@ -97,8 +97,7 @@ body {
   opacity: .5;
   line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
 }
-
-.w-play, .w-caret-line {
+.w-play, .w-caret-line, .w-file+label {
   position: absolute;
   margin-left: -5.6rem;
   width: 2rem;
@@ -119,10 +118,22 @@ body {
   position: absolute;
   top: -100%;
 }
-
 .w-caret-line {
   pointer-events: none;
   margin-left: -2rem;
+}
+
+.w-file {
+	width: 0.1px;
+	height: 0.1px;
+	opacity: 0;
+	overflow: hidden;
+	position: absolute;
+	z-index: -1;
+}
+.w-file:focus + label,
+.w-file + label:hover {
+
 }
 
 @media screen and (max-width: 840px) {

@@ -89,12 +89,12 @@ let state = sprae(wavearea, {
     let offset = 0, i = 0
     for (let el of editarea.children) {
       let content = el.textContent.trim()
-      let lines = Math.ceil(content.length / state.lineWidth)
+      let lines = Math.ceil(content.length / state.lineWidth) || 0
       el.dataset.id = i++
       el.dataset.offset = offset
       el.setAttribute('timecodes', Array.from(
-        {length: lines},
-        (_,i) => timecode(i*state.lineWidth + offset)).join('\n')
+        {length: lines || 1},
+        (_,i) => timecode(i*(state.lineWidth||0) + offset)).join('\n')
       )
       offset += content.length
     }
@@ -335,7 +335,7 @@ const sel = (start, end, lineOffset=0) => {
 
 // produce display time from frames
 const timecode = (block) => {
-  let time = (block / state.total) * state.duration
+  let time = ((block / state.total) || 0) * state.duration
   return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
 }
 
@@ -356,7 +356,7 @@ caretObserver.observe(caretLinePointer);
 // create line width observer
 const resizeObserver = new ResizeObserver((entries) => {
   let width = entries[0].contentRect.width
-  state.lineWidth = Math.floor(width / state.charWidth)
+  state.lineWidth = state.charWidth ? Math.floor(width / state.charWidth) : 0
 })
 resizeObserver.observe(editarea);
 
