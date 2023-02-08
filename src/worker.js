@@ -61,8 +61,11 @@ const Ops = {
     let startBuffer = buffers[start[0]]
     let endBuffer = buffers[end[0]]
 
+    let length = start[1] + (endBuffer.length - end[1])
+    if (!length) return buffers = []
+
     let outBuffer = new AudioBuffer({
-      length: start[1] + (endBuffer.length - end[1]),
+      length,
       sampleRate: startBuffer.sampleRate,
       numberOfChannels: startBuffer.numberOfChannels
     })

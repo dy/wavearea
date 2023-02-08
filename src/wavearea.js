@@ -2,6 +2,7 @@
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
+import { fileToArrayBuffer } from './audio-utils';
 
 history.scrollRestoration = 'manual'
 
@@ -207,12 +208,15 @@ let state = sprae(wavearea, {
   }
 });
 
+
 const inputHandlers = {
   // insertText(){},
   // insertReplacementText(){},
   // insertLineBreak(){},
   // insertParagraph(){},
-  // insertFromDrop(){},
+  insertFromDrop(e){
+    console.log('insert from drop', e)
+  },
   // insertFromPaste(){},
   // insertLink(){},
   // deleteWordBackward(){},

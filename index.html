@@ -19,11 +19,10 @@
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->
-      <div class="w-waveform">
+      <div class="w-waveform wavefont">
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} ⌘↵`"
           :class="{'w-loading':loading}"
-          :hidden="!segments.length"
           :disabled="loading"
           :onclick.toggle="play"
           :onkeydown.document.meta-enter="e=>this.click(e)"
@@ -37,7 +36,7 @@
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
-        <div class="w-loader wavefont"
+        <div class="w-loader"
           :if="!segments.length"
           :with="{str:''}"
           :="clearInterval(this._id), loading ? (this._id = setInterval(()=>(str+='.', measureCharWidth(this)), 50)) : str = ''"
@@ -47,8 +46,8 @@
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
-          :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('dragover'),e=>this.classList.remove('dragover'))"
-          :ondrop.prevent="handleDrop"
+          :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
+          :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
           :style="{'--linew': lineWidth}"
           :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
         ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>

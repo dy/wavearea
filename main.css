@@ -3,6 +3,7 @@
 }
 html, body {
   height: 100%;
+  margin: 0;
 }
 body {
   font-family: sans-serif;
@@ -53,13 +54,14 @@ body {
 }
 
 .w-waveform {
+  position: relative;
+  width: 100%;
+  max-width: calc(216 * 2ch + 0.5ch);
   margin: 1rem;
   margin-left: 4rem;
-  position: relative;
-  max-width: 100%;
 }
-.w-waveform.dragover {
-  border: 2px dashed rgba(20,20,20,.08);
+.w-waveform.w-dragover {
+  /* cursor: drop; */
 }
 
 .w-loader {
@@ -72,7 +74,6 @@ body {
   word-break: break-all;
   outline: none;
   /* this 1ch fixes inconsistent breaking, seemingly round error */
-  max-width: calc(216 * 2ch + 0.5ch);
   width: 100%;
 }
 
