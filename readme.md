@@ -1,6 +1,6 @@
-# ▸ wavearea
+# wavearea
 
-Waveform player with simple editing and transforms: trim, delete, mute, normalize, split.
+Multiline waveform player with simple editing.
 Provides minimal ergonomic means to open, edit and save audio pieces.
 Perfect for speech fragments editing.
 
@@ -8,6 +8,7 @@ Perfect for speech fragments editing.
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
+<!--
 ## Operations
 
 All operations on audio are reflected in URL as:
@@ -24,6 +25,7 @@ Supported operations are (measured in blocks, each block is 1024 samples wide):
 * `clip=from-to` – slice audio to indicated range.
 * `br=at..at..at...` – break audio by segments at indicated points.
 * `del=from-to..from-to..from-to...` – delete fragments of audio.
+-->
 <!-- * `fadein=start-duration`, `fadeout=start-duration` -->
 
 
