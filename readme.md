@@ -1,7 +1,7 @@
 # wavearea
 
-Multiline waveform player with simple editing.
-Provides minimal ergonomic means to open, edit and save audio pieces.
+Multiline waveform player with simple editing.<br/>
+Provides minimal ergonomic means to open, edit and save audio pieces.<br/>
 Perfect for speech fragments editing.
 
 [Demo](https://dy.github.io/wavearea).
