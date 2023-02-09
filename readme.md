@@ -21,7 +21,7 @@ Operations are applied to source in turn.
 Supported operations are (measured in blocks, each block is 1024 samples wide):
 
 * `src=path/to/audio` – load source file by URL. Can be wav, mp3 or ogg, or any other format supported by browser.
-* `norm` – normalize audio - make sure max volume is 1. <!-- TODO: normalize to indicated db value -->
+* `norm` – normalize audio - make sure max volume is 1.
 * `clip=from-to` – slice audio to indicated range.
 * `br=at..at..at...` – break audio by segments at indicated points.
 * `del=from-to..from-to..from-to...` – delete fragments of audio.
