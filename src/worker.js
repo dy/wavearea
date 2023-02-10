@@ -1,6 +1,6 @@
 // main audio processing API / backend
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
-import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio } from "./audio-utils.js";
+import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, saveAudio, loadAudio } from "./audio-utils.js";
 import AudioBuffer from "audio-buffer";
 
 // ops worker - schedules message processing with debounced update
@@ -17,15 +17,19 @@ self.onmessage = async e => {
     resultBuffers = await Ops[name]?.(...args);
   }
 
-  // render waveform & audio
-  let segments = resultBuffers.map(buffer => drawAudio(buffer).replaceAll('\u0100', ' '))
-  let duration = resultBuffers.reduce((total, {duration}) => total + duration, 0)
-  let wavBuffer = await encodeAudio(...resultBuffers);
+  renderAudio(resultBuffers)
+};
+
+// render waveform & audio, post to client
+const renderAudio = async (buffers) => {
+  let segments = buffers.map(buffer => drawAudio(buffer).replaceAll('\u0100', ' '))
+  let duration = buffers.reduce((total, {duration}) => total + duration, 0)
+  let wavBuffer = await encodeAudio(...buffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
   let url = URL.createObjectURL( blob );
 
   self.postMessage({id: history.length, url, segments, duration});
-};
+}
 
 
 // sequence of buffers states
@@ -36,11 +40,34 @@ let buffers = []
 
 // dict of operations - supposed to update history & current buffers
 const Ops = {
-  // load file from url
+  // load/decode file from url
   async src (...urls) {
     history.push(() => buffers = [])
     buffers = await Promise.all(urls.map(fetchAudio))
     return buffers
+  },
+
+  // accept decoded audio buffer
+  async file(data) {
+    history.push(() => buffers.pop())
+    let audioBuffer = new AudioBuffer({
+      numberOfChannels: data.numberOfChannels,
+      length: data.length,
+      sampleRate: data.sampleRate
+    });
+    data.channelData.forEach((data, channel) => audioBuffer.getChannelData(channel).set(data));
+    buffers.push(audioBuffer)
+
+    saveAudio(...buffers)
+
+    return buffers
+  },
+
+  async load() {
+    let audioBuffer = await loadAudio()
+    if (!audioBuffer) return []
+
+    return buffers = [audioBuffer]
   },
 
   del(from, to) {

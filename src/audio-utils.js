@@ -2,7 +2,7 @@
 import AudioBuffer from 'audio-buffer'
 import decodeAudio from './decode.js'
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
-
+import storage from 'kv-storage-polyfill';
 
 // fetch audio source from URL
 export async function fetchAudio(src) {
@@ -206,13 +206,23 @@ export function cloneAudio (a) {
 }
 
 // load saved audio from store (blob)
-export async function loadAudio (key=DB_KEY) {
-  let blob = await storage.get(key)
+export async function loadAudio () {
+  let blob = await storage.get(DB_KEY)
   if (!blob) return
   let arrayBuf = await fileToArrayBuffer(blob)
-  return arrayBuf
+  let audioBuf = await decodeAudio(arrayBuf)
+  return audioBuf
 }
 const DB_KEY = 'wavearea-audio'
+
+export async function saveAudio (...args) {
+  // convert audioBuffer into blob
+  // FIXME: we can cache blobs by audio buffers
+  // FIXME: we can try to save arraybuffer also
+  let blob = new Blob([await encodeAudio(...args)])
+  return storage.set(DB_KEY, blob)
+}
+
 export const fileToArrayBuffer = (file) => {
   return new Promise((y,n) => {
     const reader = new FileReader();
@@ -222,13 +232,4 @@ export const fileToArrayBuffer = (file) => {
     reader.addEventListener('error', n)
     reader.readAsArrayBuffer(file);
   })
-}
-
-
-export async function saveAudio (blob, key=DB_KEY) {
-  // convert audioBuffer into blob
-  // FIXME: we can cache blobs by audio buffers
-  // FIXME: we can try to save arraybuffer also
-  if (blob instanceof AudioBuffer) blob = new Blob([await encodeAudio(blob)])
-  return storage.set(DB_KEY, blob)
 }

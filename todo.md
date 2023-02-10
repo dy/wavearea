@@ -31,13 +31,13 @@
 * [x] worker processor
 * [x] actions via beforeinput inputType
 
-## [ ] MVP: basic dubs editor
+## [x] ~~MVP: basic dubs editor~~
 
 * [x] Reconstruct non-existent history entry from history path
-* [ ] Mark loop selection
 * [x] Make delete: `from-to` signature instead of `from-count`
 * [x] Debounce delete better
-* [ ] "Open audio", "Generate speech" or "Pick random audio" intro screen. (+ button at the right)
+* [x] "Open audio"
+  * [x] ~~"Generate speech" or "Pick random audio" intro screen. (+ button at the right)~~ -> use more complete sources config
 * [x] Reflect operations in URL
 * [x] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
   * [x] join operation that serializes as removing break
@@ -47,8 +47,6 @@
 * [x] support dropping files
   * [ ] save dropped files to storage
 * [x] Make history of changes with undo/redo
-  * [ ] Ctrl-z/y
-* [ ] support paste fragment of itself
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
 * [x] ~~Save local file edits to kv-storage~~ - saved in history
@@ -66,17 +64,31 @@
 * [x] Deleting part of audio screws up play button position
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
+* [ ] Big file editing generates tons of logs
+
+## v2: compartmentization
+
+* [ ] `<time-codes>`
+* [ ] `<playback-panel>`
+* [ ] `<wave-area>`
 
 ## Improvements
 
+* [ ] Add info icon: support, github, brahman, tips, generate theme
+* [ ] Ctrl-z/y
+* [ ] support paste fragment of itself
+* [ ] Mark loop selection
+* [ ] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+* [ ] Separate audio-decode module with all codecs...
 * [ ] Separate history from browser history: we may want to have a component
 * [x] Make play button clickable area _big_
+* [ ] Recent files
 * [ ] use media-offset for looping -> waiting for the update
 * [ ] detect cmd/ctrl key depending on platform
 * [x] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
 * [x] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
-* [ ] use decodeAudioData main thread "worker" for faster decode, detect supported native codecs & video
+* [x] use decodeAudioData main thread "worker" for faster decode, detect supported native codecs & video
 * [ ] Loudness weighting
   * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
   * https://github.com/domchristie/needles
@@ -112,7 +124,6 @@
 * [ ] Think of embeddable links
 * [ ] Recording capability
 * [ ] Add tests (playwright?)
-* [ ] Add info icon: support, github, brahman, tips, generate theme
 * [ ] Measure via LUFS and other methods
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum

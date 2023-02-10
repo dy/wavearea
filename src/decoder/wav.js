@@ -1,0 +1,1 @@
+export { default as wav } from 'node-wav';

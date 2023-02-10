@@ -37,6 +37,10 @@ const loadDecoder = async (type) => {
       let { OpusDecoder } = await importDecoder('opus')
       decoder = new OpusDecoder().decode
       break;
+    case 'wav':
+      let { wav } = await importDecoder('wav')
+      decoder = wav;
+      break;
     default:
       throw Error(type ? 'Unsupported codec ' + type : 'Unknown codec')
   }
@@ -46,7 +50,7 @@ const loadDecoder = async (type) => {
   // cache
   return decoders[type] = async (buf) => {
     console.time('decode')
-    let {channelData, sampleRate} = decoder.decodeFile ? await decoder.decodeFile(new Uint8Array(buf)) : await decoder.decode(buf)
+    let {channelData, sampleRate, ...rest} = decoder.decodeFile ? await decoder.decodeFile(new Uint8Array(buf)) : (await decoder.decode(new Uint8Array(buf)))
     console.timeEnd('decode')
 
     let audioBuffer = new AudioBuffer({

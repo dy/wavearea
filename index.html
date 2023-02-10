@@ -36,10 +36,6 @@
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <input id="w-file" class="w-file" type="file" accept="audio/*, video/*"/>
-        <label for="w-file" title="Open file" :hidden="loading || !!segments.length">
-          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-        </label>
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader"
           :if="loading"
@@ -47,8 +43,22 @@
           :="clearInterval(this._id), loading ? (this._id = setInterval(()=>(str+='.', measureCharWidth(this)), 50)) : str = ''"
           :text="str"
         >...</div>
+        <div class="w-opener" :if="!segments.length && !loading">
+          <input id="w-file" class="w-file" type="file" accept="audio/*, video/*" :onchange="handleFile"/>
+          <label for="w-file" title="Open file">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24px" width="24px" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+            </svg>
+            Open audio
+          </label>
+          <!-- <button class="w-record">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
+            Record
+          </button> -->
+          <!-- Recent -->
+        </div>
         <div contenteditable class="w-editable wavefont"
-          :if="!loading"
+          :if="!!segments.length"
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
@@ -56,7 +66,7 @@
           :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
           :style="{'--linew': lineWidth}"
           :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
-        ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
+        ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
       </div>
     </div>
   </div>

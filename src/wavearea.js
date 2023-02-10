@@ -17,7 +17,7 @@ loopAudio.loop = true
 
 // init backend - receives messages from worker with rendered audio & waveform
 const worker = new Worker('./dist/worker.js', { type: "module" });
-
+const audioCtx = new AudioContext()
 
 // UI state
 let state = sprae(wavearea, {
@@ -26,7 +26,7 @@ let state = sprae(wavearea, {
   isKeyDown: 0,
 
   // params
-  loading: 'Initializing...',
+  loading: false,
   recording: false,
   playing: false,
   selecting: false,
@@ -127,6 +127,24 @@ let state = sprae(wavearea, {
     state.loading = false;
 
     return arrayBuf;
+  },
+
+  async handleFile(e) {
+    // let url = URL.createObjectURL(e.target.files[0])
+    // pushOp(['src', url])
+    state.loading = 'Decoding...'
+    let file = e.target.files[0];
+    let arrayBuf = await fileToArrayBuffer(file);
+    let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
+    let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
+    await pushOp(['file', {
+      file,
+      numberOfChannels: audioBuf.numberOfChannels,
+      sampleRate: audioBuf.sampleRate,
+      length: audioBuf.length,
+      channelData
+    }])
+    state.loading = false
   },
 
   // audio time changes
@@ -361,20 +379,6 @@ const resizeObserver = new ResizeObserver((entries) => {
 resizeObserver.observe(editarea);
 
 
-// if URL has no operations - put random sample
-if (location.search.length < 2) {
-  const sampleSources = [
-    // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
-    'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
-    // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
-  ]
-  let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
-  location.search = `?src=${src}`
-}
-
-// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-loadAudioFromURL()
-
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
 // so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
@@ -383,7 +387,8 @@ async function pushOp (...ops) {
 
   for (let op of ops) {
     let [name, ...args] = op
-    if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
+    if (args[0].file) url.searchParams.set(name, args[0].file.name)
+    else if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
   }
   state.loading = 'Calculating audio...'
@@ -437,3 +442,29 @@ async function loadAudioFromURL (url = new URL(location)) {
   renderAudio(params)
   state.loading = false
 }
+
+async function loadRecentAudio () {
+  state.loading = 'Loading recent audio...'
+  let params = await runOp(['load'])
+  renderAudio(params)
+  state.loading = false
+}
+
+
+// if URL has no operations - put random sample
+// if (location.search.length < 2) {
+//   const sampleSources = [
+//     // 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Vivaldi_-_Magnificat_01_Magnificat.oga',
+//     'https://upload.wikimedia.org/wikipedia/commons/c/cf/Caja_de_m%C3%BAsica_%28PianoConcerto5_Beethoven%29.ogg',
+//     // 'https://upload.wikimedia.org/wikipedia/commons/9/96/Carcassi_Op_60_No_1.ogg',
+//   ]
+//   let src = sampleSources[Math.floor(Math.random() * sampleSources.length)];
+//   location.search = `?src=${src}`
+// }
+// history.replaceState({segments:[]}, '', '/')
+loadRecentAudio()
+
+// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
+// loadAudioFromURL()
+
+
