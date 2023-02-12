@@ -225,7 +225,6 @@ body {
   bottom: 0;
   margin: auto;
 }
-.w-current-time {
+.w-time {
   font-variant-numeric: tabular-nums;
-  min-width: 7ch;
 }
