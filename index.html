@@ -89,7 +89,31 @@
         <!-- <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><g><rect fill="none" height="24" width="24"/></g><g><path d="M19,9h-4V3H9v6H5l7,7L19,9z M5,18v2h14v-2H5z"/></g></svg> -->
       </div>
     </div>
+
+    <dialog class="w-info-dialog" id="info-dialog" :ref="info" :onclick="e => {
+      if (e.offsetX < 0 || e.offsetX > e.target.offsetWidth || e.offsetY < 0 || e.offsetY > e.target.offsetHeight) {
+        info.close();
+      }
+    }">
+      <h3 align="center">Wavearea</h3>
+      <br/>
+      <!-- <dl>
+        <dt>Space</dt>
+        <dd>Play / Pause</dd>
+        <dt>Ctrl + Z / R</dt>
+        <dd>Undo / Redo</dd>
+      </dl> -->
+      <p align="center"><a href="https://github.com/dy/wavearea">Github</a></p>
+      <p align="center"><a href="https://krishnized.github.io/license/">ॐ</a></p>
+    </dialog>
+    <button class="w-info-button" id="show-info-dialog" :onclick="e => info.showModal();">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12m-9-3.75h.008v.008H12V8.25z" />
+      </svg>
+    </button>
   </div>
+
 
   <script type="module" src="./dist/wavearea.js"></script>
 </body>
+
