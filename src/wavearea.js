@@ -53,17 +53,6 @@ let state = sprae(wavearea, {
   // FIXME: make responsive
   lineWidth: 216,
 
-  // loader measures average char width
-  charWidth: 0,
-  measureCharWidth(el) {
-    let rect = el.getClientRects()[0]
-    if (!rect || !state.loading) return
-    let width = rect.width
-    let charWidth = width / el.textContent.length
-    if (!state.charWidth) state.charWidth = charWidth
-    else state.charWidth = (state.charWidth + charWidth) / 2
-  },
-
   // caret repositioned my mouse
   async handleCaret(e) {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
@@ -377,10 +366,26 @@ caretObserver.observe(caretLinePointer);
 
 // create line width observer
 const resizeObserver = new ResizeObserver((entries) => {
-  let width = entries[0].contentRect.width
-  state.lineWidth = state.charWidth ? Math.floor(width / state.charWidth) : 0
+  // let width = entries[0].contentRect.width
+  state.lineWidth = measureLineWidth()
 })
 resizeObserver.observe(editarea);
+
+// inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+function measureLineWidth() {
+  let range = new Range();
+  let textNode = editarea.firstChild.firstChild
+  let textContent = textNode.textContent
+
+  for ( var i = 0 ; i < textContent.length; i++) {
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, i+1);
+    // 2nd line means we counted chars per line
+    if (range.getClientRects().length > 1) return i
+  }
+
+  return textContent.length
+}
 
 
 // update history, post operation & schedule update
