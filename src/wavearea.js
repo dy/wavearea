@@ -276,7 +276,7 @@ const inputHandlers = {
       loopAudio.src = url
     }
 
-    this._loopTimeout = setTimeout(pushLoopOp, 280)
+    this._loopTimeout = setTimeout(pushLoopOp, 50)
   }
 }
 
