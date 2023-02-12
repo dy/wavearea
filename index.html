@@ -20,7 +20,7 @@
         <input type="file" multiple />
       </file-attachment> -->
       <div class="w-waveform wavefont">
-        <button class="w-play"
+        <!--<button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} ⌘↵`"
           :class="{'w-loading':loading}"
           :disabled="loading"
@@ -36,6 +36,7 @@
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
+        -->
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader"
           :if="loading"
@@ -67,6 +68,23 @@
           :style="{'--linew': lineWidth}"
           :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
         ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
+      </div>
+
+      <div class="w-playback">
+        <button class="w-play"
+          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} ⌘↵`"
+          :class="{'w-loading':loading}"
+          :disabled="loading"
+          :hidden="!segments.length"
+          :onclick.toggle="play"
+          :onkeydown.document.meta-enter="e=>this.click(e)">
+          <span class="w-play-clickarea"></span>
+          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
+          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <span class="w-current-time" :text="timecode(caretOffset, 2)"></span>
+        <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="6.6"/></svg> -->
+        <!-- <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><g><rect fill="none" height="24" width="24"/></g><g><path d="M19,9h-4V3H9v6H5l7,7L19,9z M5,18v2h14v-2H5z"/></g></svg> -->
       </div>
     </div>
   </div>

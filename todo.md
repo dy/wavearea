@@ -65,6 +65,7 @@
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
 * [ ] Big file editing generates tons of logs
+* [ ] Loaded file misses offset
 
 ## v2: compartmentization
 

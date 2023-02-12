@@ -6,6 +6,8 @@ import { fileToArrayBuffer } from './audio-utils';
 
 history.scrollRestoration = 'manual'
 
+CSS.paintWorklet.addModule(`./node_modules/css-houdini-squircle/squircle.min.js`);
+
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
@@ -25,7 +27,7 @@ let state = sprae(wavearea, {
   isMouseDown: false,
   isKeyDown: 0,
 
-  // params
+  // state
   loading: false,
   recording: false,
   playing: false,
@@ -223,7 +225,9 @@ let state = sprae(wavearea, {
       await loadAudioFromURL()
     }
     sel(state.caretOffset)
-  }
+  },
+
+  timecode
 });
 
 
@@ -352,9 +356,9 @@ const sel = (start, end, lineOffset=0) => {
 }
 
 // produce display time from frames
-const timecode = (block) => {
-  let time = ((block / state.total) || 0) * state.duration
-  return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}`
+function timecode (block, ms=0) {
+  let time = ((block / state?.total)) * state?.duration || 0
+  return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}${ms?`.${(time%1).toFixed(ms).slice(2).padStart(ms)}`:''}`
 }
 
 // create play button position observer

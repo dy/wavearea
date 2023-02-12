@@ -26,7 +26,7 @@ body {
 	--wght: 25;
 	font-family: wavefont;
   letter-spacing: 1ch;
-  font-size: 4rem;
+  font-size: var(--wavefont-size);
   line-height: 1.4;
 	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
   word-break: break-all;
@@ -38,6 +38,7 @@ body {
   padding: 0 2rem;
   display: flex;
   flex-direction: column;
+  --wavefont-size: 6rem;
 }
 
 .w-loading {
@@ -107,32 +108,23 @@ body {
   word-break: keep-all;
   white-space: pre;
   opacity: .5;
-  line-height: calc(4rem*1.4); /* FIXME: make depend on w-segment font-style */
+  line-height: calc(var(--wavefont-size)*1.4); /* FIXME: make depend on w-segment font-style */
 }
-.w-play, .w-caret-line {
+.w-waveform > .w-play,  .w-caret-line {
   position: absolute;
   margin-left: -5.6rem;
   width: 2rem;
-  height: 5.6rem;
-  align-items: center;
-  padding: 0;
-  text-align: center;
-  display: flex;
-  appearance: none;
-  border: none;
-  background: none;
-  top: calc(var(--carety) * 4rem * 1.4);
-  cursor: pointer;
+  height: calc(var(--wavefont-size) * 1.4);
+  top: calc(var(--carety) * var(--wavefont-size) * 1.4);
 }
-.w-play-clickarea {
+.w-waveform > .w-play  .w-play-clickarea {
   height: 300%;
   width: 100%;
   position: absolute;
   top: -100%;
 }
-
 @media screen and (max-width: 840px) {
-  .w-play {
+  .w-waveform > .w-play {
     z-index: 1;
     width: 3rem;
     height: 5.6rem;
@@ -141,7 +133,6 @@ body {
     background: white;
   }
 }
-
 .w-caret-line {
   pointer-events: none;
   margin-left: -2rem;
@@ -180,13 +171,61 @@ body {
 
 .w-playback {
   position: fixed;
-  bottom: 2rem;
-  left: 0;
-  right: 0;
+  bottom: 4rem;
+  width: auto;
   margin: auto;
-  border-radius: 100px;
   z-index: 2;
-  height: 3rem;
-  /* box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px; */
-}
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  font-size: .8rem;
+  padding: 1rem 1.2rem;
+  border-radius: 50px;
+  border: 1px solid rgb(0 0 0 / 3%);
+  box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 100%) 33%, rgb(255 255 255 / 100%) 100%);
+  backdrop-filter: blur(2px);
 
+  /* background: paint(squircle);
+  --squircle-radius: 70px;
+  --squircle-smooth: 0.22;
+  --squircle-fill: rgba(0, 0, 0, 0.03);
+  --squircle-outline: 1.1px;
+  -webkit-filter: drop-shadow(0px 2px 4px rgb(0 0 0 / 22%)) drop-shadow(0px 1px 2px rgb(0 0 0 / 7%));
+  filter: drop-shadow(0px 2px 4px rgb(0 0 0 / 22%)) drop-shadow(0px 1px 2px rgb(0 0 0 / 7%)); */
+}
+/* .w-playback::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: paint(squircle);
+  --squircle-radius: 70px;
+  --squircle-smooth: 0.24;
+  --squircle-fill: white;
+} */
+
+.w-play {
+  align-items: center;
+  padding: 0;
+  text-align: center;
+  display: flex;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  justify-content: center;
+}
+.w-play-clickarea {
+  height: 4rem;
+  width: 4rem;
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+}
+.w-current-time {
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+}
