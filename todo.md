@@ -65,7 +65,7 @@
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
 * [ ] Big file editing generates tons of logs
-* [ ] Loaded file misses offset
+* [x] Loaded file misses offset
 
 ## v2: compartmentization
 
@@ -79,7 +79,7 @@
 * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [ ] Mark loop selection
-* [ ] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+* [x] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
 * [ ] Separate audio-decode module with all codecs...
 * [ ] Separate history from browser history: we may want to have a component
 * [x] Make play button clickable area _big_

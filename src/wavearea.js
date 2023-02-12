@@ -6,7 +6,7 @@ import { fileToArrayBuffer } from './audio-utils';
 
 history.scrollRestoration = 'manual'
 
-CSS.paintWorklet.addModule(`./node_modules/css-houdini-squircle/squircle.min.js`);
+// CSS.paintWorklet.addModule(`./node_modules/css-houdini-squircle/squircle.min.js`);
 
 // refs
 const wavearea = document.querySelector('.wavearea')
