@@ -81,16 +81,25 @@ body {
   white-space: break-spaces;
   outline: none;
   width: 100%;
+  color: var(--primary);
   /* background-size: 1px calc(var(--wavefont-size) * 1.4);
   background-position: 0% 4.2rem;
   background-image:  repeating-linear-gradient(0deg, rgb(0 0 0 / 50%) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
 }
+.w-editable:focus {
+  color: var(--secondary);
+}
 .w-played {
+  top: 0;
   display: block;
   position: absolute;
   z-index: 1;
   pointer-events: none;
+  visibility: hidden;
   color: var(--primary);
+}
+.w-editable:focus + .w-played {
+  visibility: visible;
 }
 
 
