@@ -11,6 +11,7 @@ history.scrollRestoration = 'manual'
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
+const played = wavearea.querySelector('.w-played')
 const playButton = wavearea.querySelector('.w-play')
 const caretLinePointer = wavearea.querySelector('.w-caret-line')
 const audio = new Audio, loopAudio = new Audio;
@@ -141,10 +142,10 @@ let state = sprae(wavearea, {
 
   // audio time changes
   timeChange(e) {
-    // ignore if event comes from editarea
-    if (document.activeElement === editarea) return
-    sel(state.playbackStart = Math.floor(state.total * audio.currentTime / state.duration))
-    editarea.focus()
+    // // ignore if event comes from editarea
+    // if (document.activeElement === editarea) return
+    // sel(state.playbackStart = Math.floor(state.total * audio.currentTime / state.duration))
+    // editarea.focus()
   },
 
   scrollIntoCaret() {

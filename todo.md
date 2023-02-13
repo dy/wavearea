@@ -88,7 +88,9 @@
 
 ## Improvements
 
-* [ ] Add info icon: support, github, brahman, tips, generate theme
+* [x] Add info icon: support, github, brahman
+  * tips, generate theme
+  * adjust settings: audio loudness metric, block size
 * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [ ] Mark loop selection
@@ -111,7 +113,7 @@
 * [ ] time codes as # hrefs
 * [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
     * ? should we work straight on wav buffer maybe instead of audio buffers?
-* [ ] Highlight of playable/playing region via diff color
+* [x] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
 * [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
 * [x] move loading/decoding/encoding to worker

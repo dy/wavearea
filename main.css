@@ -39,6 +39,8 @@ body {
   display: flex;
   flex-direction: column;
   --wavefont-size: 6rem;
+  --secondary: rgb(0,0,0,.5);
+  --primary: black;
 }
 
 .w-loading {
@@ -74,20 +76,28 @@ body {
   max-width: 100%;
 }
 
-.w-editable {
+.w-editable, .w-played {
   word-break: break-all;
+  white-space: break-spaces;
   outline: none;
   width: 100%;
   /* background-size: 1px calc(var(--wavefont-size) * 1.4);
   background-position: 0% 4.2rem;
   background-image:  repeating-linear-gradient(0deg, rgb(0 0 0 / 50%) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
 }
+.w-played {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  color: var(--primary);
+}
+
 
 .w-segment {
   position: relative;
   margin: 0;
   padding: 0;
-  white-space: break-spaces;
   min-height: calc(var(--wavefont-size) * 1.4);
 }
 .w-segment::before{
@@ -101,12 +111,12 @@ body {
   width: 1em;
   word-break: keep-all;
   white-space: pre;
-  opacity: .5;
+  color: var(--secondary);
   line-height: calc(var(--wavefont-size)*1.4); /* FIXME: make depend on w-segment font-style */
 }
 .w-waveform > .w-play,  .w-caret-line, .w-opener {
   position: absolute;
-  margin-left: -5.6rem;
+  margin-left: calc(-1 * var(--wavefont-size));
   width: 2rem;
   height: calc(var(--wavefont-size) * 1.4);
   top: calc(var(--carety) * var(--wavefont-size) * 1.4);
@@ -114,16 +124,16 @@ body {
   align-items: center;
 }
 .w-waveform > .w-play  .w-play-clickarea {
-  height: 300%;
+  height: calc(var(--wavefont-size) * 1.4 * 3);
   width: 100%;
   position: absolute;
-  top: -100%;
+  inset: 0;
 }
 @media screen and (max-width: 840px) {
   .w-waveform > .w-play {
     z-index: 1;
     width: 3rem;
-    height: 5.6rem;
+    height: calc(var(--wavefont-size) * 1.4);
     margin-left: -3.8rem;
     justify-content: center;
     background: white;
@@ -247,13 +257,14 @@ body {
   box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
   background: white;
   opacity: 0;
-  display: block;
+  display: none;
   transition: opacity .2s ease-out;
   inset:  0;
 }
 .w-info-dialog[open] {
   opacity: 1;
   margin: auto;
+  display: block;
   transition: opacity .2s ease-out;
 }
 .w-info-dialog > * {
