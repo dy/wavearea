@@ -39,7 +39,7 @@ body {
   display: flex;
   flex-direction: column;
   --wavefont-size: 6rem;
-  --secondary: rgb(0,0,0,.5);
+  --secondary: rgb(0 0 0 / 50%);
   --primary: black;
 }
 
@@ -85,6 +85,9 @@ body {
   /* background-size: 1px calc(var(--wavefont-size) * 1.4);
   background-position: 0% 4.2rem;
   background-image:  repeating-linear-gradient(0deg, rgb(0 0 0 / 50%) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
+}
+.w-editable p::selection {
+  /* background-color: var(--secondary); */
 }
 .w-editable:focus {
   color: var(--secondary);

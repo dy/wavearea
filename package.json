@@ -34,7 +34,7 @@
     "node-wav": "^0.0.2",
     "ogg-opus-decoder": "^1.5.2",
     "opus-decoder": "^0.6.2",
-    "sprae": "^2.14.0"
+    "sprae": "^2.14.1"
   },
   "devDependencies": {
     "esbuild": "^0.16.12"
