@@ -1,7 +1,9 @@
 // main audio processing API / backend
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
-import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, saveAudio, loadAudio } from "./audio-utils.js";
+import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, fileToArrayBuffer } from "./audio-utils.js";
+import decodeAudio from './decode.js'
 import AudioBuffer from "audio-buffer";
+import storage from 'kv-storage-polyfill';
 
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
@@ -49,6 +51,17 @@ const Ops = {
 
   // accept decoded audio buffer
   async file(data) {
+    // load file from storage, if exists
+    if (typeof data === 'string') {
+      let blob = await storage.get(DB_KEY + ':' + data)
+      if (!blob) return buffers // TODO: throw error, reset history
+
+      let arrayBuffer = await fileToArrayBuffer(blob)
+      let audioBuffer = await decodeAudio(arrayBuffer)
+
+      return buffers = [audioBuffer]
+    }
+
     history.push(() => buffers.pop())
     let audioBuffer = new AudioBuffer({
       numberOfChannels: data.numberOfChannels,
@@ -58,16 +71,12 @@ const Ops = {
     data.channelData.forEach((data, channel) => audioBuffer.getChannelData(channel).set(data));
     buffers.push(audioBuffer)
 
-    saveAudio(...buffers)
+    // save to storage
+    let blob = new Blob([await encodeAudio(...buffers)])
+    console.log('save', DB_KEY + ':' + data.file.name)
+    storage.set(DB_KEY + ':' + data.file.name, blob)
 
     return buffers
-  },
-
-  async load() {
-    let audioBuffer = await loadAudio()
-    if (!audioBuffer) return []
-
-    return buffers = [audioBuffer]
   },
 
   del(from, to) {
@@ -270,5 +279,8 @@ const bufferIndex = (blockOffset) => {
   // eg. getSelection() API also returns offset index _after_ last item.
   return [buffers.length - 1, buffers[buffers.length - 1].length]
 }
+
+const DB_KEY = 'wavearea-audio'
+
 
 

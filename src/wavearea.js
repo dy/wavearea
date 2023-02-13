@@ -128,6 +128,7 @@ let state = sprae(wavearea, {
     let arrayBuf = await fileToArrayBuffer(file);
     let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
     let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
+
     await pushOp(['file', {
       file,
       numberOfChannels: audioBuf.numberOfChannels,
@@ -375,6 +376,7 @@ resizeObserver.observe(editarea);
 function measureLineWidth() {
   let range = new Range();
   let textNode = editarea.firstChild.firstChild
+  if (!textNode?.textContent) return
   let textContent = textNode.textContent
 
   for ( var i = 0 ; i < textContent.length; i++) {
@@ -440,25 +442,17 @@ function renderAudio ({url, segments, duration}) {
 
 // reconstruct audio from url
 async function loadAudioFromURL (url = new URL(location)) {
-  state.loading = 'Reconstructing audio...'
+  state.loading = 'Loading audio...'
   let ops = []
   for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
     // skip https:// as single argument
-    [op, ...(arg.includes(':') ? [arg] : arg.split('-'))]
+    [op, ...(op==='src' || op==='file' ? [arg] : arg.split('-'))]
   ))
   let params = await runOp(...ops)
   history.replaceState(params, '', decodeURI(url))
   renderAudio(params)
   state.loading = false
 }
-
-async function loadRecentAudio () {
-  state.loading = 'Loading recent audio...'
-  let params = await runOp(['load'])
-  renderAudio(params)
-  state.loading = false
-}
-
 
 // if URL has no operations - put random sample
 // if (location.search.length < 2) {
@@ -471,9 +465,10 @@ async function loadRecentAudio () {
 //   location.search = `?src=${src}`
 // }
 // history.replaceState({segments:[]}, '', '/')
-loadRecentAudio()
 
 // apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-// loadAudioFromURL()
+if (location.search.length) {
+  loadAudioFromURL()
+}
 
 

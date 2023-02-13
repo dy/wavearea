@@ -57,6 +57,7 @@ body {
 .w-waveform {
   position: relative;
   width: 100%;
+  /* this 0.5ch fixes inconsistent breaking, seemingly round error */
   max-width: calc(216 * 2ch + 0.5ch);
   margin: 1rem;
   margin-left: 4rem;
@@ -72,22 +73,14 @@ body {
   display: inline-block;
   max-width: 100%;
 }
-.w-opener {
-  position: absolute;
-  display: flex;
-  flex-direction: row;
-  gap: 2rem;
-  font-size: 1rem;
-  font-family: sans-serif;
-  letter-spacing: 0;
-  line-height: 5.6rem;
-}
 
 .w-editable {
   word-break: break-all;
   outline: none;
-  /* this 1ch fixes inconsistent breaking, seemingly round error */
   width: 100%;
+  /* background-size: 1px calc(var(--wavefont-size) * 1.4);
+  background-position: 0% 4.2rem;
+  background-image:  repeating-linear-gradient(0deg, rgb(0 0 0 / 50%) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
 }
 
 .w-segment {
@@ -95,6 +88,7 @@ body {
   margin: 0;
   padding: 0;
   white-space: break-spaces;
+  min-height: calc(var(--wavefont-size) * 1.4);
 }
 .w-segment::before{
   content: attr(timecodes);
@@ -110,12 +104,14 @@ body {
   opacity: .5;
   line-height: calc(var(--wavefont-size)*1.4); /* FIXME: make depend on w-segment font-style */
 }
-.w-waveform > .w-play,  .w-caret-line {
+.w-waveform > .w-play,  .w-caret-line, .w-opener {
   position: absolute;
   margin-left: -5.6rem;
   width: 2rem;
   height: calc(var(--wavefont-size) * 1.4);
   top: calc(var(--carety) * var(--wavefont-size) * 1.4);
+  display: flex;
+  align-items: center;
 }
 .w-waveform > .w-play  .w-play-clickarea {
   height: 300%;
@@ -245,7 +241,7 @@ body {
   opacity: 1;
 }
 .w-info-dialog {
-  padding: 1rem;
+  padding: 1.2rem;
   border: none;
   border-radius: .8rem;
   box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
@@ -264,7 +260,7 @@ body {
   margin: 0
 }
 .w-info-dialog::backdrop {
-  background: rgba(0,0,0,.01);
+  background: rgba(108,108,108,.16);
   -webkit-backdrop-filter: blur(0px);
   backdrop-filter: blur(0px);
   transition: opacity .5s ease-out;

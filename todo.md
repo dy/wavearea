@@ -45,7 +45,7 @@
 * [x] take source from URL.
   * [x] if there's none - take random source
 * [x] support dropping files
-  * [ ] save dropped files to storage
+  * [x] save dropped files to storage
 * [x] Make history of changes with undo/redo
 * [x] Time-codes of following segments are messed up: make them href-able
 * [x] Bug: insert silence at the beginning of new segment -> feature
@@ -56,6 +56,19 @@
 * [x] BUG: fix playback from caret
 * [x] Alt-Space for start/stop
 * [x] Loop play selection
+
+## MVP tasks
+
+* [ ] Enter for frags
+* [ ] Display + for newlines
+* [ ] . for silence
+* [ ] History separate from URLs
+* [x] Empty URL shows "Open file"
+* [x] Loads source from url on init
+* [?] ~~Display loading status in playback~~ not sure still if we need playback
+* [x] ~~Show average line in samples~~ use dots instead
+* [ ] Outsource audio-decode
+* [ ] Outsource media loopStart / loopEnd
 
 ## Bugs
 

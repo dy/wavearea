@@ -20,13 +20,13 @@
         <input type="file" multiple />
       </file-attachment> -->
       <div class="w-waveform wavefont">
-        <!--<button class="w-play"
-          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} ⌘↵`"
+        <button class="w-play"
+          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'w-loading':loading}"
           :disabled="loading"
           :hidden="!segments.length"
           :onclick.toggle="play"
-          :onkeydown.document.meta-enter="e=>this.click(e)"
+          :onkeydown.document.space="e=>this.click(e)"
           :style="{
             '--carety': caretLine,
             position: !caretOffscreen ? 'absolute' : 'fixed',
@@ -36,7 +36,6 @@
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        -->
         <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
         <div class="w-loader"
           :if="loading"
@@ -50,7 +49,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24px" width="24px" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
             </svg>
-            Open audio
           </label>
           <!-- <button class="w-record">
             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
@@ -58,19 +56,18 @@
           </button> -->
           <!-- Recent -->
         </div>
-        <div contenteditable class="w-editable wavefont"
-          :if="!!segments.length"
+        <div contenteditable autofocus class="w-editable wavefont"
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
           :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
-          :style="{'--linew': lineWidth}"
+          :style="{'--linew': lineWidth||10}"
           :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
-        ><p class="w-segment" :each="segment, id1 in segments" :key="id1" :text="segment"></p></div>
+        ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
       </div>
 
-      <div class="w-playback">
+      <div class="w-playback" :if="false">
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'w-loading':loading}"
@@ -95,8 +92,10 @@
         info.close();
       }
     }">
-      <h3 align="center">Wavearea</h3>
-      <br/>
+      <h3 align="center" style="margin-bottom:.4rem">Wavearea</h3>
+      <!-- TODO: choose block size -->
+      <!-- TODO: choose palette -->
+      <!-- TODO: choose loudness style -->
       <!-- <dl>
         <dt>Space</dt>
         <dd>Play / Pause</dd>
