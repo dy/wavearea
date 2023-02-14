@@ -78,6 +78,7 @@
 * [ ] Big file editing generates tons of error logs : must be good
 * [x] Loaded file misses offset
 * [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
+* [ ] Safari: smooth audio currentTime (opposed to glitchy now)
 
 ## v2: compartmentization
 
