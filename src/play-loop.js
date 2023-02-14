@@ -1,4 +1,6 @@
 /**
+ * Play clip of audio/video, possibly with loop.
+ * Based on https://github.com/muxinc/media-offset
  *
  * @param {HTMLMediaElement} media - An audio/video/etc element
  * @param {object} clip - Object with `{start, end?}` signature, indicating clip to play
