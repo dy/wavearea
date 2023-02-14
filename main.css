@@ -82,9 +82,11 @@ body {
   outline: none;
   width: 100%;
   color: var(--primary);
+}
+.w-editable {
   /* background-size: 1px calc(var(--wavefont-size) * 1.4);
   background-position: 0% 4.2rem;
-  background-image:  repeating-linear-gradient(0deg, rgb(0 0 0 / 50%) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
+  background-image:  repeating-linear-gradient(0deg, var(--secondary) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
 }
 .w-editable p::selection {
   /* background-color: var(--secondary); */
@@ -248,7 +250,18 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-
+.w-krsnzd {
+  position: fixed;
+  bottom: 1.08rem;
+  right: 1.08rem;
+  text-decoration: none;
+  color: var(--primary);
+  opacity: .108;
+  transition: .108s ease-out;
+}
+.w-krsnzd:hover {
+  opacity: .82;
+}
 .w-info-button {
   position: fixed;
   bottom: .8rem;
