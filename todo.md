@@ -59,9 +59,9 @@
 
 ## Must fix v1
 
-* [ ] Outsource media loopStart / loopEnd
-* [ ] Better selection logic: must be immediate
-* [ ] Display open/loading status 
+* [x] Outsource media loopStart / loopEnd
+* [x] Better selection logic: must be immediate
+* [ ] Display open/loading status
 * [ ] Enter for frags
 * [ ] Display + for newlines
 * [ ] . for silence

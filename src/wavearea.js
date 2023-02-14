@@ -3,6 +3,7 @@
 // all the data is stored and processed in worker
 import sprae from 'sprae';
 import { fileToArrayBuffer } from './audio-utils';
+import playClip from './play-loop';
 
 history.scrollRestoration = 'manual'
 
@@ -14,8 +15,7 @@ const editarea = wavearea.querySelector('.w-editable')
 const played = wavearea.querySelector('.w-played')
 const playButton = wavearea.querySelector('.w-play')
 const caretLinePointer = wavearea.querySelector('.w-caret-line')
-const audio = new Audio, loopAudio = new Audio;
-loopAudio.loop = true
+const audio = new Audio
 
 
 // init backend - receives messages from worker with rendered audio & waveform
@@ -55,7 +55,7 @@ let state = sprae(wavearea, {
   lineWidth: 216,
 
   // caret repositioned my mouse
-  async handleCaret(e) {
+  async handleCaret() {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
     let selection = sel()
     if (!selection) return
@@ -64,16 +64,11 @@ let state = sprae(wavearea, {
     if (!state.playing) {
       state.playbackStart = selection.start;
       state.playbackEnd = !selection.collapsed ? selection.end : state.total;
-      state.loop = !selection.collapsed;
-      // create loopable audio fragment
-      if (state.loop) inputHandlers.createLoop()
+      state.loop = audio.loop = !selection.collapsed;
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    if (state.loop) loopAudio.currentTime = !state.playing ? 0 : loopAudio.duration *
-      (Math.max(state.playbackStart, Math.min(selection.start, state.playbackEnd)) - state.playbackStart) /
-      (state.playbackEnd - state.playbackStart);
-    else audio.currentTime = audio.duration * selection.start / state.total;
+    audio.currentTime = state.duration * selection.start / state.total;
   },
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
@@ -161,15 +156,12 @@ let state = sprae(wavearea, {
 
     let playbackStart = state.playbackStart;
     let playbackEnd = state.playbackEnd;
-    let currentAudio = state.loop ? loopAudio : audio;
 
     const toggleStop = () => playButton.click()
 
     let animId;
     const syncCaret = () => {
-      const playbackCurrent = state.loop ?
-        state.playbackStart + Math.ceil((state.playbackEnd - state.playbackStart) * loopAudio.currentTime / loopAudio.duration) :
-        Math.max(Math.ceil(state.total * audio.currentTime / audio.duration), 0)
+      const playbackCurrent = Math.max(Math.ceil(state.total * audio.currentTime / state.duration), 0)
 
       sel(state.caretOffset = playbackCurrent)
 
@@ -183,13 +175,16 @@ let state = sprae(wavearea, {
 
     editarea.focus();
 
-    currentAudio.play();
+    const stopAudio = playClip(audio, state.loop && {
+      start: state.duration * state.playbackStart / state.total,
+      end: state.duration * state.playbackEnd / state.total
+    });
     // TODO: markLoopRange()
 
-    currentAudio.addEventListener('ended', toggleStop, {once: true});
-    const stop = () => {
-      currentAudio.removeEventListener('ended', toggleStop)
-      currentAudio.pause();
+    audio.addEventListener('ended', toggleStop, {once: true});
+    return () => {
+      audio.removeEventListener('ended', toggleStop)
+      stopAudio();
       state.playing = false
       cancelAnimationFrame(animId), animId = null
 
@@ -198,12 +193,10 @@ let state = sprae(wavearea, {
       if (state.loop) sel(playbackStart, playbackEnd)
 
       // adjust end caret position
-      else if (audio.currentTime >= state.duration) sel(state.total)
+      else if (audio.currentTime >= audio.duration) sel(state.total)
 
       editarea.focus()
     }
-
-    return stop
   },
 
   // navigate to history state
@@ -267,20 +260,6 @@ const inputHandlers = {
   // historyUndo(){},
   // historyRedo(){},
 
-  // non-input handler for loop (need to debounce)
-  createLoop(e) {
-    if (this._loopTimeout) clearTimeout(this._loopTimeout)
-
-    const pushLoopOp = async () => {
-      if (state.isMouseDown || state.isKeyDown) return this._loopTimeout = setTimeout(pushLoopOp, 50)
-      this._loopTimeout = null
-      let { url } = await runOp(['loop', state.playbackStart, state.playbackEnd]);
-      if (loopAudio.src) URL.revokeObjectURL(loopAudio.src)
-      loopAudio.src = url
-    }
-
-    this._loopTimeout = setTimeout(pushLoopOp, 50)
-  }
 }
 
 

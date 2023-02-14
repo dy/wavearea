@@ -15,7 +15,7 @@
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
       :onselectstart..onselectionchange.document.once="e => handleCaret"
-      :onselectionchange.document.debounce-108="/*debounce prevents programmatic selectionchanges; TODO: this gives selection artifact; why do we need throttling here?*/handleCaret">
+      :onselectionchange.document="e => {isMouseDown && handleCaret(e)}">
       <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
         <input type="file" multiple />
       </file-attachment> -->

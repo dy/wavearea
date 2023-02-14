@@ -123,25 +123,6 @@ const Ops = {
     return buffers
   },
 
-  // create loop buffers (doesn't overwrite history / buffers)
-  loop(from, to) {
-    from = Number(from), to = Number(to)
-
-    let start = bufferIndex(from)
-    let end = bufferIndex(to)
-
-    if (start[0] === end[0]) return [sliceAudio(buffers[start[0]], start[1], end[1])]
-    if (start[0] === end[0]-1) return [
-      sliceAudio(buffers[start[0]], start[1]),
-      sliceAudio(buffers[end[0]], 0, end[1])
-    ]
-    return [
-      sliceAudio(buffers[start[0]], start[1]),
-      ...buffers.slice(start[0]+1, end[0]-1),
-      sliceAudio(buffers[end[0]], 0, end[1])
-    ]
-  },
-
   /*
   // normalize audio
   norm() {
