@@ -11,7 +11,6 @@ export async function fetchAudio(src) {
   });
   console.timeEnd('fetch')
   if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
-
   let arrayBuffer = await resp.arrayBuffer();
 
   return decodeAudio(arrayBuffer);

@@ -5,6 +5,12 @@ import decodeAudio from './decode.js'
 import AudioBuffer from "audio-buffer";
 import storage from 'kv-storage-polyfill';
 
+// shim worker for Safari
+if (!globalThis.Worker) {
+  let {default: Worker} = await import('pseudo-worker')
+  globalThis.Worker = Worker
+}
+
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
   let {id, ops} = e.data, resultBuffers
