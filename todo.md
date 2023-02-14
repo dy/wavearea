@@ -57,29 +57,27 @@
 * [x] Alt-Space for start/stop
 * [x] Loop play selection
 
-## MVP tasks
+## Must fix v1
 
+* [ ] Outsource media loopStart / loopEnd
+* [ ] Better selection logic: must be immediate
+* [ ] Display open/loading status 
 * [ ] Enter for frags
 * [ ] Display + for newlines
 * [ ] . for silence
-* [ ] History separate from URLs
 * [x] Empty URL shows "Open file"
 * [x] Loads source from url on init
 * [?] ~~Display loading status in playback~~ not sure still if we need playback
 * [x] ~~Show average line in samples~~ use dots instead
-* [ ] Outsource audio-decode
-* [ ] Outsource media loopStart / loopEnd
-
-## Bugs
-
+* [ ] Outsource audio-decode, add missing codecs
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
 * [x] Small screens wrongly wrap waveform timing
 * [x] Deleting part of audio screws up play button position
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
-* [ ] Big file editing generates tons of logs
+* [ ] Big file editing generates tons of error logs : must be good
 * [x] Loaded file misses offset
-* [ ] Played waveform update on big files is very slow. Better use overlap technique
+* [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
 
 ## v2: compartmentization
 
@@ -89,6 +87,7 @@
 
 ## Improvements
 
+* [ ] History separate from URLs
 * [x] Add info icon: support, github, brahman
   * tips, generate theme
   * adjust settings: audio loudness metric, block size
