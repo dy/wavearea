@@ -78,6 +78,7 @@ let state = sprae(wavearea, {
 
   // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
   updateTimecodes() {
+    if (!state.segments) return
     let offset = 0, i = 0
     for (let el of editarea.children) {
       let content = el.textContent.trim()

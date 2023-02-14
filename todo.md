@@ -79,6 +79,7 @@
 * [ ] Delete-all case doesn't get saved
 * [ ] Big file editing generates tons of logs
 * [x] Loaded file misses offset
+* [ ] Played waveform update on big files is very slow. Better use overlap technique
 
 ## v2: compartmentization
 

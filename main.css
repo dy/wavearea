@@ -68,15 +68,7 @@ body {
   /* cursor: drop; */
 }
 
-.w-loader {
-  position: absolute;
-  word-break: break-all;
-  width: auto;
-  display: inline-block;
-  max-width: 100%;
-}
-
-.w-editable, .w-played {
+.w-editable, .w-played, .w-loader {
   word-break: break-all;
   white-space: break-spaces;
   outline: none;
@@ -94,14 +86,19 @@ body {
 .w-editable:focus {
   color: var(--secondary);
 }
-.w-played {
+.w-played, .w-loader {
   top: 0;
   display: block;
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  visibility: hidden;
+}
+.w-loader {
+  color: var(--secondary);
+}
+.w-played {
   color: var(--primary);
+  visibility: hidden;
 }
 .w-editable:focus + .w-played {
   visibility: visible;
