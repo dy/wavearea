@@ -1,4 +1,9 @@
-
+/**
+ *
+ * @param {HTMLMediaElement} media - An audio/video/etc element
+ * @param {object} clip - Object with `{start, end?}` signature, indicating clip to play
+ * @returns
+ */
 export default function playClip (media, clip) {
   if (!clip) {
     media.play()
