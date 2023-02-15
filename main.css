@@ -111,15 +111,16 @@ body {
   padding: 0;
   min-height: calc(var(--wavefont-size) * 1.4);
 }
-.w-segment::before{
-  content: attr(timecodes);
+.w-timecodes{
   position: absolute;
   top: 0;
   left: -3rem;
   font-family: sans-serif;
   letter-spacing: 0;
   font-size: .75rem;
-  width: 1em;
+}
+.w-timecode {
+  margin: 0;
   word-break: keep-all;
   white-space: pre;
   color: var(--secondary);

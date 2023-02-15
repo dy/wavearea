@@ -79,6 +79,7 @@
 * [x] Loaded file misses offset
 * [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
 * [ ] Safari: smooth audio currentTime (opposed to glitchy now)
+* [ ] A way to download selected fragment
 
 ## v2: compartmentization
 
@@ -95,6 +96,7 @@
 * [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [ ] Mark loop selection
+* [ ] Mark fragments
 * [x] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
 * [ ] Separate audio-decode module with all codecs...
 * [ ] Separate history from browser history: we may want to have a component

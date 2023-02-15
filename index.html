@@ -56,6 +56,11 @@
           </button> -->
           <!-- Recent -->
         </div>
+        <div class="w-timecodes"><p class="w-timecode" :each="segment, id1 in segments" :key="id1" :text="
+          let lines = Math.ceil(segment.length / lineWidth) || 0;
+          let offset = Number(this.previousSibling?.dataset?.length || 0);
+          return Array.from({length: lines || 1}, (_,i) => timecode(i * (lineWidth||0) + offset)).join('\n')
+        " :data="{length: segment.length}"></p></div>
         <div contenteditable :ref="editarea" class="w-editable wavefont"
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
@@ -63,7 +68,6 @@
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
           :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
           :style="{'--linew': lineWidth||10}"
-          :="segments, lineWidth, requestAnimationFrame(updateTimecodes)"
         ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
         <div class="w-played wavefont" :text="
           loop ? (' '.repeat(playbackStart) + editarea.textContent.slice(playbackStart, playing ?  caretOffset : playbackEnd)) :

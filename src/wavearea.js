@@ -71,23 +71,6 @@ let state = sprae(wavearea, {
     audio.currentTime = state.duration * selection.start / state.total;
   },
 
-  // update offsets/timecodes visually - the hard job of updating segments is done by other listeners
-  updateTimecodes() {
-    if (!state.segments) return
-    let offset = 0, i = 0
-    for (let el of editarea.children) {
-      let content = el.textContent.trim()
-      let lines = Math.ceil(content.length / state.lineWidth) || 0
-      el.dataset.id = i++
-      el.dataset.offset = offset
-      el.setAttribute('timecodes', Array.from(
-        {length: lines || 1},
-        (_,i) => timecode(i*(state.lineWidth||0) + offset)).join('\n')
-      )
-      offset += content.length
-    }
-  },
-
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType];
     if (!handler) e.preventDefault(); else {
