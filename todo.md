@@ -80,6 +80,7 @@
 * [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
 * [ ] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
+* [ ] Stopping playback causes glitch
 
 ## v2: compartmentization
 
