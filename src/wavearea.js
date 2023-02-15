@@ -119,14 +119,6 @@ let state = sprae(wavearea, {
     state.loading = false
   },
 
-  // audio time changes
-  timeChange(e) {
-    // // ignore if event comes from editarea
-    // if (document.activeElement === editarea) return
-    // sel(state.playbackStart = Math.floor(state.total * audio.currentTime / state.duration))
-    // editarea.focus()
-  },
-
   scrollIntoCaret() {
     if (state.caretOffscreen) caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'});
   },
@@ -271,7 +263,6 @@ const sel = (start, end, lineOffset=0) => {
     endNode = editarea.firstChild
     while ((endNodeOffset+lineOffset) > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
     range.setEnd(endNode.firstChild, endNodeOffset)
-
     s.addRange(range)
 
     return {

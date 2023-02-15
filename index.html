@@ -1,4 +1,3 @@
-<!-- Main waveedit demo. See use-case. -->
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,10 +14,7 @@
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
       :onselectstart..onselectionchange.document.once="e => handleCaret"
-      :onselectionchange.document="e => {isMouseDown && handleCaret(e)}">
-      <!-- <file-attachment class="w-file" :if="!wavURL" directory :onfile-attachment-accepted="e=>console.log(e)">
-        <input type="file" multiple />
-      </file-attachment> -->
+      :onselectionchange.document="e => (!playing && handleCaret(e))">
       <div class="w-waveform wavefont">
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"

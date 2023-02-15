@@ -15,9 +15,12 @@
     "audio",
     "web-audio",
     "waveform",
-    "dsp"
+    "dsp",
+    "wave player",
+    "audio player",
+    "audio edit"
   ],
-  "author": "ΔY <dfcreative@gmail.com>",
+  "author": "Dmitry Iv <dfcreative@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/audio-lab/wavearea/issues"
