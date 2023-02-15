@@ -82,6 +82,7 @@
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
 * [x] Stopping playback causes glitch
+* [ ] Bug with assets/1s.wav playback - play button drops to bottom or something, timecodes break 
 
 ## v2: compartmentization
 
