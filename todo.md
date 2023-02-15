@@ -61,7 +61,7 @@
 
 * [x] Outsource media loopStart / loopEnd
 * [x] Better selection logic: must be immediate
-* [ ] Display open/loading status
+* [x] Display open/loading status
 * [ ] Enter for frags
 * [ ] Display + for newlines
 * [ ] . for silence
@@ -76,6 +76,7 @@
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
 * [ ] Big file editing generates tons of error logs : must be good
+* [ ] Big files break caret line & timecodes
 * [x] Loaded file misses offset
 * [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)

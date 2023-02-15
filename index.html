@@ -52,11 +52,12 @@
           </button> -->
           <!-- Recent -->
         </div>
-        <div class="w-timecodes"><p class="w-timecode" :each="segment, id1 in segments" :key="id1" :text="
+        <div class="w-timecodes"><p :each="segment, id1 in segments" :key="id1" :text="
           let lines = Math.ceil(segment.length / lineWidth) || 0;
           let offset = Number(this.previousSibling?.dataset?.length || 0);
           return Array.from({length: lines || 1}, (_,i) => timecode(i * (lineWidth||0) + offset)).join('\n')
         " :data="{length: segment.length}"></p></div>
+        <div class="w-status" :if="!segments.length" :text="loading || 'Add audio'"></div>
         <div contenteditable :ref="editarea" class="w-editable wavefont"
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"

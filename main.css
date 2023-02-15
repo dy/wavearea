@@ -27,9 +27,8 @@ body {
 	font-family: wavefont;
   letter-spacing: 1ch;
   font-size: var(--wavefont-size);
-  line-height: 1.4;
+  line-height: var(--wavefont-lh);
 	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
-  word-break: break-all;
 }
 
 .wavearea {
@@ -39,6 +38,7 @@ body {
   display: flex;
   flex-direction: column;
   --wavefont-size: 6rem;
+  --wavefont-lh: calc(var(--wavefont-size) * 1.4);
   --secondary: rgb(0 0 0 / 50%);
   --primary: black;
 }
@@ -109,34 +109,38 @@ body {
   position: relative;
   margin: 0;
   padding: 0;
-  min-height: calc(var(--wavefont-size) * 1.4);
+  min-height: var(--wavefont-lh);
 }
-.w-timecodes{
+.w-timecodes, .w-status {
   position: absolute;
   top: 0;
   left: -3rem;
   font-family: sans-serif;
   letter-spacing: 0;
   font-size: .75rem;
-}
-.w-timecode {
   margin: 0;
   word-break: keep-all;
   white-space: pre;
   color: var(--secondary);
-  line-height: calc(var(--wavefont-size)*1.4); /* FIXME: make depend on w-segment font-style */
+  line-height: var(--wavefont-lh);
+}
+.w-timecodes > * {
+  margin: 0;
+}
+.w-status {
+  left: -4rem;
 }
 .w-waveform > .w-play,  .w-caret-line, .w-opener {
   position: absolute;
   margin-left: calc(-1 * var(--wavefont-size));
   width: 2rem;
   height: calc(var(--wavefont-size) * 1.4);
-  top: calc(var(--carety) * var(--wavefont-size) * 1.4);
+  top: calc(var(--carety) * var(--wavefont-lh));
   display: flex;
   align-items: center;
 }
 .w-waveform > .w-play  .w-play-clickarea {
-  height: calc(var(--wavefont-size) * 1.4 * 3);
+  height: calc(var(--wavefont-lh) * 3);
   width: 100%;
   position: absolute;
   inset: 0;
@@ -145,7 +149,7 @@ body {
   .w-waveform > .w-play {
     z-index: 1;
     width: 3rem;
-    height: calc(var(--wavefont-size) * 1.4);
+    height: var(--wavefont-lh);
     margin-left: -3.8rem;
     justify-content: center;
     background: white;

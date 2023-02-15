@@ -103,7 +103,7 @@ let state = sprae(wavearea, {
   async handleFile(e) {
     // let url = URL.createObjectURL(e.target.files[0])
     // pushOp(['src', url])
-    state.loading = 'Decoding...'
+    state.loading = 'Decoding'
     let file = e.target.files[0];
     let arrayBuf = await fileToArrayBuffer(file);
     let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
@@ -360,7 +360,7 @@ async function pushOp (...ops) {
     else if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
   }
-  state.loading = 'Calculating audio...'
+  state.loading = 'Processing'
   let params = await runOp(...ops)
   history.pushState(params, '', decodeURI(url)); // decodeURI needed to avoid escaping `:`
   state.loading = false
@@ -400,7 +400,7 @@ function renderAudio ({url, segments, duration}) {
 
 // reconstruct audio from url
 async function loadAudioFromURL (url = new URL(location)) {
-  state.loading = 'Loading audio...'
+  state.loading = 'Fetching'
   let ops = []
   for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
     // skip https:// as single argument
