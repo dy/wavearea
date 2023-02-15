@@ -78,9 +78,9 @@
 * [ ] Big file editing generates tons of error logs : must be good
 * [x] Loaded file misses offset
 * [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
-* [ ] Safari: smooth audio currentTime (opposed to glitchy now)
+* [x] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
-* [ ] Stopping playback causes glitch
+* [x] Stopping playback causes glitch
 
 ## v2: compartmentization
 
@@ -100,10 +100,9 @@
 * [ ] Mark fragments
 * [x] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
 * [ ] Separate audio-decode module with all codecs...
-* [ ] Separate history from browser history: we may want to have a component
 * [x] Make play button clickable area _big_
 * [ ] Recent files
-* [ ] use media-offset for looping -> waiting for the update
+* [x] use media-offset for looping -> own function play-loop
 * [ ] detect cmd/ctrl key depending on platform
 * [x] make player responsive in mobile as bottom play button with overlay
 * [x] make playback sticky to avoid hiding playback (intersection observer + position change)
@@ -115,7 +114,7 @@
 * [ ] Better loudness display: it is inadequate now
 * [ ] Display left/right channels with half-transparent blacks, and black is their intersection
 * [ ] time codes as # hrefs
-* [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
+* [x] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
     * ? should we work straight on wav buffer maybe instead of audio buffers?
 * [x] Highlight of playable/playing region via diff color
 * [x] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
@@ -125,8 +124,8 @@
 * [x] broken sprae condition of `:if :ref`
 * [ ] convert ops units to h/s/ms
 * [ ] replace file selector with + under caret?
-* [ ] open file
-* [ ] Make nicer playback UI (bottom of page player)
+* [x] open file
+* [x] ~~Make nicer playback UI (bottom of page player)~~ -> not proved to be the best
   * [ ] Errors and loading state must be indicated there
   * [ ] Precise current playback time
 * [ ] delete file fully -> displays open file again

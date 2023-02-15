@@ -6,7 +6,7 @@
  * @param {object} clip - Object with `{start, end?}` signature, indicating clip to play
  * @returns
  */
-export default function playClip (media, clip) {
+export default function playClip (media, clip, onLoop) {
   if (!clip) {
     media.play()
     return () => media.pause()
@@ -14,8 +14,6 @@ export default function playClip (media, clip) {
 
   clip.start ||= 0;
   media.currentTime = clip.start;
-
-  let timeInterval
 
   const toSeekableRange = () => {
     if (media.readyState === 0) return;
@@ -31,19 +29,24 @@ export default function playClip (media, clip) {
     if (wasAuto) media.preload = 'auto';
   }
 
+  let preciseInterval
   const onTimeupdate = () => {
-    clearInterval(timeInterval);
+    clearInterval(preciseInterval);
 
     if (media.currentTime >= clip.end) { // ended
-      if (media.loop) { media.currentTime = clip.start; return; }
+      onLoop?.()
+      if (media.loop) {
+        media.currentTime = clip.start;
+        return;
+      }
       media.pause();
       media.dispatchEvent(new Event('ended'));
       return;
     }
 
-    // When the playhead is 200ms or less from the end check every 4ms (~512 samples)
+    // When the playhead is 200ms or less from the end check every 10ms (~512 samples)
     // for increased accuracy. timeupdate is only fired every ~150ms or so.
-    if (media.currentTime + .2 > clip.end) timeInterval = setInterval(onTimeupdate, 10);
+    if (media.currentTime + .2 > clip.end) preciseInterval = setInterval(onTimeupdate, 10);
   }
 
   const onPlaying = () => {
@@ -52,7 +55,8 @@ export default function playClip (media, clip) {
 
   media.addEventListener('durationchange', toSeekableRange);
   media.addEventListener('seeking', toSeekableRange);
-  if (clip.end) media.addEventListener('timeupdate', onTimeupdate);
+  media.addEventListener('timeupdate', onTimeupdate);
+  let timeUpdateInterval = setInterval(onTimeupdate, 50) // safari is too bad
   media.addEventListener('playing', onPlaying);
 
   media.play()
@@ -62,6 +66,8 @@ export default function playClip (media, clip) {
     media.removeEventListener('seeking', toSeekableRange);
     media.removeEventListener('timeupdate', onTimeupdate);
     media.removeEventListener('playing', onPlaying);
+    clearInterval(timeUpdateInterval)
+    clearInterval(preciseInterval)
 
     media.pause()
   }

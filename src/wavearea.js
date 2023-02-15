@@ -35,9 +35,9 @@ let state = sprae(wavearea, {
   selecting: false,
 
   // current playback start/end time
-  playbackStart: 0,
+  loopStart: 0,
   loop: false,
-  playbackEnd: null,
+  loopEnd: null,
 
   volume: 1,
 
@@ -62,8 +62,8 @@ let state = sprae(wavearea, {
     state.caretOffset = selection.start;
     state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
     if (!state.playing) {
-      state.playbackStart = selection.start;
-      state.playbackEnd = !selection.collapsed ? selection.end : state.total;
+      state.loopStart = selection.start;
+      state.loopEnd = !selection.collapsed ? selection.end : state.total;
       state.loop = audio.loop = !selection.collapsed;
     }
 
@@ -129,16 +129,19 @@ let state = sprae(wavearea, {
 
     state.scrollIntoCaret();
 
-    let playbackStart = state.playbackStart;
-    let playbackEnd = state.playbackEnd;
+    let {loopStart, loopEnd} = state;
 
     const toggleStop = () => playButton.click()
 
+    // since audio.currentTime is inaccurate, esp. in Safari, we measure precise played time
+    let startCaretOffset = state.caretOffset
+    let startTime = performance.now() * 0.001
     let animId;
     const syncCaret = () => {
-      const playbackCurrent = Math.max(Math.ceil(state.total * audio.currentTime / state.duration), 0)
+      let playedTime = (performance.now() * 0.001 - startTime);
 
-      sel(state.caretOffset = playbackCurrent)
+      const currentBlock = Math.min(startCaretOffset + Math.round(state.total * playedTime / state.duration), loopEnd)
+      sel(state.caretOffset = currentBlock)
 
       let caretLine = Math.floor(state.caretOffset / state.lineWidth);
       if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
@@ -151,9 +154,9 @@ let state = sprae(wavearea, {
     editarea.focus();
 
     const stopAudio = playClip(audio, state.loop && {
-      start: state.duration * state.playbackStart / state.total,
-      end: state.duration * state.playbackEnd / state.total
-    });
+      start: state.duration * state.loopStart / state.total,
+      end: state.duration * state.loopEnd / state.total
+    }, () => startTime = performance.now() * 0.001);
     // TODO: markLoopRange()
 
     audio.addEventListener('ended', toggleStop, {once: true});
@@ -165,7 +168,7 @@ let state = sprae(wavearea, {
 
       // return selection if there was any
       //TODO: unmarkLoopRange()
-      if (state.loop) sel(playbackStart, playbackEnd)
+      if (state.loop) sel(loopStart, loopEnd)
 
       // adjust end caret position
       else if (audio.currentTime >= audio.duration) sel(state.total)

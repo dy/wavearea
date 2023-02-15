@@ -66,7 +66,7 @@
           :style="{'--linew': lineWidth||10}"
         ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
         <div class="w-played wavefont" :text="
-          loop ? (' '.repeat(playbackStart) + editarea.textContent.slice(playbackStart, playing ?  caretOffset : playbackEnd)) :
+          loop ? (' '.repeat(loopStart) + editarea.textContent.slice(loopStart, playing ?  caretOffset : loopEnd)) :
           editarea.textContent.slice(0, caretOffset)
         "></div>
       </div>
