@@ -317,7 +317,7 @@ const caretObserver = new IntersectionObserver(([item]) => {
       0);
   }, {
     // root: document,
-    threshold: 1,
+    threshold: 0.999,
     rootMargin: '0px'
   });
 caretObserver.observe(caretLinePointer);

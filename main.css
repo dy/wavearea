@@ -132,7 +132,7 @@ body {
 }
 .w-play,  .w-caret-line, .w-opener {
   position: absolute;
-  margin-left: calc(-1.08 * var(--wavefont-size));
+  margin-left: calc(-0.5 * var(--wavefont-size));
   width: 2rem;
   height: var(--wavefont-lh);
   top: calc(var(--carety) * var(--wavefont-lh));

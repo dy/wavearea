@@ -76,16 +76,16 @@
 * [x] End of file caret positioning is wrong
 * [ ] Delete-all case doesn't get saved
 * [ ] Big file editing generates tons of error logs : must be good
-* [ ] Big files break caret line & timecodes
+* [ ] Big files break caret line at the end (see bvg)
 * [x] Loaded file misses offset
-* [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list
+* [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list via intersection observer
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
 * [x] Stopping playback causes glitch
 * [ ] Bug with assets/1s.wav playback - play button drops to bottom or something, timecodes break
 * [x] Problematic mobile rendering
 * [x] Mobile playback doesn't start from selection
-* [ ] Bug: mobile safari play button sticks glitchly
+* [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 
 ## v2: compartmentization
 

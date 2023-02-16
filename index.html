@@ -57,9 +57,9 @@
           let offset = Number(this.previousSibling?.dataset?.length || 0);
           return Array.from({length: lines || 1}, (_,i) => timecode(i * (lineWidth||0) + offset)).join('\n')
         " :data="{length: segment.length}"></p></div>
-        <div class="w-status" :if="!segments.length" :text="loading || 'Add audio'"></div>
+        <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
-          :oninput="e=>(updateTimecodes(e),handleCaret(e))"
+          :oninput="handleCaret"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"

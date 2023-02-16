@@ -183,3 +183,11 @@
 + can be messy on small chunks
 - small chunks defects
 - rough api yet
+
+
+## [ ] Inline player vs playback panel
+
++ Inline player is minimalistic
+- Inline player is buggy on safari for intersection observer
+- Inline player is buggy for multiple lines
+  ~ We still may need to track caret-line properly (scroll into caret)
