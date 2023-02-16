@@ -53,9 +53,9 @@
           <!-- Recent -->
         </div>
         <div class="w-timecodes"><p :each="segment, id1 in segments" :key="id1" :text="
-          let lines = Math.ceil(segment.length / lineWidth) || 0;
+          let lines = Math.ceil(segment.length / cols) || 0;
           let offset = Number(this.previousSibling?.dataset?.length || 0);
-          return Array.from({length: lines || 1}, (_,i) => timecode(i * (lineWidth||0) + offset)).join('\n')
+          return Array.from({length: lines || 1}, (_,i) => timecode(i * (cols||0) + offset)).join('\n')
         " :data="{length: segment.length}"></p></div>
         <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
@@ -64,12 +64,12 @@
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
           :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
-          :style="{'--linew': lineWidth||10}"
+          :style="{
+            '--cols': cols,
+            '--rows-to-caret': Math.floor(caretOffset / cols),
+            '--cols-to-caret': (loop && !playing ? loopEnd : caretOffset) - Math.floor((loop && !playing ? loopEnd : caretOffset) / cols) * cols
+          }"
         ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
-        <div class="w-played wavefont" :text="
-          loop ? (' '.repeat(loopStart) + editarea.textContent.slice(loopStart, playing ?  caretOffset : loopEnd)) :
-          editarea.textContent.slice(0, caretOffset)
-        "></div>
       </div>
 
       <div class="w-playback" :if="false">
@@ -108,7 +108,6 @@
     -->
     <a class="w-krsnzd" href="https://krishnized.github.io/license/">ॐ</a>
   </div>
-
 
   <script type="module" src="./dist/wavearea.js"></script>
 </body>

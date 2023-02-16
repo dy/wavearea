@@ -52,7 +52,7 @@ let state = sprae(wavearea, {
 
   // chars per line (~5s with block==1024)
   // FIXME: make responsive
-  lineWidth: 216,
+  cols: 216,
 
   // caret repositioned my mouse
   async handleCaret() {
@@ -60,7 +60,7 @@ let state = sprae(wavearea, {
     let selection = sel()
     if (!selection) return
     state.caretOffset = selection.start;
-    state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
+    state.caretLine = Math.floor(state.caretOffset / state.cols);
     if (!state.playing) {
       state.loopStart = state.caretOffset;
       state.loopEnd = !selection.collapsed ? selection.end : state.total;
@@ -143,7 +143,7 @@ let state = sprae(wavearea, {
       const currentBlock = Math.min(startCaretOffset + Math.round(state.total * playedTime / state.duration), loopEnd)
       sel(state.caretOffset = currentBlock)
 
-      let caretLine = Math.floor(state.caretOffset / state.lineWidth);
+      let caretLine = Math.floor(state.caretOffset / state.cols);
       if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
 
       animId = requestAnimationFrame(syncCaret)
@@ -330,12 +330,12 @@ caretObserver.observe(caretLinePointer);
 // create line width observer
 const resizeObserver = new ResizeObserver((entries) => {
   // let width = entries[0].contentRect.width
-  state.lineWidth = measureLineWidth()
+  state.cols = measureLines()
 })
 resizeObserver.observe(editarea);
 
 // inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-function measureLineWidth() {
+function measureLines() {
   let range = new Range();
   let textNode = editarea.firstChild.firstChild
   if (!textNode?.textContent) return

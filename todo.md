@@ -78,7 +78,7 @@
 * [ ] Big file editing generates tons of error logs : must be good
 * [ ] Big files break caret line at the end (see bvg)
 * [x] Loaded file misses offset
-* [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list via intersection observer
+* [x] Played waveform update on big files is very slow. Use overlap technique or virtual list via intersection observer
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
 * [x] Stopping playback causes glitch
@@ -87,14 +87,12 @@
 * [x] Mobile playback doesn't start from selection
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 
-## v2: compartmentization
+
+## Improvements
 
 * [ ] `<time-codes>`
 * [ ] `<playback-panel>`
 * [ ] `<wave-area>`
-
-## Improvements
-
 * [ ] Autoplay, loop,
 * [ ] History separate from URLs
 * [x] Add info icon: support, github, brahman

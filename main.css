@@ -68,7 +68,7 @@ body {
   /* cursor: drop; */
 }
 
-.w-editable, .w-played, .w-loader {
+.w-editable, .w-loader {
   word-break: break-all;
   white-space: break-spaces;
   outline: none;
@@ -79,14 +79,44 @@ body {
   /* background-size: 1px calc(var(--wavefont-size) * 1.4);
   background-position: 0% 4.2rem;
   background-image:  repeating-linear-gradient(0deg, var(--secondary) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
+  position: relative;
 }
 .w-editable p::selection {
   /* background-color: var(--secondary); */
 }
-.w-editable:focus {
-  color: var(--secondary);
+/* played samples dimmer */
+.w-editable:before, .w-editable:after {
+  content:'';
+  position: absolute;
+  background: rgba(255, 255, 255, .5);
+  pointer-events: none;
+  z-index: 1;
 }
-.w-played, .w-loader {
+/* .w-editable:before {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--rows-to-caret) * var(--wavefont-lh));
+}
+.w-editable:after {
+  top: calc(var(--rows-to-caret) * var(--wavefont-lh));
+  left: 0;
+  width: calc(var(--cols-to-caret) * 2ch);
+  height: var(--wavefont-lh);
+} */
+.w-editable:focus:before {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: calc(var(--rows-to-caret) * var(--wavefont-lh) + var(--wavefont-lh));
+}
+.w-editable:focus:after {
+  top: calc(var(--rows-to-caret) * var(--wavefont-lh));
+  right: 0;
+  left: calc(var(--cols-to-caret) * 2ch);
+  height: var(--wavefont-lh);
+}
+.w-loader {
   top: 0;
   display: block;
   position: absolute;
@@ -95,13 +125,6 @@ body {
 }
 .w-loader {
   color: var(--secondary);
-}
-.w-played {
-  color: var(--primary);
-  visibility: hidden;
-}
-.w-editable:focus + .w-played {
-  visibility: visible;
 }
 
 
