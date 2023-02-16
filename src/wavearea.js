@@ -316,7 +316,7 @@ const caretObserver = new IntersectionObserver(([item]) => {
       item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
       0);
   }, {
-    root: document,
+    // root: document,
     threshold: 1,
     rootMargin: '0px'
   });
@@ -337,11 +337,13 @@ function measureLineWidth() {
   if (!textNode?.textContent) return
   let textContent = textNode.textContent
 
+  range.setStart(textNode, 0), range.setEnd(textNode, 1)
+  let y = range.getClientRects()[0].y
   for ( var i = 0 ; i < textContent.length; i++) {
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, i+1);
+    range.setStart(textNode, 0), range.setEnd(textNode, i+1);
     // 2nd line means we counted chars per line
-    if (range.getClientRects().length > 1) return i
+    let rects = range.getClientRects()
+    if (rects[rects.length - 1].y > y) return i
   }
 
   return textContent.length

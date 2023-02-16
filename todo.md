@@ -85,6 +85,7 @@
 * [ ] Bug with assets/1s.wav playback - play button drops to bottom or something, timecodes break
 * [x] Problematic mobile rendering
 * [x] Mobile playback doesn't start from selection
+* [ ] Bug: mobile safari play button sticks glitchly
 
 ## v2: compartmentization
 

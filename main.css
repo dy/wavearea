@@ -2,7 +2,6 @@
   box-sizing: border-box;
 }
 html, body {
-  height: 100%;
   margin: 0;
 }
 body {
@@ -133,7 +132,7 @@ body {
 }
 .w-play,  .w-caret-line, .w-opener {
   position: absolute;
-  margin-left: calc(-1 * var(--wavefont-size));
+  margin-left: calc(-1.08 * var(--wavefont-size));
   width: 2rem;
   height: var(--wavefont-lh);
   top: calc(var(--carety) * var(--wavefont-lh));
