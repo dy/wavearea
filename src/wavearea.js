@@ -389,10 +389,9 @@ function renderAudio ({url, segments, duration}) {
   state.total = segments.reduce((total, seg) => total += seg.length, 0);
   state.duration = duration
   state.segments = segments
-
-  // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
-  audio.preload = 'metadata'
+  // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
+  audio.load() // safari needs that explicitly
   return new Promise((ok, nok) => {
     audio.addEventListener('error', nok)
     audio.addEventListener('loadedmetadata',()=>{

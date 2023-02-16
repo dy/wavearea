@@ -187,7 +187,40 @@
 
 ## [ ] Inline player vs playback panel
 
+1. Inline player
 + Inline player is minimalistic
-- Inline player is buggy on safari for intersection observer
-- Inline player is buggy for multiple lines
+- Inline player is buggy on safari for intersection observer - needs fake scroll container, unless done via scroll
+- Inline player is buggy for multiple lines - misses the caret pos
   ~ We still may need to track caret-line properly (scroll into caret)
+    ? unless area i able to do it itself
+
+2. Playback panel
++ Always accessible
++ Allows displaying any info: time, download, progress, record
++ Customizable
++ Conventional UX
++ Has no scrolling issues
++
+
+## [ ] WAA player vs Audio element
+
+1. Audio
++ More universally supported
++ Simpler API
++ Decoding out of box
+- Big delay in iOS for playback
+- No built-in loop support
+  ~ Can be relatively safely implemented
+- API quirks / inconsistencies across iOS / desktop
+
+2. WAA (AudioSourceNode)
++ short latency
+- no ready playback API
+- may require live audiobuffer manipulations to output sound
++ loopStart/loopEnd support out of box
++ direct access to AudioBuffer: no need to constantly re-encode audio, ops can be more instantaneous
+- context instantiation issues (see web-audio-player)
+
+3. web-audio-player https://github.com/Jam3/web-audio-player
++ attempt to fix many gotchas
+- switches between 2 modes: element / waa
