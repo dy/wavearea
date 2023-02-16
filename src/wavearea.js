@@ -148,10 +148,14 @@ let state = sprae(wavearea, {
 
       animId = requestAnimationFrame(syncCaret)
     }
-    syncCaret();
-
 
     editarea.focus();
+
+    // audio takes time to init before play on mobile, so we hold on caret
+    audio.addEventListener('playing', e => {
+      startTime = performance.now() * 0.001
+      syncCaret();
+    }, {once: true})
 
     const stopAudio = playClip(audio, state.loop && {
       start: state.duration * state.loopStart / state.total,
