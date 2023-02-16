@@ -47,7 +47,7 @@ let state = sprae(wavearea, {
   duration: 0, // duration (received from backend)
 
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
-  caretOffset: 0, // current caret offset
+  caretOffset: 0, // current caret offset, characters
   caretLine: 0,
 
   // chars per line (~5s with block==1024)
@@ -61,6 +61,7 @@ let state = sprae(wavearea, {
     if (!selection) return
     state.caretOffset = selection.start;
     state.caretLine = Math.floor(state.caretOffset / state.cols);
+
     if (!state.playing) {
       state.loopStart = state.caretOffset;
       state.loopEnd = !selection.collapsed ? selection.end : state.total;
@@ -126,10 +127,11 @@ let state = sprae(wavearea, {
   // start playback
   play (e) {
     state.playing = true;
+    editarea.focus();
 
     state.scrollIntoCaret();
 
-    let {loopStart, loopEnd} = state;
+    let {loopStart, loopEnd, loop} = state;
 
     const toggleStop = () => playButton.click()
 
@@ -140,7 +142,8 @@ let state = sprae(wavearea, {
     const syncCaret = () => {
       let playedTime = (performance.now() * 0.001 - startTime);
 
-      const currentBlock = Math.min(startCaretOffset + Math.round(state.total * playedTime / state.duration), loopEnd)
+      let currentBlock = startCaretOffset + Math.round(state.total * playedTime / state.duration)
+      if (loop) currentBlock = Math.min(currentBlock, loopEnd)
       sel(state.caretOffset = currentBlock)
 
       let caretLine = Math.floor(state.caretOffset / state.cols);
@@ -148,8 +151,6 @@ let state = sprae(wavearea, {
 
       animId = requestAnimationFrame(syncCaret)
     }
-
-    editarea.focus();
 
     // audio takes time to init before play on mobile, so we hold on caret
     audio.addEventListener('playing', e => {
@@ -393,6 +394,7 @@ function renderAudio ({url, segments, duration}) {
   state.total = segments.reduce((total, seg) => total += seg.length, 0);
   state.duration = duration
   state.segments = segments
+  if (!state.cols) state.cols = measureLines()
   // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
   audio.load() // safari needs that explicitly
