@@ -34,10 +34,11 @@ body {
 .wavearea {
   height: 100%;
   margin: 0;
-  padding: 0 2rem;
+  padding: 0 2vw;
   display: flex;
   flex-direction: column;
-  --wavefont-size: 6rem;
+  /* --wavefont-size: max(4rem, min(10.8vw, 6rem)); */
+  --wavefont-size: 80px; /* Value is special: it doesn't break in mobiles */
   --wavefont-lh: calc(var(--wavefont-size) * 1.4);
   --secondary: rgb(0 0 0 / 50%);
   --primary: black;
@@ -130,29 +131,40 @@ body {
 .w-status {
   left: -4rem;
 }
-.w-waveform > .w-play,  .w-caret-line, .w-opener {
+.w-play,  .w-caret-line, .w-opener {
   position: absolute;
   margin-left: calc(-1 * var(--wavefont-size));
   width: 2rem;
-  height: calc(var(--wavefont-size) * 1.4);
+  height: var(--wavefont-lh);
   top: calc(var(--carety) * var(--wavefont-lh));
   display: flex;
   align-items: center;
 }
-.w-waveform > .w-play  .w-play-clickarea {
+.w-play {
+  padding: 0;
+  text-align: center;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.w-play  .w-play-clickarea {
   height: calc(var(--wavefont-lh) * 3);
   width: 100%;
   position: absolute;
-  inset: 0;
+  top: -100%;
 }
-@media screen and (max-width: 840px) {
-  .w-waveform > .w-play {
+@media screen and (max-width: 1280px) {
+  .w-play {
     z-index: 1;
     width: 3rem;
     height: var(--wavefont-lh);
     margin-left: -3.8rem;
     justify-content: center;
-    background: white;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%);
   }
 }
 .w-caret-line {
@@ -227,19 +239,7 @@ body {
   --squircle-fill: white;
 } */
 
-.w-play {
-  align-items: center;
-  padding: 0;
-  text-align: center;
-  display: flex;
-  appearance: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-  position: relative;
-  justify-content: center;
-}
-.w-play-clickarea {
+.w-playback .w-play-clickarea {
   height: 4rem;
   width: 4rem;
   position: absolute;
@@ -256,6 +256,7 @@ body {
   position: fixed;
   bottom: 1.08rem;
   right: 1.08rem;
+  margin: 0 auto;
   text-decoration: none;
   color: var(--primary);
   opacity: .108;

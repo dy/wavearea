@@ -62,13 +62,13 @@ let state = sprae(wavearea, {
     state.caretOffset = selection.start;
     state.caretLine = Math.floor(state.caretOffset / state.lineWidth);
     if (!state.playing) {
-      state.loopStart = selection.start;
+      state.loopStart = state.caretOffset;
       state.loopEnd = !selection.collapsed ? selection.end : state.total;
       state.loop = audio.loop = !selection.collapsed;
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    audio.currentTime = state.duration * selection.start / state.total;
+    audio.currentTime = state.duration * state.caretOffset / state.total;
   },
 
   async handleBeforeInput(e) {
@@ -388,13 +388,14 @@ function renderAudio ({url, segments, duration}) {
   state.duration = duration
   state.segments = segments
 
-  let currentTime = audio.currentTime
   // URL.revokeObjectURL(audio.src) - can be persisted from history, so we keep it
+  audio.preload = 'metadata'
   audio.src = url
-
   return new Promise((ok, nok) => {
     audio.addEventListener('error', nok)
-    audio.addEventListener('canplay', e => ok(audio.currentTime = currentTime), {once: true});
+    audio.addEventListener('loadedmetadata',()=>{
+      audio.currentTime = duration * state.caretOffset / state.total
+    }, {once: true});
   })
 }
 

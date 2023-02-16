@@ -82,7 +82,9 @@
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)
 * [ ] A way to download selected fragment
 * [x] Stopping playback causes glitch
-* [ ] Bug with assets/1s.wav playback - play button drops to bottom or something, timecodes break 
+* [ ] Bug with assets/1s.wav playback - play button drops to bottom or something, timecodes break
+* [x] Problematic mobile rendering
+* [x] Mobile playback doesn't start from selection
 
 ## v2: compartmentization
 
@@ -92,6 +94,7 @@
 
 ## Improvements
 
+* [ ] Autoplay, loop,
 * [ ] History separate from URLs
 * [x] Add info icon: support, github, brahman
   * tips, generate theme

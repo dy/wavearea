@@ -58,7 +58,7 @@
           return Array.from({length: lines || 1}, (_,i) => timecode(i * (lineWidth||0) + offset)).join('\n')
         " :data="{length: segment.length}"></p></div>
         <div class="w-status" :if="!segments.length" :text="loading || 'Add audio'"></div>
-        <div contenteditable :ref="editarea" class="w-editable wavefont"
+        <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
           :oninput="e=>(updateTimecodes(e),handleCaret(e))"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
