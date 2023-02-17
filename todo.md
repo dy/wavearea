@@ -86,6 +86,8 @@
 * [x] Problematic mobile rendering
 * [x] Mobile playback doesn't start from selection
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
+* [ ] Bug: multiline selection is damaged
+* [ ] Bug: renavigating during play
 
 ## Improvements
 

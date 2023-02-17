@@ -212,6 +212,8 @@
 - No built-in loop support
   ~ Can be relatively safely implemented
 - API quirks / inconsistencies across iOS / desktop
+- Events order is confusing
+- Likely impossible to organize precise tests (if at all)
 
 2. WAA (AudioSourceNode)
 + short latency

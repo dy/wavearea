@@ -35,9 +35,9 @@ let state = sprae(wavearea, {
   selecting: false,
 
   // current playback start/end time
-  loopStart: 0,
+  clipStart: 0,
   loop: false,
-  loopEnd: null,
+  clipEnd: null,
 
   volume: 1,
 
@@ -63,10 +63,13 @@ let state = sprae(wavearea, {
 
     state.updateCaretLine(sel)
 
-    state.loopStart = state.caretOffset;
+    state.clipStart = state.caretOffset;
     if (!state.playing) {
-      state.loopEnd = !sel.collapsed ? sel.end : state.total;
+      state.clipEnd = !sel.collapsed ? sel.end : state.total;
       state.loop = audio.loop = !sel.collapsed;
+    }
+    else {
+
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
@@ -130,24 +133,27 @@ let state = sprae(wavearea, {
     state.playing = true;
     editarea.focus();
 
-    // reset from the end to the beginning
-    if (state.caretOffset === state.total) selection(state.caretOffset = state.loopStart = 0)
+    // from the end to the beginning
+    if (state.caretOffset === state.total) selection(state.caretOffset = state.clipStart = 0)
 
     state.scrollIntoCaret();
 
-    let {loopStart, loopEnd, loop} = state;
+    let {clipStart, clipEnd, loop} = state;
 
     const toggleStop = () => playButton.click()
 
     // since audio.currentTime is inaccurate, esp. in Safari, we measure precise played time
-    let startCaretOffset = state.caretOffset
-    let startTime = performance.now() * 0.001
-    let animId;
+    let startTimeOffset = state.caretOffset, startTime, animId
+    const init = () => {
+      startTime = performance.now() * 0.001;
+      cancelAnimationFrame(animId)
+      syncCaret()
+    }
+
     const syncCaret = () => {
       let playedTime = (performance.now() * 0.001 - startTime);
-
-      let currentBlock = Math.min(startCaretOffset + Math.round(state.total * playedTime / state.duration), state.total)
-      if (loop) currentBlock = Math.min(currentBlock, loopEnd)
+      let currentBlock = Math.min(startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
+      if (loop) currentBlock = Math.min(currentBlock, clipEnd)
       selection(state.caretOffset = currentBlock)
 
       state.updateCaretLine()
@@ -157,20 +163,22 @@ let state = sprae(wavearea, {
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
-    audio.addEventListener('playing', e => {
-      startTime = performance.now() * 0.001
-      syncCaret();
-    }, {once: true})
+    audio.addEventListener('playing', init)
+
+    // audio looped - reset caret
+    audio.addEventListener('seeked', init)
 
     const stopAudio = playClip(audio, state.loop && {
-      start: state.duration * state.loopStart / state.total,
-      end: state.duration * state.loopEnd / state.total
-    }, () => startTime = performance.now() * 0.001);
+      start: state.duration * state.clipStart / state.total,
+      end: state.duration * state.clipEnd / state.total
+    });
     // TODO: markLoopRange()
 
     audio.addEventListener('ended', toggleStop, {once: true});
     return () => {
       audio.removeEventListener('ended', toggleStop)
+      audio.removeEventListener('seeked', init)
+      audio.removeEventListener('playing', init)
 
       cancelAnimationFrame(animId), animId = null
       stopAudio();
@@ -178,7 +186,7 @@ let state = sprae(wavearea, {
 
       // return selection if there was any
       //TODO: unmarkLoopRange()
-      if (state.loop) selection(loopStart, loopEnd)
+      if (state.loop) selection(clipStart, clipEnd)
 
       // adjust end caret position
       else if (audio.currentTime >= audio.duration) selection(state.total)

@@ -6,7 +6,7 @@
  * @param {object} clip - Object with `{start, end?}` signature, indicating clip to play
  * @returns
  */
-export default function playClip (media, clip, onLoop) {
+export default function playClip (media, clip) {
   if (!clip) {
     media.play()
     return () => media.pause()
@@ -34,7 +34,6 @@ export default function playClip (media, clip, onLoop) {
     clearInterval(preciseInterval);
 
     if (media.currentTime >= clip.end) { // ended
-      onLoop?.()
       if (media.loop) {
         media.currentTime = clip.start;
         return;
