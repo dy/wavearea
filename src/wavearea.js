@@ -13,6 +13,7 @@ history.scrollRestoration = 'manual'
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
 const played = wavearea.querySelector('.w-played')
+const timecodes = wavearea.querySelector('.w-timecodes')
 const playButton = wavearea.querySelector('.w-play')
 const caretLinePointer = wavearea.querySelector('.w-caret-line')
 const audio = new Audio
@@ -26,7 +27,6 @@ const audioCtx = new AudioContext()
 let state = sprae(wavearea, {
   // interaction state
   isMouseDown: false,
-  isKeyDown: 0,
 
   // state
   loading: false,
@@ -57,15 +57,16 @@ let state = sprae(wavearea, {
   // caret repositioned my mouse
   async handleCaret() {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
-    let selection = sel()
-    if (!selection) return
-    state.caretOffset = selection.start;
-    state.caretLine = Math.floor(state.caretOffset / state.cols);
+    let sel = selection()
+    if (!sel) return
+    state.caretOffset = sel.start;
 
+    state.updateCaretLine(sel)
+
+    state.loopStart = state.caretOffset;
     if (!state.playing) {
-      state.loopStart = state.caretOffset;
-      state.loopEnd = !selection.collapsed ? selection.end : state.total;
-      state.loop = audio.loop = !selection.collapsed;
+      state.loopEnd = !sel.collapsed ? sel.end : state.total;
+      state.loop = audio.loop = !sel.collapsed;
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
@@ -129,6 +130,9 @@ let state = sprae(wavearea, {
     state.playing = true;
     editarea.focus();
 
+    // reset from the end to the beginning
+    if (state.caretOffset === state.total) selection(state.caretOffset = state.loopStart = 0)
+
     state.scrollIntoCaret();
 
     let {loopStart, loopEnd, loop} = state;
@@ -142,12 +146,12 @@ let state = sprae(wavearea, {
     const syncCaret = () => {
       let playedTime = (performance.now() * 0.001 - startTime);
 
-      let currentBlock = startCaretOffset + Math.round(state.total * playedTime / state.duration)
+      let currentBlock = Math.min(startCaretOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, loopEnd)
-      sel(state.caretOffset = currentBlock)
+      selection(state.caretOffset = currentBlock)
 
-      let caretLine = Math.floor(state.caretOffset / state.cols);
-      if (caretLine !== state.caretLine) state.caretLine = caretLine, state.scrollIntoCaret();
+      state.updateCaretLine()
+      state.scrollIntoCaret();
 
       animId = requestAnimationFrame(syncCaret)
     }
@@ -167,16 +171,17 @@ let state = sprae(wavearea, {
     audio.addEventListener('ended', toggleStop, {once: true});
     return () => {
       audio.removeEventListener('ended', toggleStop)
+
+      cancelAnimationFrame(animId), animId = null
       stopAudio();
       state.playing = false
-      cancelAnimationFrame(animId), animId = null
 
       // return selection if there was any
       //TODO: unmarkLoopRange()
-      if (state.loop) sel(loopStart, loopEnd)
+      if (state.loop) selection(loopStart, loopEnd)
 
       // adjust end caret position
-      else if (audio.currentTime >= audio.duration) sel(state.total)
+      else if (audio.currentTime >= audio.duration) selection(state.total)
 
       editarea.focus()
     }
@@ -192,7 +197,36 @@ let state = sprae(wavearea, {
       // try updating blob in history state by rebuilding audio
       await loadAudioFromURL()
     }
-    sel(state.caretOffset)
+    selection(state.caretOffset)
+  },
+
+  // make sure play/caret line pointer is correct
+  updateCaretLine() {
+    let caretLine = Math.floor(state.caretOffset / state.cols);
+    let sel = selection();
+
+    // last of segment edge case
+    if (!(state.caretOffset % state.cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
+
+    if (state.caretLine !== caretLine) state.caretLine = caretLine;
+  },
+
+  // FIXME: this must be done by sprae ideally
+  updateTimecodes() {
+    timecodes.replaceChildren()
+    if (!editarea.textContent) return
+    let offset = 0
+    for (let segNode of editarea.children) {
+      let lines = Math.ceil(segNode.textContent.length / state.cols) || 1;
+      for (let i = 0; i < lines; i++) {
+        let a = document.createElement('a')
+        let tc = timecode(i * (state.cols||0) + offset)
+        a.href=`#${tc}`
+        a.textContent = tc
+        timecodes.appendChild(a)
+      }
+      offset += segNode.textContent.length
+    }
   },
 
   timecode
@@ -221,8 +255,11 @@ const inputHandlers = {
   // deleteContent(){},
   async deleteContentBackward(e){
     let range = e.getTargetRanges()[0]
-    let from = range.startOffset + Number(range.startContainer.parentNode.closest('.w-segment').dataset.offset),
-        to = range.endOffset + Number(range.endContainer.parentNode.closest('.w-segment').dataset.offset)
+    let fromNode = range.startContainer.parentNode.closest('.w-segment'),
+        toNode = range.endContainer.parentNode.closest('.w-segment'),
+        fromId = Number(fromNode.dataset.id), toId = Number(toNode.dataset.id)
+    let from = range.startOffset + state.segments.slice(0, fromId).reduce((off,seg)=>off+seg.length,0),
+        to = range.endOffset + state.segments.slice(0, toId).reduce((off,seg)=>off+seg.length,0)
 
     // debounce push op to collect multiple deletes
     if (this._deleteTimeout) {
@@ -232,8 +269,6 @@ const inputHandlers = {
     else this._deleteOp = ['del', from, to]
 
     const pushDeleteOp = () => {
-      // postpone updating delete until key is up
-      if (state.isKeyDown) return this._deleteTimeout = setTimeout(pushDeleteOp, 50)
       pushOp(this._deleteOp)
       this._deleteOp = this._deleteTimeout = null
     }
@@ -247,7 +282,7 @@ const inputHandlers = {
 
 
 // get/set selection with absolute (transparent) offsets
-const sel = (start, end, lineOffset=0) => {
+const selection = (start, end, lineOffset=0) => {
   let s = window.getSelection()
 
   // set selection, if passed
@@ -263,8 +298,9 @@ const sel = (start, end, lineOffset=0) => {
     // find start/end nodes
     let startNodeOffset = start
     startNode = editarea.firstChild
-    while ((startNodeOffset+lineOffset) > startNode.firstChild.data.length)
-    startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
+    while ((startNodeOffset+lineOffset) > startNode.firstChild.data.length) {
+      startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
+    }
     range.setStart(startNode.firstChild, startNodeOffset)
 
     let endNodeOffset = end
@@ -354,7 +390,6 @@ function measureLines() {
   return textContent.length
 }
 
-
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
 // so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
@@ -395,13 +430,14 @@ function renderAudio ({url, segments, duration}) {
   state.duration = duration
   state.segments = segments
   if (!state.cols) state.cols = measureLines()
+  state.updateTimecodes()
   // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
   audio.load() // safari needs that explicitly
   return new Promise((ok, nok) => {
     audio.addEventListener('error', nok)
     audio.addEventListener('loadedmetadata',()=>{
-      audio.currentTime = duration * state.caretOffset / state.total
+      audio.currentTime = duration * state.caretOffset / state.total || 0
     }, {once: true});
   })
 }

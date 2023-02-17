@@ -9,7 +9,6 @@
   <div class="wavearea"
     :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
-    :onkeydown.document..onkeyup.document="(e) => (isKeyDown++, e=> (e.stopImmediatePropagation(), isKeyDown--))"
     >
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
@@ -19,7 +18,6 @@
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'w-loading':loading}"
-          :disabled="loading"
           :hidden="!segments.length"
           :onclick.toggle="play"
           :onkeydown.document.space="e=>this.click(e)"
@@ -52,14 +50,9 @@
           </button> -->
           <!-- Recent -->
         </div>
-        <div class="w-timecodes"><p :each="segment, id1 in segments" :key="id1" :text="
-          let lines = Math.ceil(segment.length / cols) || 0;
-          let offset = Number(this.previousSibling?.dataset?.length || 0);
-          return Array.from({length: lines || 1}, (_,i) => timecode(i * (cols||0) + offset)).join('\n')
-        " :data="{length: segment.length}"></p></div>
         <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
-          :oninput="handleCaret"
+          :oninput="e => (handleCaret(e),updateTimecodes())"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
@@ -69,7 +62,8 @@
             '--rows-to-caret': Math.floor(caretOffset / cols),
             '--cols-to-caret': (loop && !playing ? loopEnd : caretOffset) - Math.floor((loop && !playing ? loopEnd : caretOffset) / cols) * cols
           }"
-        ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment"></p></div>
+        ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment" :data="{id:id1-1}"></p></div>
+        <div class="w-timecodes"></div>
       </div>
 
       <div class="w-playback" :if="false">

@@ -147,8 +147,14 @@ body {
   color: var(--secondary);
   line-height: var(--wavefont-lh);
 }
+.w-timecodes {
+  display: flex;
+  flex-direction: column;
+}
 .w-timecodes > * {
   margin: 0;
+  text-decoration: none;
+  color: var(--secondary);
 }
 .w-status {
   left: -4rem;
@@ -179,7 +185,7 @@ body {
   position: absolute;
   top: -100%;
 }
-@media screen and (max-width: 1280px) {
+@media screen and (max-width: 1080px) {
   .w-play {
     z-index: 1;
     width: 3rem;
