@@ -212,7 +212,7 @@
 - No built-in loop support
   ~ Can be relatively safely implemented
 - API quirks / inconsistencies across iOS / desktop
-- Events order is confusing
+- Events order is confusing: seeked, seeking, timeupdate - but we factually need just 'looped' or 'usernavigated'
 - Likely impossible to organize precise tests (if at all)
 
 2. WAA (AudioSourceNode)

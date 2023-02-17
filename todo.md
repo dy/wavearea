@@ -59,6 +59,8 @@
 
 ## Must fix v1
 
+* [ ] Outsource audio-decode, add missing codecs
+* [ ] Ponyfill Audio gotchas?
 * [x] Outsource media loopStart / loopEnd
 * [x] Better selection logic: must be immediate
 * [x] Display open/loading status
@@ -69,7 +71,6 @@
 * [x] Loads source from url on init
 * [?] ~~Display loading status in playback~~ not sure still if we need playback
 * [x] ~~Show average line in samples~~ use dots instead
-* [ ] Outsource audio-decode, add missing codecs
 * [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
 * [x] Small screens wrongly wrap waveform timing
 * [x] Deleting part of audio screws up play button position
@@ -85,9 +86,9 @@
 * [x] Bug with assets/1s.wav playback - end line caret shifts down
 * [x] Problematic mobile rendering
 * [x] Mobile playback doesn't start from selection
+* [x] Bug: renavigating during play
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 * [ ] Bug: multiline selection is damaged
-* [ ] Bug: renavigating during play
 
 ## Improvements
 

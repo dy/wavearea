@@ -38,6 +38,7 @@ let state = sprae(wavearea, {
   clipStart: 0,
   loop: false,
   clipEnd: null,
+  _startTimeOffset:0,
 
   volume: 1,
 
@@ -69,7 +70,7 @@ let state = sprae(wavearea, {
       state.loop = audio.loop = !sel.collapsed;
     }
     else {
-
+      state._startTimeOffset = state.caretOffset
     }
 
     // audio.currentTime converts to float32 which may cause artifacts with caret jitter
@@ -143,7 +144,8 @@ let state = sprae(wavearea, {
     const toggleStop = () => playButton.click()
 
     // since audio.currentTime is inaccurate, esp. in Safari, we measure precise played time
-    let startTimeOffset = state.caretOffset, startTime, animId
+    let startTime, animId
+    state._startTimeOffset = state.caretOffset
     const init = () => {
       startTime = performance.now() * 0.001;
       cancelAnimationFrame(animId)
@@ -152,7 +154,7 @@ let state = sprae(wavearea, {
 
     const syncCaret = () => {
       let playedTime = (performance.now() * 0.001 - startTime);
-      let currentBlock = Math.min(startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
+      let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, clipEnd)
       selection(state.caretOffset = currentBlock)
 

@@ -60,7 +60,7 @@
           :style="{
             '--cols': cols,
             '--rows-to-caret': Math.floor(caretOffset / cols),
-            '--cols-to-caret': (loop && !playing ? loopEnd : caretOffset) - Math.floor((loop && !playing ? loopEnd : caretOffset) / cols) * cols
+            '--cols-to-caret': (loop && !playing ? clipEnd : caretOffset) - Math.floor((loop && !playing ? clipEnd : caretOffset) / cols) * cols
           }"
         ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment" :data="{id:id1-1}"></p></div>
         <div class="w-timecodes"></div>
