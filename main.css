@@ -22,12 +22,12 @@ body {
 
 .wavefont {
   display: block;
-	--wght: 25;
+	--wght: 8;
 	font-family: wavefont;
-  letter-spacing: 1ch;
-  font-size: var(--wavefont-size);
+  letter-spacing: 0ch;
+  font-size: var(--wavefont-size, 80px);
   line-height: var(--wavefont-lh);
-	font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'ALGN' 0.5;
+	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
 }
 
 .wavearea {
@@ -39,7 +39,7 @@ body {
   /* --wavefont-size: max(4rem, min(10.8vw, 6rem)); */
   --wavefont-size: 80px; /* Value is special: it doesn't break in mobiles */
   --wavefont-lh: calc(var(--wavefont-size) * 1.4);
-  --secondary: rgb(0 0 0 / 50%);
+  --secondary: rgb(0 0 0 / 33%);
   --primary: black;
 }
 
@@ -60,7 +60,7 @@ body {
   position: relative;
   width: 100%;
   /* this 0.5ch fixes inconsistent breaking, seemingly round error */
-  max-width: calc(216 * 2ch + 0.5ch);
+  max-width: calc(8 * 216 * 1ch + 0.5ch);
   margin: 1rem;
   margin-left: 4rem;
 }
@@ -88,7 +88,7 @@ body {
 .w-editable:before, .w-editable:after {
   content:'';
   position: absolute;
-  background: rgba(255, 255, 255, .5);
+  background: rgba(255, 255, 255, .66);
   pointer-events: none;
   z-index: 1;
 }
@@ -113,7 +113,7 @@ body {
 .w-editable:focus:after {
   top: calc(var(--rows-to-caret) * var(--wavefont-lh));
   right: 0;
-  left: calc(var(--cols-to-caret) * 2ch);
+  left: calc(var(--cols-to-caret) * 1ch);
   height: var(--wavefont-lh);
 }
 .w-loader {

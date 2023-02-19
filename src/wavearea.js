@@ -33,6 +33,7 @@ let state = sprae(wavearea, {
   recording: false,
   playing: false,
   selecting: false,
+  scrolling: false,
 
   // current playback start/end time
   clipStart: 0,
@@ -126,7 +127,10 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen) caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'});
+    if (state.caretOffscreen && !state.scrolling)
+      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'}),
+      state.scrolling = true,
+      setTimeout(() => state.scrolling = false, 500)
   },
 
   // start playback

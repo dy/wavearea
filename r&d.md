@@ -15,6 +15,7 @@
   + anagram
   + free
   + refers to sprae
+  - can be done without sprae
 * wavea
   + wavearea
 * wavescope
@@ -26,6 +27,11 @@
   + player
   + refers to waveplae
   + refers to sprae
+* wavr
+  + registered
+  + short for wave-area
+  + better fits wav
+  + refers to plyr
 
 ## [ ] Random files / demo cases
 

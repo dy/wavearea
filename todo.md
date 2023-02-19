@@ -59,6 +59,9 @@
 
 ## Must fix v1
 
+* [ ] History separate from URLs
+  * [ ] Ctrl-z/y
+  * [ ] Collapse last operation, eg. delete
 * [ ] Outsource audio-decode, add missing codecs
 * [ ] Ponyfill Audio gotchas?
 * [x] Outsource media loopStart / loopEnd
@@ -95,12 +98,10 @@
 * [ ] `<time-codes>`
 * [ ] `<playback-panel>`
 * [ ] `<wave-area>`
-* [ ] Autoplay, loop,
-* [ ] History separate from URLs
+* [ ] Autoplay, loop, current line - can be navigatable from URL
 * [x] Add info icon: support, github, brahman
   * tips, generate theme
   * adjust settings: audio loudness metric, block size
-* [ ] Ctrl-z/y
 * [ ] support paste fragment of itself
 * [ ] Mark loop selection
 * [ ] Mark fragments

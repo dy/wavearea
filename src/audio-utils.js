@@ -91,10 +91,16 @@ export function drawAudio (audioBuffer) {
 
     // rms method
     // drawback: waveform is smaller than needed
-    for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
+    for (;i < nextBlock; i++) {
+      sum += i >= channelData.length ? 0 : channelData[i]
+      ssum += i >= channelData.length ? 0 : channelData[i] ** 2
+    }
+    const avg = sum / BLOCK_SIZE
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
     let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))
     str += String.fromCharCode(0x0100 + v)
+    let shift = Math.abs(Math.round(avg * 100))
+    str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
 
     // signal energy loudness
     // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
