@@ -85,7 +85,7 @@ body {
   /* background-color: var(--secondary); */
 }
 /* played samples dimmer */
-.w-editable:before, .w-editable:after {
+.w-editable:focus:before, .w-editable:focus:after {
   content:'';
   position: absolute;
   background: rgba(255, 255, 255, .66);

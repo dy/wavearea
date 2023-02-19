@@ -403,6 +403,7 @@ caretObserver.observe(caretLinePointer);
 const resizeObserver = new ResizeObserver((entries) => {
   // let width = entries[0].contentRect.width
   state.cols = measureLines()
+  state.updateTimecodes()
 })
 resizeObserver.observe(editarea);
 
