@@ -52,6 +52,7 @@
         </div>
         <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
+          :class="{'w-playing':playing}"
           :oninput="e => (handleCaret(e),updateTimecodes())"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent

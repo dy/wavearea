@@ -92,6 +92,7 @@
 * [x] Bug: renavigating during play
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 * [ ] Bug: multiline selection is damaged
+* [ ] Bug: empty head starts playing something non-silence
 
 ## Improvements
 
@@ -120,7 +121,8 @@
   * https://github.com/domchristie/needles
 * [ ] Better loudness display: it is inadequate now
 * [ ] Display left/right channels with half-transparent blacks, and black is their intersection
-* [ ] time codes as # hrefs
+* [x] time codes as # hrefs
+  * [ ] make navigatable
 * [x] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
     * ? should we work straight on wav buffer maybe instead of audio buffers?
 * [x] Highlight of playable/playing region via diff color

@@ -73,6 +73,7 @@ export function drawAudio (audioBuffer) {
   // console.time('draw string')
 
   // map waveform to wavefont
+  console.log(audioBuffer)
   let channelData = audioBuffer.getChannelData(0), str = ''
 
   // TODO: weight waveform by audible spectrum

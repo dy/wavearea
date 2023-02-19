@@ -35,7 +35,6 @@ const renderAudio = async (buffers) => {
   let wavBuffer = await encodeAudio(...buffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
   let url = URL.createObjectURL( blob );
-
   self.postMessage({id: history.length, url, segments, duration});
 }
 

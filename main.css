@@ -104,13 +104,13 @@ body {
   width: calc(var(--cols-to-caret) * 2ch);
   height: var(--wavefont-lh);
 } */
-.w-editable:focus:before {
+.w-editable:before {
   bottom: 0;
   left: 0;
   right: 0;
   top: calc(var(--rows-to-caret) * var(--wavefont-lh) + var(--wavefont-lh));
 }
-.w-editable:focus:after {
+.w-editable:after {
   top: calc(var(--rows-to-caret) * var(--wavefont-lh));
   right: 0;
   left: calc(var(--cols-to-caret) * 1ch);

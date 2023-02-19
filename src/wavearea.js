@@ -62,8 +62,7 @@ let state = sprae(wavearea, {
     let sel = selection()
     if (!sel) return
     state.caretOffset = sel.start;
-
-    state.updateCaretLine(sel)
+    state.updateCaretLine()
 
     state.clipStart = state.caretOffset;
     if (!state.playing) {
@@ -160,6 +159,7 @@ let state = sprae(wavearea, {
       let playedTime = (performance.now() * 0.001 - startTime);
       let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, clipEnd)
+
       selection(state.caretOffset = currentBlock)
 
       state.updateCaretLine()
@@ -226,6 +226,7 @@ let state = sprae(wavearea, {
   },
 
   // FIXME: this must be done by sprae ideally
+  // but it needs to dynamically have access to children
   updateTimecodes() {
     timecodes.replaceChildren()
     if (!editarea.textContent) return
@@ -295,32 +296,32 @@ const inputHandlers = {
 }
 
 
-// get/set selection with absolute (transparent) offsets
-const selection = (start, end, lineOffset=0) => {
+// get/set normalized selection
+/**
+ *
+ * @param {number | Array} start – absolute offset (excluding modifier chars) or relative offset [node, offset]
+ * @param {number | Array} end – absolute offset (excluding modifier chars) or relative offset [node, offset]
+ * @returns {start, , end}
+ */
+const selection = (start, end) => {
   let s = window.getSelection()
 
   // set selection, if passed
   if (start != null) {
+    if (Array.isArray(start)) start = absOffset(...start)
+    if (Array.isArray(end)) end = absOffset(...end)
+
     // start/end must be within limits
     start = Math.max(0, start)
     if (end == null) end = start
 
-    let startNode, endNode
-    s.removeAllRanges()
-    let range = new Range()
+    let range = s.rangeCount ? s.getRangeAt(0) : new Range()
 
     // find start/end nodes
-    let startNodeOffset = start
-    startNode = editarea.firstChild
-    while ((startNodeOffset+lineOffset) > startNode.firstChild.data.length) {
-      startNodeOffset -= startNode.firstChild.data.length, startNode = startNode.nextSibling
-    }
-    range.setStart(startNode.firstChild, startNodeOffset)
-
-    let endNodeOffset = end
-    endNode = editarea.firstChild
-    while ((endNodeOffset+lineOffset) > endNode.firstChild.data.length) endNodeOffset -= endNode.firstChild.data.length, endNode = endNode.nextSibling
-    range.setEnd(endNode.firstChild, endNodeOffset)
+    let [startNode, startNodeOffset] = relOffset(start)
+    let [endNode, endNodeOffset] = relOffset(end)
+    range.setStart(startNode, startNodeOffset)
+    range.setEnd(endNode, endNodeOffset)
     s.addRange(range)
 
     return {
@@ -333,11 +334,7 @@ const selection = (start, end, lineOffset=0) => {
   if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
 
   // collect start/end offsets
-  start = s.anchorOffset, end = s.focusOffset
-  let prevNode = s.anchorNode.parentNode.closest('.w-segment')
-  while (prevNode = prevNode.previousSibling) start += prevNode.firstChild.data.length
-  prevNode = s.focusNode.parentNode.closest('.w-segment')
-  while (prevNode = prevNode.previousSibling) end += prevNode.firstChild.data.length
+  start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
 
   // swap selection direction
   let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
@@ -356,6 +353,30 @@ const selection = (start, end, lineOffset=0) => {
     endNodeOffset,
     collapsed: s.isCollapsed
   }
+}
+
+// calculate absolute offset from relative pair
+function absOffset(node, relOffset) {
+  let prevNode = node.parentNode.closest('.w-segment')
+  let offset = cleanText(prevNode.textContent.slice(0, relOffset)).length
+  while (prevNode = prevNode.previousSibling) offset += cleanText(prevNode.textContent).length
+  return offset
+}
+
+// calculate node and relative offset from absolute offset
+function relOffset(offset) {
+  let node = editarea.firstChild, len
+  // discount previous nodes
+  while (offset > (len = cleanText(node.textContent).length)) {
+    offset -= len, node = node.nextSibling
+  }
+  // convert current node to relative offset
+  let skip = 0
+  for (let content = node.textContent, i = 0; i < offset; i++) {
+    while (content[i+skip] >= '\u0300') skip++
+  }
+
+  return [node.firstChild, offset + skip]
 }
 
 // produce display time from frames
@@ -386,22 +407,24 @@ const resizeObserver = new ResizeObserver((entries) => {
 resizeObserver.observe(editarea);
 
 // inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+// measure number of characters per line
 function measureLines() {
   let range = new Range();
   let textNode = editarea.firstChild.firstChild
   if (!textNode?.textContent) return
-  let textContent = textNode.textContent
+  let str = textNode.textContent
 
   range.setStart(textNode, 0), range.setEnd(textNode, 1)
   let y = range.getClientRects()[0].y
-  for ( var i = 0 ; i < textContent.length; i++) {
-    range.setStart(textNode, 0), range.setEnd(textNode, i+1);
+  for (var i = 0, offset = 0 ; i < str.length; offset++) {
+    let skip = 1; while (str[i+skip] >= '\u0300') skip++;
+    range.setStart(textNode, 0), range.setEnd(textNode, i=i+skip);
     // 2nd line means we counted chars per line
     let rects = range.getClientRects()
-    if (rects[rects.length - 1].y > y) return i
+    if (rects[rects.length - 1].y > y) return offset
   }
 
-  return textContent.length
+  return str.length
 }
 
 // update history, post operation & schedule update
@@ -437,10 +460,15 @@ function runOp (...ops) {
   })
 }
 
+// return clean from modifiers text
+function cleanText(str) {
+  return str.replace(/\u0300|\u0301/g,'')
+}
+
 // update audio url & assert waveform
-function renderAudio ({url, segments, duration}) {
+function renderAudio ({url, segments, duration, offsets}) {
   // assert waveform same as current content (must be!)
-  state.total = segments.reduce((total, seg) => total += seg.length, 0);
+  state.total = segments.reduce((total, seg) => total += cleanText(seg).length, 0);
   state.duration = duration
   state.segments = segments
   if (!state.cols) state.cols = measureLines()
