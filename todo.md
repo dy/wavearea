@@ -93,6 +93,7 @@
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 * [ ] Bug: multiline selection is damaged
 * [ ] Bug: empty head starts playing something non-silence
+* [ ] Bug: needs enhanced lines calculation, ideally chars-per-line
 
 ## Improvements
 
@@ -156,3 +157,16 @@
 * [ ] Process audio with lino?
 * [ ] Vary color based on spectrum
 * [x] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
+* [ ] Editable labeling / phrases
+
+## [ ] Final goal
+
+* [ ] Sound fragments sharing platform
+* [ ] Hosting files via github
+* [ ] Sampler player, like te-re-khe-ta from URL will play sampled phrases by dictionary
+* [ ] Multiple variations of theming
+* [ ] Voice emails integration
+* [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
+* [ ] Famous voices speak famous phrases - chunk tp share
+* [ ] Dictaphone
+* [ ] Customizable waveform player component
