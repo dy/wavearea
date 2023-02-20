@@ -13,16 +13,21 @@
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
       :onselectstart..onselectionchange.document.once="e => handleCaret"
-      :onselectionchange.document="e => (!playing && handleCaret(e))">
-      <div class="w-waveform wavefont">
+      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), handleCaret(e)))">
+      <div class="w-waveform wavefont" :style="{
+        '--cols': cols,
+        '--carety': (caretY - this.getBoundingClientRect().top) + 'px',
+        '--caretx': (caretX - this.getBoundingClientRect().left) + 'px'
+      }">
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'w-loading':loading}"
           :hidden="!segments.length"
           :onclick.toggle="play"
           :onkeydown.document.space="e=>this.click(e)"
+          tabindex="-1"
+          :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
           :style="{
-            '--carety': caretLine,
             position: !caretOffscreen ? 'absolute' : 'fixed',
             ...(!caretOffscreen ? {} : caretOffscreen > 0 ? {top:0} : {bottom:0,top:'auto'})
           }">
@@ -30,7 +35,7 @@
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <span class="w-caret-line" :style="{'--carety': caretLine}"></span>
+        <span class="w-caret-line"></span>
         <div class="w-loader"
           :if="loading"
           :with="{str:''}"
@@ -58,11 +63,6 @@
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
           :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
-          :style="{
-            '--cols': cols,
-            '--rows-to-caret': Math.floor(caretOffset / cols),
-            '--cols-to-caret': (loop && !playing ? clipEnd : caretOffset) - Math.floor((loop && !playing ? clipEnd : caretOffset) / cols) * cols
-          }"
         ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment" :data="{id:id1-1}"></p></div>
         <div class="w-timecodes"></div>
       </div>

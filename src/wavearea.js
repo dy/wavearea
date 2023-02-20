@@ -15,6 +15,7 @@ const editarea = wavearea.querySelector('.w-editable')
 const played = wavearea.querySelector('.w-played')
 const timecodes = wavearea.querySelector('.w-timecodes')
 const playButton = wavearea.querySelector('.w-play')
+const waveform = wavearea.querySelector('.w-waveform')
 const caretLinePointer = wavearea.querySelector('.w-caret-line')
 const audio = new Audio
 
@@ -39,6 +40,7 @@ let state = sprae(wavearea, {
   clipStart: 0,
   loop: false,
   clipEnd: null,
+  _startTime: 0,
   _startTimeOffset:0,
 
   volume: 1,
@@ -50,7 +52,8 @@ let state = sprae(wavearea, {
 
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
   caretOffset: 0, // current caret offset, characters
-  caretLine: 0,
+  caretY: waveform.getBoundingClientRect().top,
+  caretX: 0, // caret row coordinate
 
   // chars per line (~5s with block==1024)
   // FIXME: make responsive
@@ -62,7 +65,7 @@ let state = sprae(wavearea, {
     let sel = selection()
     if (!sel) return
     state.caretOffset = sel.start;
-    state.updateCaretLine()
+    state.updateCaretLine(sel)
 
     state.clipStart = state.caretOffset;
     if (!state.playing) {
@@ -70,6 +73,7 @@ let state = sprae(wavearea, {
       state.loop = audio.loop = !sel.collapsed;
     }
     else {
+      state._startTime = performance.now() * 0.001
       state._startTimeOffset = state.caretOffset
     }
 
@@ -134,6 +138,7 @@ let state = sprae(wavearea, {
 
   // start playback
   play (e) {
+    console.log('play')
     state.playing = true;
     editarea.focus();
 
@@ -147,32 +152,34 @@ let state = sprae(wavearea, {
     const toggleStop = () => playButton.click()
 
     // since audio.currentTime is inaccurate, esp. in Safari, we measure precise played time
-    let startTime, animId
+    let animId
+    state._startTime
     state._startTimeOffset = state.caretOffset
     const init = () => {
-      startTime = performance.now() * 0.001;
+      state._startTime = performance.now() * 0.001;
       cancelAnimationFrame(animId)
       syncCaret()
     }
 
     const syncCaret = () => {
-      let playedTime = (performance.now() * 0.001 - startTime);
+      // console.log('sync')
+      let playedTime = (performance.now() * 0.001 - state._startTime);
       let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, clipEnd)
 
-      selection(state.caretOffset = currentBlock)
+      let sel = selection(state.caretOffset = currentBlock)
 
-      state.updateCaretLine()
+      state.updateCaretLine(sel)
       state.scrollIntoCaret();
 
       animId = requestAnimationFrame(syncCaret)
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
-    audio.addEventListener('playing', init)
+    audio.addEventListener('play', init)
 
     // audio looped - reset caret
-    audio.addEventListener('seeked', init)
+    // audio.addEventListener('seeked', init)
 
     const stopAudio = playClip(audio, state.loop && {
       start: state.duration * state.clipStart / state.total,
@@ -184,7 +191,7 @@ let state = sprae(wavearea, {
     return () => {
       audio.removeEventListener('ended', toggleStop)
       audio.removeEventListener('seeked', init)
-      audio.removeEventListener('playing', init)
+      audio.removeEventListener('play', init)
 
       cancelAnimationFrame(animId), animId = null
       stopAudio();
@@ -215,14 +222,18 @@ let state = sprae(wavearea, {
   },
 
   // make sure play/caret line pointer is correct
-  updateCaretLine() {
-    let caretLine = Math.floor(state.caretOffset / state.cols);
-    let sel = selection();
+  updateCaretLine(sel) {
+    // let caretLine = Math.floor(sel.end / state.cols);
+    // // last of segment edge case
+    // if (sel.startNode && !(state.caretOffset % state.cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
 
-    // last of segment edge case
-    if (!(state.caretOffset % state.cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
+    // if (state.caretLine !== caretLine) state.caretLine = caretLine;
 
-    if (state.caretLine !== caretLine) state.caretLine = caretLine;
+    // calculate caret x coordinate
+    let rects = sel.range.getClientRects()
+    let rect = rects[rects.length - 1]
+    state.caretX = rect.right
+    state.caretY = rect.top
   },
 
   // FIXME: this must be done by sprae ideally
@@ -232,7 +243,10 @@ let state = sprae(wavearea, {
     if (!editarea.textContent) return
     let offset = 0
     for (let segNode of editarea.children) {
-      let lines = Math.ceil(segNode.textContent.length / state.cols) || 1;
+      let range = new Range
+      range.selectNodeContents(editarea)
+      let lines = Math.round(range.getBoundingClientRect().height / range.getClientRects()[1].height)
+      // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
       for (let i = 0; i < lines; i++) {
         let a = document.createElement('a')
         let tc = timecode(i * (state.cols||0) + offset)
@@ -320,14 +334,15 @@ const selection = (start, end) => {
     // find start/end nodes
     let [startNode, startNodeOffset] = relOffset(start)
     let [endNode, endNodeOffset] = relOffset(end)
-    range.setStart(startNode, startNodeOffset)
-    range.setEnd(endNode, endNodeOffset)
+    range.setStart(startNode.firstChild, startNodeOffset)
+    range.setEnd(endNode.firstChild, endNodeOffset)
     s.addRange(range)
 
     return {
       start, startNode, end, endNode,
       startNodeOffset, endNodeOffset,
-      collapsed: s.isCollapsed
+      collapsed: s.isCollapsed,
+      range: s.getRangeAt(0)
     }
   }
 
@@ -351,7 +366,8 @@ const selection = (start, end) => {
     end,
     endNode,
     endNodeOffset,
-    collapsed: s.isCollapsed
+    collapsed: s.isCollapsed,
+    range: s.getRangeAt(0)
   }
 }
 
@@ -375,8 +391,7 @@ function relOffset(offset) {
   for (let content = node.textContent, i = 0; i < offset; i++) {
     while (content[i+skip] >= '\u0300') skip++
   }
-
-  return [node.firstChild, offset + skip]
+  return [node, offset + skip]
 }
 
 // produce display time from frames

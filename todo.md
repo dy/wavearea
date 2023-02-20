@@ -91,9 +91,11 @@
 * [x] Mobile playback doesn't start from selection
 * [x] Bug: renavigating during play
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
-* [ ] Bug: multiline selection is damaged
+* [x] Bug: multiline selection is damaged
 * [ ] Bug: empty head starts playing something non-silence
-* [ ] Bug: needs enhanced lines calculation, ideally chars-per-line
+* [x] Bug: needs enhanced lines calculation, ideally chars-per-line
+* [ ] Bug: playback with space is glitchy
+* [ ] Bug: stopping playback with pause click is glitchy
 
 ## Improvements
 

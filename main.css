@@ -107,13 +107,13 @@ body {
 .w-editable:before {
   bottom: 0;
   left: 0;
-  right: 0;
-  top: calc(var(--rows-to-caret) * var(--wavefont-lh) + var(--wavefont-lh));
+  right: -1px;
+  top: calc(var(--carety) + var(--wavefont-lh));
 }
 .w-editable:after {
-  top: calc(var(--rows-to-caret) * var(--wavefont-lh));
-  right: 0;
-  left: calc(var(--cols-to-caret) * 1ch);
+  top: var(--carety);
+  right: -1px;
+  left: var(--caretx);
   height: var(--wavefont-lh);
 }
 .w-loader {
@@ -164,7 +164,7 @@ body {
   margin-left: -5.6rem;
   width: 2rem;
   height: var(--wavefont-lh);
-  top: calc(var(--carety) * var(--wavefont-lh));
+  top: var(--carety);
   display: flex;
   align-items: center;
 }
