@@ -96,9 +96,13 @@
 * [x] Bug: needs enhanced lines calculation, ideally chars-per-line
 * [ ] Bug: playback with space is glitchy
 * [ ] Bug: stopping playback with pause click is glitchy
+* [ ] Bug: deleting is broken
 
 ## Improvements
 
+* [ ] Zoom
+* [ ] Render only visible part
+* [ ] Resize throttle
 * [ ] `<time-codes>`
 * [ ] `<playback-panel>`
 * [ ] `<wave-area>`

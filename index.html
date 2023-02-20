@@ -12,8 +12,9 @@
     >
     <div class="w-container"
       :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
+      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), handleCaret(e)))"
       :onselectstart..onselectionchange.document.once="e => handleCaret"
-      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), handleCaret(e)))">
+    >
       <div class="w-waveform wavefont" :style="{
         '--cols': cols,
         '--carety': (caretY - this.getBoundingClientRect().top) + 'px',
