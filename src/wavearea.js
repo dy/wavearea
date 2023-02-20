@@ -162,7 +162,6 @@ let state = sprae(wavearea, {
     }
 
     const syncCaret = () => {
-      // console.log('sync')
       let playedTime = (performance.now() * 0.001 - state._startTime);
       let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, clipEnd)
@@ -179,7 +178,7 @@ let state = sprae(wavearea, {
     audio.addEventListener('play', init)
 
     // audio looped - reset caret
-    // audio.addEventListener('seeked', init)
+    if (state.loop) audio.addEventListener('seeked', init)
 
     const stopAudio = playClip(audio, state.loop && {
       start: state.duration * state.clipStart / state.total,
@@ -329,7 +328,9 @@ const selection = (start, end) => {
     start = Math.max(0, start)
     if (end == null) end = start
 
-    let range = s.rangeCount ? s.getRangeAt(0) : new Range()
+    // NOTE: Safari doesn't support reusing range
+    s.removeAllRanges()
+    let range = new Range()
 
     // find start/end nodes
     let [startNode, startNodeOffset] = relOffset(start)
@@ -491,7 +492,7 @@ function renderAudio ({url, segments, duration, offsets}) {
   state.updateTimecodes()
   // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
-  audio.load() // safari needs that explicitly
+  audio.preload="metadata" // preload avoids redundant fetch requests and needed by Safari
   return new Promise((ok, nok) => {
     audio.addEventListener('error', nok)
     audio.addEventListener('loadedmetadata',()=>{

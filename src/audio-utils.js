@@ -73,7 +73,6 @@ export function drawAudio (audioBuffer) {
   // console.time('draw string')
 
   // map waveform to wavefont
-  console.log(audioBuffer)
   let channelData = audioBuffer.getChannelData(0), str = ''
 
   // TODO: weight waveform by audible spectrum
@@ -100,7 +99,7 @@ export function drawAudio (audioBuffer) {
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
     let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))
     str += String.fromCharCode(0x0100 + v)
-    let shift = Math.abs(Math.round(avg * 100))
+    let shift = Math.abs(Math.round(avg * 50))
     str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
 
     // signal energy loudness
