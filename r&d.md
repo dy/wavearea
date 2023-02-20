@@ -217,12 +217,13 @@
 - Big delay in iOS for playback
 - No built-in loop support
   ~ Can be relatively safely implemented
-- API quirks / inconsistencies across iOS / desktop
+- API quirks / inconsistencies across iOS / desktop, like preloading
 - Events order is confusing: seeked, seeking, timeupdate - but we factually need just 'looped' or 'usernavigated'
 - Likely impossible to organize precise tests (if at all)
 
 2. WAA (AudioSourceNode)
 + short latency
++ no 1.5s playback delay imposed by Safari
 - no ready playback API
 - may require live audiobuffer manipulations to output sound
 + loopStart/loopEnd support out of box

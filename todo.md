@@ -176,4 +176,5 @@
 * [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
 * [ ] Famous voices speak famous phrases - chunk tp share
 * [ ] Dictaphone
-* [ ] Customizable waveform player component
+* [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
+* [ ] Audio books with paged chapters for playback
