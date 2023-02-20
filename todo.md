@@ -97,11 +97,12 @@
 * [ ] Bug: playback with space is glitchy
 * [ ] Bug: stopping playback with pause click is glitchy
 * [ ] Bug: deleting is broken
+* [ ] Bug: safari doesn't renavigate by click
 
 ## Improvements
 
 * [ ] Zoom
-* [ ] Render only visible part
+* [ ] Render only visible part - must reduce rendering load significantly
 * [ ] Resize throttle
 * [ ] `<time-codes>`
 * [ ] `<playback-panel>`

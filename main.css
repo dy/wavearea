@@ -28,6 +28,10 @@ body {
   font-size: var(--wavefont-size, 80px);
   line-height: var(--wavefont-lh);
 	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
+  text-rendering: optimizeSpeed;
+  font-smooth: grayscale;
+  -webkit-font-smoothing: grayscale;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .wavearea {
@@ -85,7 +89,10 @@ body {
   /* background-color: var(--secondary); */
 }
 /* played samples dimmer */
-.w-editable:focus:before, .w-editable:focus:after {
+.w-editable.w-playing:before,
+.w-editable:focus:before,
+.w-editable.w-playing:after,
+.w-editable:focus:after {
   content:'';
   position: absolute;
   background: rgba(255, 255, 255, .66);

@@ -169,7 +169,7 @@ let state = sprae(wavearea, {
       let sel = selection(state.caretOffset = currentBlock)
 
       state.updateCaretLine(sel)
-      state.scrollIntoCaret();
+      // state.scrollIntoCaret();
 
       animId = requestAnimationFrame(syncCaret)
     }
