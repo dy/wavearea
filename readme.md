@@ -4,7 +4,7 @@ Multiline waveform player with simple editing.<br/>
 Provides minimal ergonomic means to open, edit and save audio pieces.<br/>
 Perfect for speech fragments editing.
 
-[Demo](https://dy.github.io/wavearea).
+[Demo](https://dy.github.io/wavearea?src=https://ia800207.us.archive.org/29/items/MLKDream/MLKDream_64kb.mp3).
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
