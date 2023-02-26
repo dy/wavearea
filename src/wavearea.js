@@ -24,6 +24,8 @@ const audio = new Audio
 const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
+Object.assign(sprae.sandbox, {clearInterval: clearInterval.bind(window), setInterval: setInterval.bind(window)})
+
 // UI state
 let state = sprae(wavearea, {
   // interaction state
