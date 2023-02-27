@@ -4,10 +4,10 @@ Multiline waveform player with simple editing.<br/>
 Provides minimal ergonomic means to open, edit and save audio pieces.<br/>
 Perfect for speech fragments playback / editing.
 
-<img src="./wavearea.png" width="400" />
+<a href="https://dy.github.io/wavearea?src=https://cdn.freesound.org/previews/147/147582_1728127-lq.mp3"><img src="./wavearea.png" width="400" /></a>
 
 <!-- [Demo](https://dy.github.io/wavearea?src=https://ia800207.us.archive.org/29/items/MLKDream/MLKDream_64kb.mp3). -->
-[Forest sounds](https://dy.github.io/wavearea?src=https://cdn.freesound.org/previews/147/147582_1728127-lq.mp3).
+<!-- [Forest sounds](https://dy.github.io/wavearea?src=https://cdn.freesound.org/previews/147/147582_1728127-lq.mp3). -->
 
 Based on [wavefont](https://github.com/dy/wavefont) and [sprae](https://github.com/dy/sprae).
 
