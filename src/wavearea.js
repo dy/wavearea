@@ -24,7 +24,7 @@ const audio = new Audio
 const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
-Object.assign(sprae.sandbox, {
+Object.assign(sprae.globals, {
   clearInterval: clearInterval.bind(window),
   setInterval: setInterval.bind(window),
   raf: window.requestAnimationFrame.bind(window)
@@ -460,7 +460,7 @@ async function pushOp (...ops) {
 
   for (let op of ops) {
     let [name, ...args] = op
-    if (args[0].file) url.searchParams.set(name, args[0].file.name)
+    if (args[0].name) url.searchParams.set(name, args[0].name)
     else if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
     else url.searchParams.append(name, args.join('-'))
   }
@@ -509,9 +509,6 @@ function renderAudio ({url, segments, duration, offsets}) {
   })
 }
 
-state.loading = 'Decoding'
-
-
 // reconstruct audio from url
 async function loadAudioFromURL (url = new URL(location)) {
   state.loading = 'Fetching'
@@ -527,9 +524,11 @@ async function loadAudioFromURL (url = new URL(location)) {
     let [,src] = ops.shift()
     let resp = await fetch(src, { cache: 'force-cache' });
     let arrayBuf = await resp.arrayBuffer();
+    state.loading = 'Decoding'
     let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
     let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
     ops.push(['file', {
+      name: src,
       numberOfChannels: audioBuf.numberOfChannels,
       sampleRate: audioBuf.sampleRate,
       length: audioBuf.length,

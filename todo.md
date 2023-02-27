@@ -94,8 +94,7 @@
 * [x] Bug: multiline selection is damaged
 * [ ] Bug: empty head starts playing something non-silence
 * [x] Bug: needs enhanced lines calculation, ideally chars-per-line
-* [ ] Bug: playback with space is glitchy
-* [ ] Bug: stopping playback with pause click is glitchy
+* [ ] Bug: playback with space is glitchy (resets caret)
 * [ ] Bug: deleting is broken
 * [x] Bug: doesn't renavigate by click
 * [x] Bug: doesn't scroll on caret offset
