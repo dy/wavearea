@@ -11,9 +11,9 @@
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
     >
     <div class="w-container"
-      :onkeydown.arrow="e=>requestAnimationFrame(handleCaret)"
-      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), handleCaret(e)))"
-      :onselectstart..onselectionchange.document.once="e => handleCaret"
+      :onkeydown.arrow="e=>raf(handleCaret)"
+      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret(e)))"
+      :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))"
     >
       <div class="w-waveform wavefont" :style="{
         '--cols': cols,
@@ -59,7 +59,7 @@
         <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
           :class="{'w-playing':playing}"
-          :oninput="e => (handleCaret(e),updateTimecodes())"
+          :oninput="e => (handleCaret(e), updateTimecodes())"
           :onbeforeinput="handleBeforeInput"
           :ondblclick.prevent
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"

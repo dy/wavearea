@@ -78,8 +78,8 @@ const Ops = {
 
     // save to storage
     let blob = new Blob([await encodeAudio(...buffers)])
-    console.log('save', DB_KEY + ':' + data.file.name)
-    storage.set(DB_KEY + ':' + data.file.name, blob)
+    console.log('save', DB_KEY + ':' + data.name)
+    storage.set(DB_KEY + ':' + data.name, blob)
 
     return buffers
   },

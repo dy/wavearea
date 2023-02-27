@@ -81,6 +81,7 @@ export function drawAudio (audioBuffer) {
   // amp coef brings up value a bit
   const VISUAL_AMP = 2
 
+  let min = 1, max = -1
   for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
     let ssum = 0, sum = 0
 
@@ -92,12 +93,15 @@ export function drawAudio (audioBuffer) {
     // rms method
     // drawback: waveform is smaller than needed
     for (;i < nextBlock; i++) {
-      sum += i >= channelData.length ? 0 : channelData[i]
-      ssum += i >= channelData.length ? 0 : channelData[i] ** 2
+      let x = i >= channelData.length ? 0 : channelData[i]
+      sum += x
+      ssum += x ** 2
+      min = Math.min(min, x)
+      max = Math.max(max, x)
     }
     const avg = sum / BLOCK_SIZE
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP))
+    let v =  Math.min(100, Math.ceil(rms * 100 * VISUAL_AMP / (max-min)))
     str += String.fromCharCode(0x0100 + v)
     let shift = Math.abs(Math.round(avg * 50))
     str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
@@ -113,6 +117,7 @@ export function drawAudio (audioBuffer) {
 
     nextBlock += BLOCK_SIZE
   }
+  console.log(min, max)
 
   // cache waveform
   audioBuffer._wf = str

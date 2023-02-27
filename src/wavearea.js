@@ -24,7 +24,11 @@ const audio = new Audio
 const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
-Object.assign(sprae.sandbox, {clearInterval: clearInterval.bind(window), setInterval: setInterval.bind(window)})
+Object.assign(sprae.sandbox, {
+  clearInterval: clearInterval.bind(window),
+  setInterval: setInterval.bind(window),
+  raf: window.requestAnimationFrame.bind(window)
+})
 
 // UI state
 let state = sprae(wavearea, {
@@ -122,7 +126,7 @@ let state = sprae(wavearea, {
     let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
 
     await pushOp(['file', {
-      file,
+      name: file.name,
       numberOfChannels: audioBuf.numberOfChannels,
       sampleRate: audioBuf.sampleRate,
       length: audioBuf.length,
@@ -132,15 +136,15 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen && !state.scrolling)
+    if (state.caretOffscreen && !state.scrolling) {
       caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'}),
       state.scrolling = true,
       setTimeout(() => state.scrolling = false, 500)
+    }
   },
 
   // start playback
   play (e) {
-    console.log('play')
     state.playing = true;
     editarea.focus();
 
@@ -164,14 +168,16 @@ let state = sprae(wavearea, {
     }
 
     const syncCaret = () => {
-      let playedTime = (performance.now() * 0.001 - state._startTime);
-      let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
-      if (loop) currentBlock = Math.min(currentBlock, clipEnd)
+      if (!state.selecting) {
+        let playedTime = (performance.now() * 0.001 - state._startTime);
+        let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
+        if (loop) currentBlock = Math.min(currentBlock, clipEnd)
 
-      let sel = selection(state.caretOffset = currentBlock)
+        let sel = selection(state.caretOffset = currentBlock)
 
-      state.updateCaretLine(sel)
-      // state.scrollIntoCaret();
+        state.updateCaretLine(sel)
+        state.scrollIntoCaret();
+      }
 
       animId = requestAnimationFrame(syncCaret)
     }
@@ -503,19 +509,40 @@ function renderAudio ({url, segments, duration, offsets}) {
   })
 }
 
+state.loading = 'Decoding'
+
+
 // reconstruct audio from url
 async function loadAudioFromURL (url = new URL(location)) {
   state.loading = 'Fetching'
+
   let ops = []
-  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg =>
+  for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg => {
     // skip https:// as single argument
-    [op, ...(op==='src' || op==='file' ? [arg] : arg.split('-'))]
-  ))
+    return [op, ...(op==='src'||op==='file' ? [arg] : arg.split('-'))]
+  }))
+
+  // shortcut for src op
+  if (ops[0][0] === 'src') {
+    let [,src] = ops.shift()
+    let resp = await fetch(src, { cache: 'force-cache' });
+    let arrayBuf = await resp.arrayBuffer();
+    let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
+    let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
+    ops.push(['file', {
+      numberOfChannels: audioBuf.numberOfChannels,
+      sampleRate: audioBuf.sampleRate,
+      length: audioBuf.length,
+      channelData
+    }])
+  }
+
   let params = await runOp(...ops)
   history.replaceState(params, '', decodeURI(url))
   renderAudio(params)
   state.loading = false
 }
+
 
 // if URL has no operations - put random sample
 // if (location.search.length < 2) {

@@ -97,10 +97,12 @@
 * [ ] Bug: playback with space is glitchy
 * [ ] Bug: stopping playback with pause click is glitchy
 * [ ] Bug: deleting is broken
-* [ ] Bug: safari doesn't renavigate by click
+* [x] Bug: doesn't renavigate by click
+* [x] Bug: doesn't scroll on caret offset
 
 ## Improvements
 
+* [ ] Make play always cover the time, then it leaves space for "record" button
 * [ ] Zoom
 * [ ] Render only visible part - must reduce rendering load significantly
 * [ ] Resize throttle
