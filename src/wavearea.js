@@ -69,7 +69,8 @@ let state = sprae(wavearea, {
   async handleCaret() {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
     let sel = selection()
-    if (!sel) return
+    // skip unchanged
+    if (!sel || (sel.start === state.caretOffset && sel.collapsed)) return
     state.caretOffset = sel.start;
     state.updateCaretLine(sel)
 
@@ -89,7 +90,12 @@ let state = sprae(wavearea, {
 
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType];
-    if (!handler) e.preventDefault(); else {
+    if (!handler) {
+      e.preventDefault();
+      e.stopPropagation();
+      // avoid double space insertion (osx)
+      if (e.data === '. ') selection(state.caretOffset)
+    } else {
       handler.call(this, e);
     }
   },
@@ -336,16 +342,22 @@ const selection = (start, end) => {
     start = Math.max(0, start)
     if (end == null) end = start
 
-    // NOTE: Safari doesn't support reusing range
-    s.removeAllRanges()
-    let range = new Range()
-
     // find start/end nodes
     let [startNode, startNodeOffset] = relOffset(start)
     let [endNode, endNodeOffset] = relOffset(end)
-    range.setStart(startNode.firstChild, startNodeOffset)
-    range.setEnd(endNode.firstChild, endNodeOffset)
-    s.addRange(range)
+
+    let currentRange = s.getRangeAt(0)
+    if (
+      !(currentRange.startContainer === startNode.firstChild && currentRange.startOffset === startNodeOffset) &&
+      !(currentRange.endContainer === endNode.firstChild && currentRange.endOffset === endNodeOffset)
+    ) {
+      // NOTE: Safari doesn't support reusing range
+      s.removeAllRanges()
+      let range = new Range()
+      range.setStart(startNode.firstChild, startNodeOffset)
+      range.setEnd(endNode.firstChild, endNodeOffset)
+      s.addRange(range)
+    }
 
     return {
       start, startNode, end, endNode,

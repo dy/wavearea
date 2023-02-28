@@ -63,7 +63,6 @@
   * [ ] Ctrl-z/y
   * [ ] Collapse last operation, eg. delete
 * [ ] Outsource audio-decode, add missing codecs
-* [ ] Ponyfill Audio gotchas?
 * [x] Outsource media loopStart / loopEnd
 * [x] Better selection logic: must be immediate
 * [x] Display open/loading status
@@ -94,16 +93,17 @@
 * [x] Bug: multiline selection is damaged
 * [ ] Bug: empty head starts playing something non-silence
 * [x] Bug: needs enhanced lines calculation, ideally chars-per-line
-* [ ] Bug: playback with space is glitchy (resets caret)
+* [x] Bug: playback with space is glitchy (resets caret)
 * [ ] Bug: deleting is broken
 * [x] Bug: doesn't renavigate by click
 * [x] Bug: doesn't scroll on caret offset
+* [ ] Bug: loop playback selection is broken
 
 ## Improvements
 
-* [ ] Make play always cover the time, then it leaves space for "record" button
+* [x] Make play always cover the time, then it leaves space for "record" button
 * [ ] Zoom
-* [ ] Render only visible part - must reduce rendering load significantly
+* [ ] Render only visible part (virtual) - must reduce rendering load significantly
 * [ ] Resize throttle
 * [ ] `<time-codes>`
 * [ ] `<playback-panel>`
