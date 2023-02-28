@@ -83,7 +83,7 @@
 * [x] Loaded file misses offset
 * [x] Played waveform update on big files is very slow. Use overlap technique or virtual list via intersection observer
 * [x] Safari: smooth audio currentTime (opposed to glitchy now)
-* [ ] A way to download selected fragment
+* [ ] A way to download / reverse / etc selected fragment (... at the right)
 * [x] Stopping playback causes glitch
 * [x] Bug with assets/1s.wav playback - end line caret shifts down
 * [x] Problematic mobile rendering
@@ -97,7 +97,7 @@
 * [ ] Bug: deleting is broken
 * [x] Bug: doesn't renavigate by click
 * [x] Bug: doesn't scroll on caret offset
-* [ ] Bug: loop playback selection is broken
+* [x] Bug: loop playback selection is broken
 
 ## Improvements
 
