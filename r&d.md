@@ -220,6 +220,7 @@
 - API quirks / inconsistencies across iOS / desktop, like preloading
 - Events order is confusing: seeked, seeking, timeupdate - but we factually need just 'looped' or 'usernavigated'
 - Likely impossible to organize precise tests (if at all)
++ It opens the file nicely in iOS home screen
 
 2. WAA (AudioSourceNode)
 + short latency

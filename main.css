@@ -156,12 +156,16 @@ body {
 }
 .w-play,  .w-caret-line, .w-opener {
   position: absolute;
-  margin-left: -5.6rem;
-  width: 2rem;
+  margin-left: -3.8rem;
+  width: 3rem;
   height: var(--wavefont-lh);
   top: var(--carety);
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+.w-opener {
+  margin-left: -3.2rem;
 }
 .w-play {
   padding: 0;
@@ -183,10 +187,6 @@ body {
 
 .w-play {
   z-index: 1;
-  width: 3rem;
-  height: var(--wavefont-lh);
-  margin-left: -3.8rem;
-  justify-content: center;
   background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%);
 }
 

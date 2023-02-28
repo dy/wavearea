@@ -44,7 +44,7 @@
           :text="str"
         >...</div>
         <div class="w-opener" :if="!segments.length && !loading">
-          <input id="w-file" class="w-file" type="file" accept="audio/*, video/*" :onchange="handleFile"/>
+          <input id="w-file" class="w-file" type="file" accept="audio/x-m4a,audio/*" :onchange="handleFile"/>
           <label for="w-file" title="Open file">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24px" width="24px" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
@@ -54,7 +54,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
             Record
           </button> -->
-          <!-- Recent -->
         </div>
         <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
         <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
@@ -68,6 +67,7 @@
         <div class="w-timecodes"></div>
       </div>
 
+      <!--
       <div class="w-playback" :if="false">
         <button class="w-play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
@@ -84,6 +84,7 @@
         <span style="opacity: .25">/</span>
         <span class="w-time" title="Time until the end" :text="'‒' + timecode(total - caretOffset, 2)"></span>
       </div>
+    -->
     </div>
 
     <!--
