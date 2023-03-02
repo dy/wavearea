@@ -192,7 +192,7 @@ body {
 
 .w-caret-line {
   pointer-events: none;
-  margin-left: -2rem;
+  margin-left: -4rem;
 }
 
 .w-file {

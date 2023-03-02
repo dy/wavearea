@@ -41,6 +41,7 @@ let state = sprae(wavearea, {
   playing: false,
   selecting: false,
   scrolling: false,
+  _scrollY: 0,
 
   // current playback start/end time
   clipStart: 0,
@@ -142,16 +143,19 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen && !state.scrolling) {
-      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'}),
-      state.scrolling = true,
-      setTimeout(() => state.scrolling = false, 500)
+    if (state.caretOffscreen && !state.scrolling && state._scrollY != null) {
+      console.log('scroll into view')
+      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'})
+      state.scrolling = true
+      state._scrollY = null
+      setTimeout(() => state._scrollY = 0, 216)
     }
   },
 
   // start playback
   play (e) {
     state.playing = true;
+    state.scrolling = true;
     editarea.focus();
 
     // from the end to the beginning
@@ -169,11 +173,19 @@ let state = sprae(wavearea, {
     state._startTimeOffset = state.caretOffset
     const init = () => {
       state._startTime = performance.now() * 0.001;
-      cancelAnimationFrame(animId)
-      syncCaret()
+      clearInterval(animId)
+      animId = setInterval(syncCaret, 20)
     }
 
     const syncCaret = () => {
+      // detect scrolling state, to prevent forcing scroll-into-caret
+      if (state._scrollY != null) {
+        let curY = editarea.getBoundingClientRect().top
+        if (curY !== state._scrollY) (state.scrolling = true, state._scrollY = null, setTimeout(() => (state._scrollY = editarea.getBoundingClientRect().top), 216))
+        else state.scrolling = false
+        if (state._scrollY != null) state._scrollY = curY
+      }
+
       if (!state.selecting) {
         let playedTime = (performance.now() * 0.001 - state._startTime);
         let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
@@ -184,8 +196,6 @@ let state = sprae(wavearea, {
         state.updateCaretLine(sel)
         state.scrollIntoCaret();
       }
-
-      animId = requestAnimationFrame(syncCaret)
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
@@ -206,9 +216,10 @@ let state = sprae(wavearea, {
       audio.removeEventListener('seeked', init)
       audio.removeEventListener('play', init)
 
-      cancelAnimationFrame(animId), animId = null
+      clearInterval(animId), animId = null
       stopAudio();
       state.playing = false
+      state.scrolling = false
 
       // return selection if there was any
       //TODO: unmarkLoopRange()
