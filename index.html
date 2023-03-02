@@ -44,7 +44,7 @@
           :text="str"
         >...</div>
         <div class="w-opener" :if="!segments.length && !loading">
-          <input id="w-file" class="w-file" type="file" accept="audio/x-m4a,audio/*" :onchange="handleFile"/>
+          <input id="w-file" class="w-file" type="file" accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*" :onchange="handleFile"/>
           <label for="w-file" title="Open file">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24px" width="24px" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />

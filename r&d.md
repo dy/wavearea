@@ -44,6 +44,7 @@
 * Randomly generated music stream?
 * The most popular songs of all time?
 * Vedas?
+* Random forest sounds!
 
 ## [ ] Intro screen: ideas?
 
@@ -234,3 +235,18 @@
 3. web-audio-player https://github.com/Jam3/web-audio-player
 + attempt to fix many gotchas
 - switches between 2 modes: element / waa
+
+
+## Cases / integrations
+
+* [ ] Sound fragments sharing platform
+* [ ] Hosting files via github
+* [ ] Sampler player, like te-re-khe-ta from URL will play sampled phrases by dictionary
+* [ ] Multiple variations of theming
+* [ ] Voice emails integration
+* [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
+* [ ] Famous voices speak famous phrases - chunk tp share
+* [ ] Dictaphone
+* [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
+* [ ] Audio books with paged chapters for playback
+* [ ] sound-resource.com

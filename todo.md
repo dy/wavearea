@@ -166,16 +166,3 @@
 * [ ] Vary color based on spectrum
 * [x] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
 * [ ] Editable labeling / phrases
-
-## [ ] Final goal
-
-* [ ] Sound fragments sharing platform
-* [ ] Hosting files via github
-* [ ] Sampler player, like te-re-khe-ta from URL will play sampled phrases by dictionary
-* [ ] Multiple variations of theming
-* [ ] Voice emails integration
-* [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
-* [ ] Famous voices speak famous phrases - chunk tp share
-* [ ] Dictaphone
-* [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
-* [ ] Audio books with paged chapters for playback
