@@ -64,7 +64,7 @@ body {
   position: relative;
   width: 100%;
   /* this 0.5ch fixes inconsistent breaking, seemingly round error */
-  max-width: calc(8 * 216 * 1ch + 0.5ch);
+  max-width: calc(4 * 216 * 1ch + 0.5ch);
   margin: 1rem;
   margin-left: 4rem;
 }
