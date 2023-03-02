@@ -143,19 +143,17 @@ let state = sprae(wavearea, {
   },
 
   scrollIntoCaret() {
-    if (state.caretOffscreen && !state.scrolling && state._scrollY != null) {
-      console.log('scroll into view')
+    if (state.caretOffscreen && !state.scrolling) {
       caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'})
       state.scrolling = true
-      state._scrollY = null
-      setTimeout(() => state._scrollY = 0, 216)
+      setTimeout(() => (state.scrolling = false), 108)
     }
   },
 
   // start playback
   play (e) {
     state.playing = true;
-    state.scrolling = true;
+    state.scrolling = false;
     editarea.focus();
 
     // from the end to the beginning
@@ -177,14 +175,18 @@ let state = sprae(wavearea, {
       animId = setInterval(syncCaret, 20)
     }
 
+    // detect scrolling state, to prevent forcing scroll-into-caret
+    let scrollY = editarea.getBoundingClientRect().top
+    const checkScroll = () => {
+      if (state.scrolling) return
+      let curY = editarea.getBoundingClientRect().top
+      if (curY !== scrollY) (state.scrolling = true, setTimeout(() => (state.scrolling = false, checkScroll()), 1080))
+      else state.scrolling = false
+      scrollY = curY
+    }
+
     const syncCaret = () => {
-      // detect scrolling state, to prevent forcing scroll-into-caret
-      if (state._scrollY != null) {
-        let curY = editarea.getBoundingClientRect().top
-        if (curY !== state._scrollY) (state.scrolling = true, state._scrollY = null, setTimeout(() => (state._scrollY = editarea.getBoundingClientRect().top), 216))
-        else state.scrolling = false
-        if (state._scrollY != null) state._scrollY = curY
-      }
+      checkScroll()
 
       if (!state.selecting) {
         let playedTime = (performance.now() * 0.001 - state._startTime);
