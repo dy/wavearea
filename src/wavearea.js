@@ -4,6 +4,7 @@
 import sprae from 'sprae';
 import { fileToArrayBuffer } from './audio-utils';
 import playClip from './play-loop';
+import { measureLatency } from './measure-latency';
 
 history.scrollRestoration = 'manual'
 
@@ -32,16 +33,14 @@ Object.assign(sprae.globals, {
 
 // UI state
 let state = sprae(wavearea, {
-  // interaction state
-  isMouseDown: false,
 
   // state
   loading: false,
   recording: false,
   playing: false,
   selecting: false,
+  isMouseDown: false,
   scrolling: false,
-  _scrollY: 0,
 
   // current playback start/end time
   clipStart: 0,
@@ -51,6 +50,8 @@ let state = sprae(wavearea, {
   _startTimeOffset:0,
 
   volume: 1,
+
+  latency: 0, // time between playback and the first sample
 
   // waveform segments
   segments: [],
@@ -163,13 +164,14 @@ let state = sprae(wavearea, {
 
     let {clipStart, clipEnd, loop} = state;
 
-    const toggleStop = () => playButton.click()
+    const toggleStop = () => (playButton.click())
 
     // since audio.currentTime is inaccurate, esp. in Safari, we measure precise played time
     let animId
     state._startTime
     state._startTimeOffset = state.caretOffset
-    const init = () => {
+    const resetStartTime = async () => {
+      await new Promise(ok => setTimeout(ok, state.latency)) // Safari needs visual/audio latency compensation
       state._startTime = performance.now() * 0.001;
       clearInterval(animId)
       animId = setInterval(syncCaret, 20)
@@ -187,7 +189,6 @@ let state = sprae(wavearea, {
 
     const syncCaret = () => {
       checkScroll()
-
       if (!state.selecting) {
         let playedTime = (performance.now() * 0.001 - state._startTime);
         let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
@@ -201,10 +202,10 @@ let state = sprae(wavearea, {
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
-    audio.addEventListener('play', init)
+    audio.addEventListener('play', resetStartTime, {once: true})
 
     // audio looped - reset caret
-    if (state.loop) audio.addEventListener('seeked', init)
+    if (state.loop) audio.addEventListener('seeked', resetStartTime)
 
     const stopAudio = playClip(audio, state.loop && {
       start: state.duration * state.clipStart / state.total,
@@ -212,13 +213,12 @@ let state = sprae(wavearea, {
     });
     // TODO: markLoopRange()
 
-    audio.addEventListener('ended', toggleStop, {once: true});
+    audio.addEventListener('ended', toggleStop);
     return () => {
-      audio.removeEventListener('ended', toggleStop)
-      audio.removeEventListener('seeked', init)
-      audio.removeEventListener('play', init)
+      audio.removeEventListener('seeked', resetStartTime)
+      audio.removeEventListener('ended', toggleStop);
 
-      clearInterval(animId), animId = null
+      clearInterval(animId)
       stopAudio();
       state.playing = false
       state.scrolling = false
@@ -335,6 +335,17 @@ const inputHandlers = {
 
 }
 
+// measure safari latency
+const whatsLatency = async () => {
+  wavearea.removeEventListener('touchstart', whatsLatency)
+  wavearea.removeEventListener('mousedown', whatsLatency)
+  wavearea.removeEventListener('keydown', whatsLatency)
+  state.latency = await measureLatency()
+  console.log('measured latency', state.latency)
+}
+wavearea.addEventListener('touchstart', whatsLatency)
+wavearea.addEventListener('mousedown', whatsLatency)
+wavearea.addEventListener('keydown', whatsLatency)
 
 // get/set normalized selection
 /**
