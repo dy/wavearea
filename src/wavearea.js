@@ -82,7 +82,8 @@ let state = sprae(wavearea, {
       state.loop = audio.loop = !sel.collapsed;
     }
     else {
-      state._startTime = performance.now() * 0.001
+      // FIXME: latency compensation in Safari: not perfect, but better than nothing
+      state._startTime = (performance.now() + state.latency) * 0.001
       state._startTimeOffset = state.caretOffset
     }
 
