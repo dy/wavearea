@@ -5,8 +5,7 @@ import AudioBuffer from 'audio-buffer'
 const decoders = {}
 
 const decodeAudio = async (arrayBuffer) => {
-  const u8buf = new Uint8Array(arrayBuffer)
-  const type = audioType(u8buf)
+  const type = audioType(arrayBuffer)
   let decode = await loadDecoder(type)
 
   let data = await decode(arrayBuffer)
