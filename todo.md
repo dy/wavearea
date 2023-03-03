@@ -62,7 +62,7 @@
 * [ ] History separate from URLs
   * [ ] Ctrl-z/y
   * [ ] Collapse last operation, eg. delete
-* [ ] Outsource audio-decode, add missing codecs
+* [x] Outsource audio-decode, add missing codecs
 * [x] Outsource media loopStart / loopEnd
 * [x] Better selection logic: must be immediate
 * [x] Display open/loading status
@@ -91,7 +91,7 @@
 * [x] Bug: renavigating during play
 * [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
 * [x] Bug: multiline selection is damaged
-* [ ] Bug: empty head starts playing something non-silence
+* [x] Bug: empty head starts playing something non-silence
 * [x] Bug: needs enhanced lines calculation, ideally chars-per-line
 * [x] Bug: playback with space is glitchy (resets caret)
 * [ ] Bug: deleting is broken
@@ -116,7 +116,7 @@
 * [ ] Mark loop selection
 * [ ] Mark fragments
 * [x] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-* [ ] Separate audio-decode module with all codecs...
+* [x] Separate audio-decode module with all codecs...
 * [x] Make play button clickable area _big_
 * [ ] Recent files
 * [x] use media-offset for looping -> own function play-loop
