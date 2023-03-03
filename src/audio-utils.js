@@ -1,7 +1,8 @@
 // single audio buffer utils
 import AudioBuffer from 'audio-buffer'
-import decodeAudio from './decode.js'
+import decodeAudio from 'audio-decode'
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
+
 
 // fetch audio source from URL
 export async function fetchAudio(src) {

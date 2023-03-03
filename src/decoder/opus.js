@@ -1,1 +1,0 @@
-export { OpusDecoder } from 'opus-decoder';

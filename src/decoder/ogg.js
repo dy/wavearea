@@ -1,1 +1,0 @@
-export { OggVorbisDecoder } from '@wasm-audio-decoders/ogg-vorbis';

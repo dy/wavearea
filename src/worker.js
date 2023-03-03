@@ -1,7 +1,7 @@
 // main audio processing API / backend
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
 import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, fileToArrayBuffer } from "./audio-utils.js";
-import decodeAudio from './decode.js'
+import decodeAudio from 'audio-decode'
 import AudioBuffer from "audio-buffer";
 import storage from 'kv-storage-polyfill';
 

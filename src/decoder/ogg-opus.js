@@ -1,1 +1,0 @@
-export { OggOpusDecoder } from 'ogg-opus-decoder';
