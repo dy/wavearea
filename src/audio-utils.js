@@ -103,7 +103,8 @@ export function drawAudio (audioBuffer) {
     }
     const avg = sum / BLOCK_SIZE
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    let v =  Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max-min)))
+    let v =  Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max-min))) || 0
+
     str += String.fromCharCode(0x0100 + v)
     let shift = Math.abs(Math.round(avg * RANGE / 2))
     str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)

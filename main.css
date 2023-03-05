@@ -27,7 +27,7 @@ body {
   letter-spacing: 1.5ch;
   font-size: var(--wavefont-size, 50px);
   line-height: var(--wavefont-lh);
-	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'ALGN' 0.5;
+	font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'YALN' 0;
   text-rendering: optimizeSpeed;
   font-smooth: grayscale;
   -webkit-font-smoothing: grayscale;

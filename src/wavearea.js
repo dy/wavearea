@@ -175,7 +175,7 @@ let state = sprae(wavearea, {
       await new Promise(ok => setTimeout(ok, state.latency)) // Safari needs visual/audio latency compensation
       state._startTime = performance.now() * 0.001;
       clearInterval(animId)
-      animId = setInterval(syncCaret, 20)
+      animId = setInterval(syncCaret, 10)
     }
 
     // detect scrolling state, to prevent forcing scroll-into-caret

@@ -30,7 +30,7 @@ self.onmessage = async e => {
 
 // render waveform & audio, post to client
 const renderAudio = async (buffers) => {
-  let segments = buffers.map(buffer => drawAudio(buffer).replaceAll('\u0100', ' '))
+  let segments = buffers.map(buffer => drawAudio(buffer))
   let duration = buffers.reduce((total, {duration}) => total + duration, 0)
   let wavBuffer = await encodeAudio(...buffers);
   let blob = new Blob([wavBuffer], {type:'audio/wav'});
