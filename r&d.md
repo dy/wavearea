@@ -78,6 +78,7 @@
 * [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
 * [ ] Audio books with paged chapters for playback
 * [ ] sound-resource.com
+* [ ] Assembly AI transcript player https://www.assemblyai.com/playground/transcript/rfj7ddsp95-7929-4158-8cf7-27d897b47b96
 
 ## [x] Editing cases: what's the method of identifying changes? -> detect from onbeforeinput inputType
 
@@ -219,7 +220,7 @@
 + Conventional UX
 + Has no scrolling issues
 
-## [ ] WAA player vs Audio element
+## [x] WAA player vs Audio element -> use compensated audio for now. Too many benefits
 
 1. Audio
 + More universally supported
