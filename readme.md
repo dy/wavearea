@@ -1,4 +1,4 @@
-# ▸ wavearea
+# wavearea
 
 Multiline waveform player with simple editing.<br/>
 Provides minimal ergonomic means to open, edit and save sounds.<br/>
