@@ -7,7 +7,6 @@
 * [x] Fix safari
 * [x] loses caret on play, like insert silence, press play etc
 * [x] serialize file in url: ?src=path/to/url/file/to/fetch
-* [x] sprae :onfile-attachment-accepted
 * [x] add preloader (sprae mount-unmount)
 * [x] delete fragments -> updates audio
 * [x] create silence by space
@@ -59,6 +58,11 @@
 
 ## Must fix v1
 
+* [ ] Menu component
+* [ ] Playback component
+* [ ] Store labels / cues in wav
+* [ ] Variable zoom
+  * [ ] Calculate weights via webgl
 * [ ] History separate from URLs
   * [ ] Ctrl-z/y
   * [ ] Collapse last operation, eg. delete
@@ -68,7 +72,7 @@
 * [x] Display open/loading status
 * [ ] Enter for frags
 * [ ] Display + for newlines
-* [ ] . for silence
+* [ ] ` ` for silence
 * [x] Empty URL shows "Open file"
 * [x] Loads source from url on init
 * [?] ~~Display loading status in playback~~ not sure still if we need playback
@@ -99,10 +103,16 @@
 * [x] Bug: doesn't scroll on caret offset
 * [x] Bug: loop playback selection is broken
 
+
 ## Improvements
 
+* [ ] Make reusable (web-) component
+  * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
+  * [ ] Adjustable timecodes
+  * [ ] Adjustable menu
+  * [ ] Adjustable theme
+  * [ ] Adjustable line breaks / ops
 * [x] Make play always cover the time, then it leaves space for "record" button
-* [ ] Zoom
 * [ ] Render only visible part (virtual) - must reduce rendering load significantly
 * [ ] Resize throttle
 * [ ] `<time-codes>`
@@ -152,12 +162,6 @@
 * [x] scroll must follow the current caret position
 * [x] save edits in URL, so that any audio URL can be opened, edited, played.
 * [ ] More audio transforms
-* [ ] Make reusable (web-) component
-  * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
-  * [ ] Adjustable timecodes
-  * [ ] Adjustable menu
-  * [ ] Adjustable theme
-  * [ ] Adjustable line breaks / ops
 * [ ] Think of embeddable links
 * [ ] Recording capability
 * [ ] Add tests (playwright?)

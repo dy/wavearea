@@ -18,3 +18,5 @@ demo
 *.map
 
 image
+.DS_Store
+.DS_Store

@@ -1,7 +1,11 @@
 // single audio buffer utils
 import AudioBuffer from 'audio-buffer'
 import decodeAudio from 'audio-decode'
-import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
+
+export const BLOCK_SIZE = 1024
+export const SAMPLE_RATE = 44100
+
+const audioCtx = globalThis.AudioContext && new AudioContext()
 
 
 // fetch audio source from URL
@@ -10,15 +14,26 @@ export async function fetchAudio(src) {
   let resp = await fetch(src, {
     cache: 'force-cache'
   });
-  console.timeEnd('fetch')
   if (!resp.ok) throw new Error(`HTTP error: status=${resp.status}`);
+  console.timeEnd('fetch')
+
+  console.time('arrayBuffer')
   let arrayBuffer = await resp.arrayBuffer();
+  console.timeEnd('arrayBuffer')
+
+  // use decodeAudioData if available - it's faster
+  if (audioCtx) {
+    console.time('decode')
+    const res = await audioCtx.decodeAudioData(arrayBuffer);
+    console.timeEnd('decode')
+    return res
+  }
 
   return decodeAudio(arrayBuffer);
 }
 
 // convert audio buffers to wav array buffer
-export async function encodeAudio (...audioBuffers) {
+export async function encodeAudio(...audioBuffers) {
   console.time('wav encode')
 
   // extracted parts of node-wav for seamless integration with audio buffers float32
@@ -33,7 +48,7 @@ export async function encodeAudio (...audioBuffers) {
   const u8 = (x) => v.setUint8(pos++, x);
   const u16 = (x) => (v.setUint16(pos, x, true), pos += 2)
   const u32 = (x) => (v.setUint32(pos, x, true), pos += 4)
-  const string = (s) => { for (var i = 0; i < s.length; ++i) u8(s.charCodeAt(i));}
+  const string = (s) => { for (var i = 0; i < s.length; ++i) u8(s.charCodeAt(i)); }
   string("RIFF");
   u32(buffer.byteLength - 8);
   string("WAVE");
@@ -53,8 +68,8 @@ export async function encodeAudio (...audioBuffers) {
   let output = new Float32Array(buffer, pos);
   for (let audioBuffer of audioBuffers) {
     let channels = audioBuffer.numberOfChannels,
-        channelData = Array(channels),
-        length = audioBuffer.length
+      channelData = Array(channels),
+      length = audioBuffer.length
     for (let ch = 0; ch < channels; ++ch) channelData[ch] = audioBuffer.getChannelData(ch)
     for (let i = 0; i < length; ++i)
       for (let ch = 0; ch < channels; ++ch) output[pos++] = channelData[ch][i];
@@ -65,7 +80,8 @@ export async function encodeAudio (...audioBuffers) {
 }
 
 // convert audio buffer to waveform string
-export function drawAudio (audioBuffer) {
+// FIXME: make via webgl
+export function drawAudio(audioBuffer) {
   if (!audioBuffer) return '';
 
   // if waveform is rendered already - return cached
@@ -94,7 +110,7 @@ export function drawAudio (audioBuffer) {
 
     // rms method
     // drawback: waveform is smaller than needed
-    for (;i < nextBlock; i++) {
+    for (; i < nextBlock; i++) {
       let x = i >= channelData.length ? 0 : channelData[i]
       sum += x
       ssum += x ** 2
@@ -103,7 +119,7 @@ export function drawAudio (audioBuffer) {
     }
     const avg = sum / BLOCK_SIZE
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    let v =  Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max-min))) || 0
+    let v = Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max - min))) || 0
 
     str += String.fromCharCode(0x0100 + v)
     let shift = Math.abs(Math.round(avg * RANGE / 2))
@@ -128,7 +144,7 @@ export function drawAudio (audioBuffer) {
   return str
 }
 
-export function sliceAudio (buffer, start=0, end=buffer.length) {
+export function sliceAudio(buffer, start = 0, end = buffer.length) {
   let newBuffer = new AudioBuffer({
     length: end - start,
     numberOfChannels: buffer.numberOfChannels,
@@ -166,7 +182,7 @@ export function joinAudio(a, b) {
   return newBuffer
 }
 
-export function deleteAudio(buffer, start=0, end=buffer.length) {
+export function deleteAudio(buffer, start = 0, end = buffer.length) {
   let newBuffer = new AudioBuffer({
     length: buffer.length - Math.abs(end - start),
     numberOfChannels: buffer.numberOfChannels,
@@ -183,7 +199,7 @@ export function deleteAudio(buffer, start=0, end=buffer.length) {
   return newBuffer
 }
 
-export function insertAudio (a, offset, b) {
+export function insertAudio(a, offset, b) {
   if (offset >= a.length) return joinAudio(a, b)
   if (!offset) return joinAudio(b, a)
 
@@ -210,14 +226,14 @@ export function insertAudio (a, offset, b) {
   return buffer
 }
 
-export function cloneAudio (a) {
-  let b = new AudioBuffer({sampleRate: a.sampleRate, numberOfChannels: a.numberOfChannels, length: a.length})
+export function cloneAudio(a) {
+  let b = new AudioBuffer({ sampleRate: a.sampleRate, numberOfChannels: a.numberOfChannels, length: a.length })
   for (let ch = 0; ch < a.numberOfChannels; ch++) b.getChannelData(ch).set(a.getChannelData(ch))
   return b
 }
 
 export const fileToArrayBuffer = (file) => {
-  return new Promise((y,n) => {
+  return new Promise((y, n) => {
     const reader = new FileReader();
     reader.addEventListener('loadend', (event) => {
       y(event.target.result);

@@ -35,50 +35,50 @@
 
 ## [ ] Random files / demo cases
 
-* Classics?
-* Famous quotes?
-* Prabhupada vani?
-* Audio books?
-* Poetry?
-* Mantras/Mahamantra?
-* Randomly generated music stream?
-* The most popular songs of all time?
-* Vedas?
-* Random forest sounds!
+  * Classics?
+  * Famous quotes?
+  * Prabhupada vani?
+  * Audio books?
+  * Poetry?
+  * Mantras/Mahamantra?
+  * Randomly generated music stream?
+  * The most popular songs of all time?
+  * Vedas?
+  * Random forest sounds!
 
 ## [ ] Intro screen: ideas?
 
-* !recent history of files
-* !random file?
-* !record mic
-* !generate speech (some free API)
-* !generate signal
-* !some AI stuff (generate from prompt)
-* !open file(s), drop file(s)
-* It must be meaningful & entertaining: each time educative content, like voiced aphorism etc.
+  * !recent history of files
+  * !random file?
+  * !record mic
+  * !generate speech (some free API)
+  * !generate signal
+  * !some AI stuff (generate from prompt)
+  * !open file(s), drop file(s)
+  * It must be meaningful & entertaining: each time educative content, like voiced aphorism etc.
 
 ## [ ] Cases / integrations
 
-* Drop [Prabhupada] audio (paste by URL, by file, drop file), have multiline waveform with time markers.
-  * Separate logical secions by pressing enter.
-  * Delete apparent long pauses.
-  * Apply normalizer plugin.
-  * Select start, apply fade-in; select end, apply fade-out.
-* Put cursor at any place: record own speech.
-* Drop any audio chunk at specific caret location.
-* Generate speech at specific location.
-* [ ] Sound fragments sharing platform
-* [ ] Hosting files via github
-* [ ] Sampler player, like te-re-khe-ta from URL will play sampled phrases by dictionary
-* [ ] Multiple variations of theming
-* [ ] Voice emails integration
-* [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
-* [ ] Famous voices speak famous phrases - chunk tp share
-* [ ] Dictaphone
-* [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
-* [ ] Audio books with paged chapters for playback
-* [ ] sound-resource.com
-* [ ] Assembly AI transcript player https://www.assemblyai.com/playground/transcript/rfj7ddsp95-7929-4158-8cf7-27d897b47b96
+  * Drop [Prabhupada] audio (paste by URL, by file, drop file), have multiline waveform with time markers.
+    * Separate logical secions by pressing enter.
+    * Delete apparent long pauses.
+    * Apply normalizer plugin.
+    * Select start, apply fade-in; select end, apply fade-out.
+  * Put cursor at any place: record own speech.
+  * Drop any audio chunk at specific caret location.
+  * Generate speech at specific location.
+  * [ ] Sound fragments sharing platform
+  * [ ] Hosting files via github
+  * [ ] Sampler player, like te-re-khe-ta from URL will play sampled phrases by dictionary
+  * [ ] Multiple variations of theming
+  * [ ] Voice emails integration
+  * [ ] Multiple various transforms: speed up, skip silence, enhance recording, normalize
+  * [ ] Famous voices speak famous phrases - chunk tp share
+  * [ ] Dictaphone
+  * [ ] Customizable waveform player component: loudness variants, rendering complexity variants, themes, backend variants
+  * [ ] Audio books with paged chapters for playback
+  * [ ] sound-resource.com
+  * [ ] Assembly AI transcript player https://www.assemblyai.com/playground/transcript/rfj7ddsp95-7929-4158-8cf7-27d897b47b96
 
 ## [x] Editing cases: what's the method of identifying changes? -> detect from onbeforeinput inputType
 
@@ -132,118 +132,191 @@
 + one entry is one history item
 + shorturl for audio files
 
-## [ ] Store offsets in blocks or samples?
+## [ ] Store offsets (in url) in blocks or samples?
 
-1. Blocks
-- depend on block size & sample rate
-- block size can change transforms
-- no precise editing
-  ~ isn't necessarily needed
-+ very short notation
-+ very natural to what you see
-? can define `block=1024&sr=44100` in url
-- any zoom change recalculates full url
+  1. Blocks
+  - depend on block size & sample rate
+  - block size can change transforms
+  - no precise editing
+    ~ isn't necessarily needed
+  + very short notation
+  + very natural to what you see
+  ? can define `block=1024&sr=44100` in url
+  - any zoom change recalculates full url
 
-2. Samples
-- depend on sample rate
-~ sample rate change recalculates URL
-- longer than block
-+ more precies
-+ zoom change doesn't change url
-- big sample rates make very long URLs
+  2. Samples
+  - depend on sample rate
+  ~ sample rate change recalculates URL
+  - longer than block
+  + more precies
+  + zoom change doesn't change url
+  - big sample rates make very long URLs
 
-3. Time
-- too lengthy values
-- can be mistakes identifying exact place
-+ doesn't depend on zoom / sample rate levels
-+ can be very precise
-+ can have conventional short notation: br=122.1s,156.432s,
+  3. Time
+  - too lengthy values
+  - can be mistakes identifying exact place
+  + doesn't depend on zoom / sample rate levels
+  + can be very precise
+  + can have conventional short notation: br=122.1s,156.432s,
 
-4. Mix of 3 and 1: units indicate time, values indicate block
-- lazy solution: can be fixed on experimental stage
+  4. Mix of 3 and 1: units indicate time, values indicate block
+  - lazy solution: can be fixed on experimental stage
 
 ## [ ] From-to vs at-count
 
-+ `del=from-to` is more logical as range indicator
-  + also easier from code perspective
-- `sil=at-count` is more logical to insert silence
+  + `del=from-to` is more logical as range indicator
+    + also easier from code perspective
+  - `sil=at-count` is more logical to insert silence
+  - at-count is abs-rel, which can be more handy generally
 
 
 ## [x] Looping method -> custom UI for audio element: we need better UI anyways
 
-0. Same way we observe currentTime via raf, we can loop
-- short pieces are not loopable nicely
-+ solves long pieces
+  0. Same way we observe currentTime via raf, we can loop
+  - short pieces are not loopable nicely
+  + solves long pieces
 
-1. Create a clone of audio with selected fragment and loop it
-- keeping UI in sync
-+ standard API
-+ natural extension
-- can be costly to immediately create a big slice
-  ~ there's no difference perf-wise between set & loop
--> yes, create bg wav buffer onselection, and fully intercept audio
-  * may need alternative UI, since original UI can fail
+  1. Create a clone of audio with selected fragment and loop it
+  - keeping UI in sync
+  + standard API
+  + natural extension
+  - can be costly to immediately create a big slice
+    ~ there's no difference perf-wise between set & loop
+  -> yes, create bg wav buffer onselection, and fully intercept audio
+    * may need alternative UI, since original UI can fail
 
-2. -> Custom UI for audio tag
-+ anyways we were going to do that
-+ better control over displayed data
-+ it can allow removin unusable parts
-+ we have raw data anyways
+  2. -> Custom UI for audio tag
+  + anyways we were going to do that
+  + better control over displayed data
+  + it can allow removin unusable parts
+  + we have raw data anyways
 
-3. Custom UI via AudioSourceNode
-+ better integration with audio buffers
-+ no need to constantly (re) encode wav
-- requires sending audio buffers to main thread
-- not as reliable as just audio
+  3. Custom UI via AudioSourceNode
+  + better integration with audio buffers
+  + no need to constantly (re) encode wav
+  - requires sending audio buffers to main thread
+  - not as reliable as just audio
 
-4. media-offset
-+ separates concern nicely
-+ doesn't require worker slicing delay
-+ can be messy on small chunks
-- small chunks defects
-- rough api yet
+  4. media-offset
+  + separates concern nicely
+  + doesn't require worker slicing delay
+  + can be messy on small chunks
+  - small chunks defects
+  - rough api yet
 
 
-## [ ] Inline player vs playback panel
+## [x] Inline player vs playback panel -> we can offer both options, but that must be component
 
-1. Inline player
-+ Inline player is minimalistic
-- Inline player is buggy on safari for intersection observer - needs fake scroll container, unless done via scroll
-- Inline player is buggy for multiple lines - misses the caret pos
-  ~ We still may need to track caret-line properly (scroll into caret)
-    ? unless area i able to do it itself
+  1. Inline player
+  + Inline player is minimalistic
+  - Inline player is buggy on safari for intersection observer - needs fake scroll container, unless done via scroll
+  - Inline player is buggy for multiple lines - misses the caret pos
+    ~ We still may need to track caret-line properly (scroll into caret)
+      ? unless area i able to do it itself
 
-2. Playback panel
-+ Always accessible
-+ Allows displaying any info: time, download, progress, record
-+ Customizable
-+ Conventional UX
-+ Has no scrolling issues
+  2. Playback panel
+  + Always accessible
+  + Allows displaying any info: time, download, progress, record
+  + Customizable
+  + Conventional UX
+  + Has no scrolling issues
 
 ## [x] WAA player vs Audio element -> use compensated audio for now. Too many benefits
 
-1. Audio
-+ More universally supported
-+ Simpler API
-+ Decoding out of box
-- Big delay in iOS for playback
-- No built-in loop support
-  ~ Can be relatively safely implemented
-- API quirks / inconsistencies across iOS / desktop, like preloading
-- Events order is confusing: seeked, seeking, timeupdate - but we factually need just 'looped' or 'usernavigated'
-- Likely impossible to organize precise tests (if at all)
-+ It opens the file nicely in iOS home screen
+  1. Audio
+  + More universally supported
+  + Simpler API
+  + Decoding out of box
+  - Big delay in iOS for playback
+  - No built-in loop support
+    ~ Can be relatively safely implemented
+  - API quirks / inconsistencies across iOS / desktop, like preloading
+  - Events order is confusing: seeked, seeking, timeupdate - but we factually need just 'looped' or 'usernavigated'
+  - Likely impossible to organize precise tests (if at all)
+  + It opens the file nicely in iOS home screen
 
-2. WAA (AudioSourceNode)
-+ short latency
-+ no 1.5s playback delay imposed by Safari
-- no ready playback API
-- may require live audiobuffer manipulations to output sound
-+ loopStart/loopEnd support out of box
-+ direct access to AudioBuffer: no need to constantly re-encode audio, ops can be more instantaneous
-- context instantiation issues (see web-audio-player)
+  2. WAA (AudioSourceNode)
+  + short latency
+  + no 1.5s playback delay imposed by Safari
+  - no ready playback API
+  - may require live audiobuffer manipulations to output sound
+  + loopStart/loopEnd support out of box
+  + direct access to AudioBuffer: no need to constantly re-encode audio, ops can be more instantaneous
+  - context instantiation issues (see web-audio-player)
 
-3. web-audio-player https://github.com/Jam3/web-audio-player
-+ attempt to fix many gotchas
-- switches between 2 modes: element / waa
+  3. web-audio-player https://github.com/Jam3/web-audio-player
+  + attempt to fix many gotchas
+  - switches between 2 modes: element / waa
 
+## [x] Componentization -> let's preact internally, wrap to web-component if required
+
+  * Sprae causes one huge global UI, which becomes unmaintainable.
+  ? What would be good componentization
+  * We use signals, they're nice.
+
+  1. Preact
+    + React-compatible
+    - Not native
+    + Good natural componentization
+    - JSX is opinionated
+      - eg. event names like onClickCapture etc.
+    - Needs bundler
+      + There's plenty available, esbuild is good
+    + Natural diffing: only changed parts are updated
+    - No easy access to DOM
+      ~ kind of possible, with preact is easier
+    - No support outside of react/preact context
+      + Can be easily exposed as web-component via wrapper
+    - Exposing multiple native web-components would require a wrapper
+    + Signals support out-of-the-box
+    + No naming limitations
+    + Performance guarantees
+      - Not the fastest though with signals
+    + Incredibly fast development, come on that's so natural to have props rendered to JSX via diffing mechanics...
+    + Better scoping: effects and state belongs to component body without this.*
+
+  2. Web-components
+    + Native
+    ~ Can be embedded into (p)react
+    - Stringifies attributes
+      - Doesn't pass object etc attributes nicely
+    + No need for bundling
+    - No templating
+    - Shadow DOM is a mess
+    - Componentization is limited - web-components are more isolated than preact
+    - Extra classy wrapper code, hard to remember without docs
+    + Allows reading what kind of children are passed, unlike preact
+    + Has natural low-level access to DOM
+    + Has precise control over events, etc
+    - No natural diffing mechanics
+      - Needs manual state management
+    + Better support outside of react/preact contexts
+      + flawlessly supported within preact context
+    - No signals support
+    - Naming limitations, like `<w-playback`, `<wave-area`
+
+  3. Lit
+    - needs bundler
+    - fancy syntaxes to learn
+    - fancy configs for props etc - man, I just need a prop value, I don't care about reflections, casters etc - I have a fraction of lifetime to tinker, not eternity to learn your imaginary world
+    + template as output
+
+  4. Hypothetical ideal template like lit but with signals
+    * hs`<x value=${signal}>`
+    - HTML in JS -> better use JSX
+    - tends to be functional like preact
+
+  5. Sprae over innerHTML
+    - no elegant junction
+      * ideally template must reside outside
+      ~ we can import that via bundler
+    - no perf/memory profits of other frameworks
+
+  6. External Web-component wrapper, internally preact
+    + web-component simplicity of external embedding
+    + internal state management via signals
+    + the most convenient way to render props to DOM
+
+  7. Spraeact
+    * Preact wrapper with events modifiers
+    - impossible: such event names as x.y are prohibited

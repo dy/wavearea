@@ -1,3 +1,5 @@
+// FIXME: make a separate module
+
 /**
  * Play clip of audio/video, possibly with loop.
  * Based on https://github.com/muxinc/media-offset
@@ -6,7 +8,7 @@
  * @param {object} clip - Object with `{start, end?}` signature, indicating clip to play
  * @returns
  */
-export default function playClip (media, clip) {
+export default function playClip(media, clip) {
   if (!clip) {
     media.play()
     return () => media.pause()
