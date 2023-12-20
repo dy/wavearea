@@ -251,7 +251,6 @@ export default function Wavearea({
   const editareaRef = useRef()
   const caretLineRef = useRef()
   const waveformRef = useRef()
-  const timecodesRef = useRef()
 
   // state
   const
@@ -292,6 +291,27 @@ export default function Wavearea({
     let rects = sel.range.getClientRects()
     let rect = rects[rects.length - 1]
     return [rect.right, rect.top]
+  })
+
+  // create timecodes nodes
+  const timecodes = useComputed(() => {
+    const segNodes = editareaRef.current?.children || []
+
+    // output timecodes based on counting lines
+    // FIXME: can likely be done simpler from mapping segments divided by cols
+    let offset = 0, timecodes = [], len = cols.value || 0
+    for (let segNode of segNodes) {
+      let range = new Range
+      range.selectNodeContents(segNode)
+      let lines = Math.round(range.getBoundingClientRect().height / range.getClientRects()[1].height)
+      // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
+      for (let i = 0; i < lines; i++) {
+        let tc = timecode(i * len + offset)
+        timecodes.push(<a href={`#${tc}`}>{tc}</a>)
+      }
+      offset += segNode.textContent.length
+    }
+    return timecodes
   })
 
   // caret repositioned my mouse
@@ -417,7 +437,6 @@ export default function Wavearea({
     const resizeObserver = new ResizeObserver((entries) => {
       // let width = entries[0].contentRect.width
       cols.value = measureCharsPerLine(editareaRef.current)
-      updateTimecodes()
     })
     resizeObserver.observe(editareaRef.current);
   }, [editareaRef.current])
@@ -458,30 +477,7 @@ export default function Wavearea({
   // update timecodes
   useEffect(() => {
     cols.value = measureCharsPerLine(editareaRef.current)
-    updateTimecodes()
   }, [segments.value])
-
-  // but it needs to dynamically have access to children
-  function updateTimecodes() {
-    const timecodes = timecodesRef.current, editarea = editareaRef.current
-    timecodes.replaceChildren()
-    if (!editarea.textContent) return
-    let offset = 0
-    for (let segNode of editarea.children) {
-      let range = new Range
-      range.selectNodeContents(editarea)
-      let lines = Math.round(range.getBoundingClientRect().height / range.getClientRects()[1].height)
-      // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
-      for (let i = 0; i < lines; i++) {
-        let a = document.createElement('a')
-        let tc = timecode(i * (cols.peek() || 0) + offset)
-        a.href = `#${tc}`
-        a.textContent = tc
-        timecodes.appendChild(a)
-      }
-      offset += segNode.textContent.length
-    }
-  }
 
   return <div className="wavearea" ref={waveareaRef} onpopstate_window={e => goto(e.state)}
     onmousedown_document__onmouseup_document={e => (isMouseDown.value = true, e => isMouseDown.value = false)}>
@@ -499,7 +495,7 @@ export default function Wavearea({
         <span class="w-caret-line" ref={caretLineRef}></span>
         <div ref={editareaRef} contenteditable inputmode="none"
           class={"w-editable wavefont " + (playing ? 'w-playing' : '')}
-          onInput={e => (handleCaret(e), updateTimecodes())}
+          onInput={e => (handleCaret(e))}
           onbeforeinput={handleBeforeInput}
           ondblclick={e => e.preventDefault()}
           ondragenter__ondragleaveondragenter__ondrop={e => (this.classList.add('w-dragover'), e => this.classList.remove('w-dragover'))}
@@ -508,7 +504,7 @@ export default function Wavearea({
               <p class="w-segment" data-id={id}>{segment}</p>
             )
           }</div>
-        <div class="w-timecodes" ref={timecodesRef}></div>
+        <div class="w-timecodes">{timecodes.value}</div>
       </div>
     </div>
   </div >
