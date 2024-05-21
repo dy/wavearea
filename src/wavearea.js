@@ -25,11 +25,6 @@ const audio = new Audio
 const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
-Object.assign(sprae.globals, {
-  clearInterval: clearInterval.bind(window),
-  setInterval: setInterval.bind(window),
-  raf: window.requestAnimationFrame.bind(window)
-})
 
 // UI state
 let state = sprae(wavearea, {
@@ -47,7 +42,7 @@ let state = sprae(wavearea, {
   loop: false,
   clipEnd: null,
   _startTime: 0,
-  _startTimeOffset:0,
+  _startTimeOffset: 0,
 
   volume: 1,
 
@@ -116,8 +111,8 @@ let state = sprae(wavearea, {
     let arrayBuf = await fileToArrayBuffer(file);
     let audioBuf = await decodeAudio(arrayBuf);
     let wavBuffer = await encodeAudio(audioBuf);
-    let blob = new Blob([wavBuffer], {type:'audio/wav'});
-    let url = URL.createObjectURL( blob );
+    let blob = new Blob([wavBuffer], { type: 'audio/wav' });
+    let url = URL.createObjectURL(blob);
     await applyOp(['src', url]);
 
     state.loading = false;
@@ -132,7 +127,7 @@ let state = sprae(wavearea, {
     let file = e.target.files[0];
     let arrayBuf = await fileToArrayBuffer(file);
     let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
-    let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
+    let channelData = Array.from({ length: audioBuf.numberOfChannels }, (i) => audioBuf.getChannelData(i))
 
     await pushOp(['file', {
       name: file.name,
@@ -146,14 +141,14 @@ let state = sprae(wavearea, {
 
   scrollIntoCaret() {
     if (state.caretOffscreen && !state.scrolling) {
-      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center'})
+      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center' })
       state.scrolling = true
       setTimeout(() => (state.scrolling = false), 108)
     }
   },
 
   // start playback
-  play (e) {
+  play(e) {
     state.playing = true;
     state.scrolling = false;
     editarea.focus();
@@ -163,7 +158,7 @@ let state = sprae(wavearea, {
 
     state.scrollIntoCaret();
 
-    let {clipStart, clipEnd, loop} = state;
+    let { clipStart, clipEnd, loop } = state;
 
     const toggleStop = () => (playButton.click())
 
@@ -203,7 +198,7 @@ let state = sprae(wavearea, {
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
-    audio.addEventListener('play', resetStartTime, {once: true})
+    audio.addEventListener('play', resetStartTime, { once: true })
 
     // audio looped - reset caret
     if (state.loop) audio.addEventListener('seeked', resetStartTime)
@@ -236,7 +231,7 @@ let state = sprae(wavearea, {
   },
 
   // navigate to history state
-  async goto (params) {
+  async goto(params) {
     try {
       await renderAudio(params)
     }
@@ -276,8 +271,8 @@ let state = sprae(wavearea, {
       // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
       for (let i = 0; i < lines; i++) {
         let a = document.createElement('a')
-        let tc = timecode(i * (state.cols||0) + offset)
-        a.href=`#${tc}`
+        let tc = timecode(i * (state.cols || 0) + offset)
+        a.href = `#${tc}`
         a.textContent = tc
         timecodes.appendChild(a)
       }
@@ -294,7 +289,7 @@ const inputHandlers = {
   // insertReplacementText(){},
   // insertLineBreak(){},
   // insertParagraph(){},
-  insertFromDrop(e){
+  insertFromDrop(e) {
     console.log('insert from drop', e)
   },
   // insertFromPaste(){},
@@ -309,13 +304,13 @@ const inputHandlers = {
   // deleteByDrag(){},
   // deleteByCut(){},
   // deleteContent(){},
-  async deleteContentBackward(e){
+  async deleteContentBackward(e) {
     let range = e.getTargetRanges()[0]
     let fromNode = range.startContainer.parentNode.closest('.w-segment'),
-        toNode = range.endContainer.parentNode.closest('.w-segment'),
-        fromId = Number(fromNode.dataset.id), toId = Number(toNode.dataset.id)
-    let from = range.startOffset + state.segments.slice(0, fromId).reduce((off,seg)=>off+seg.length,0),
-        to = range.endOffset + state.segments.slice(0, toId).reduce((off,seg)=>off+seg.length,0)
+      toNode = range.endContainer.parentNode.closest('.w-segment'),
+      fromId = Number(fromNode.dataset.id), toId = Number(toNode.dataset.id)
+    let from = range.startOffset + state.segments.slice(0, fromId).reduce((off, seg) => off + seg.length, 0),
+      to = range.endOffset + state.segments.slice(0, toId).reduce((off, seg) => off + seg.length, 0)
 
     // debounce push op to collect multiple deletes
     if (this._deleteTimeout) {
@@ -399,10 +394,10 @@ const selection = (start, end) => {
 
   // swap selection direction
   let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
-      endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
+    endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
   if (start > end) {
     [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
-    [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
+      [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
   }
 
   return {
@@ -435,28 +430,28 @@ function relOffset(offset) {
   // convert current node to relative offset
   let skip = 0
   for (let content = node.textContent, i = 0; i < offset; i++) {
-    while (content[i+skip] >= '\u0300') skip++
+    while (content[i + skip] >= '\u0300') skip++
   }
   return [node, offset + skip]
 }
 
 // produce display time from frames
-function timecode (block, ms=0) {
+function timecode(block, ms = 0) {
   let time = ((block / state?.total)) * state?.duration || 0
-  return `${Math.floor(time/60).toFixed(0)}:${(Math.floor(time)%60).toFixed(0).padStart(2,0)}${ms?`.${(time%1).toFixed(ms).slice(2).padStart(ms)}`:''}`
+  return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
 }
 
 // create play button position observer
 const caretObserver = new IntersectionObserver(([item]) => {
-    state.caretOffscreen = item.isIntersecting ? 0 :
+  state.caretOffscreen = item.isIntersecting ? 0 :
     (item.intersectionRect.top <= item.rootBounds.top ? 1 :
       item.intersectionRect.bottom >= item.rootBounds.bottom ? -1 :
-      0);
-  }, {
-    // root: document,
-    threshold: 0.999,
-    rootMargin: '0px'
-  });
+        0);
+}, {
+  // root: document,
+  threshold: 0.999,
+  rootMargin: '0px'
+});
 caretObserver.observe(caretLinePointer);
 
 
@@ -478,9 +473,9 @@ function measureLines() {
 
   range.setStart(textNode, 0), range.setEnd(textNode, 1)
   let y = range.getClientRects()[0].y
-  for (var i = 0, offset = 0 ; i < str.length; offset++) {
-    let skip = 1; while (str[i+skip] >= '\u0300') skip++;
-    range.setStart(textNode, 0), range.setEnd(textNode, i=i+skip);
+  for (var i = 0, offset = 0; i < str.length; offset++) {
+    let skip = 1; while (str[i + skip] >= '\u0300') skip++;
+    range.setStart(textNode, 0), range.setEnd(textNode, i = i + skip);
     // 2nd line means we counted chars per line
     let rects = range.getClientRects()
     if (rects[rects.length - 1].y > y) return offset
@@ -492,13 +487,13 @@ function measureLines() {
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
 // so that ops can be combined as del=0-10..20-30 instead of del=0-10&del=20-30
-async function pushOp (...ops) {
+async function pushOp(...ops) {
   let url = new URL(location)
 
   for (let op of ops) {
     let [name, ...args] = op
     if (args[0].name) url.searchParams.set(name, args[0].name)
-    else if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}` )
+    else if (url.searchParams.has(name)) url.searchParams.set(name, `${url.searchParams.get(name)}..${args.join('-')}`)
     else url.searchParams.append(name, args.join('-'))
   }
   state.loading = 'Processing'
@@ -512,23 +507,23 @@ async function pushOp (...ops) {
 }
 
 // post op message and wait for update response
-function runOp (...ops) {
+function runOp(...ops) {
   return new Promise(resolve => {
     // worker manages history, so id indicates which point in history we commit changes to
-    worker.postMessage({id: history.state?.id || 0, ops})
+    worker.postMessage({ id: history.state?.id || 0, ops })
     worker.addEventListener('message', e => {
       resolve(e.data)
-    }, {once: true})
+    }, { once: true })
   })
 }
 
 // return clean from modifiers text
 function cleanText(str) {
-  return str.replace(/\u0300|\u0301/g,'')
+  return str.replace(/\u0300|\u0301/g, '')
 }
 
 // update audio url & assert waveform
-function renderAudio ({url, segments, duration, offsets}) {
+function renderAudio({ url, segments, duration, offsets }) {
   // assert waveform same as current content (must be!)
   state.total = segments.reduce((total, seg) => total += cleanText(seg).length, 0);
   state.duration = duration
@@ -537,33 +532,33 @@ function renderAudio ({url, segments, duration, offsets}) {
   state.updateTimecodes()
   // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
-  audio.preload="metadata" // preload avoids redundant fetch requests and needed by Safari
+  audio.preload = "metadata" // preload avoids redundant fetch requests and needed by Safari
   return new Promise((ok, nok) => {
     audio.addEventListener('error', nok)
-    audio.addEventListener('loadedmetadata',()=>{
+    audio.addEventListener('loadedmetadata', () => {
       audio.currentTime = duration * state.caretOffset / state.total || 0
-    }, {once: true});
+    }, { once: true });
   })
 }
 
 // reconstruct audio from url
-async function loadAudioFromURL (url = new URL(location)) {
+async function loadAudioFromURL(url = new URL(location)) {
   state.loading = 'Fetching'
 
   let ops = []
   for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg => {
     // skip https:// as single argument
-    return [op, ...(op==='src'||op==='file' ? [arg] : arg.split('-'))]
+    return [op, ...(op === 'src' || op === 'file' ? [arg] : arg.split('-'))]
   }))
 
   // shortcut for src op
   if (ops[0][0] === 'src') {
-    let [,src] = ops.shift()
+    let [, src] = ops.shift()
     let resp = await fetch(src, { cache: 'force-cache' });
     let arrayBuf = await resp.arrayBuffer();
     state.loading = 'Decoding'
     let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
-    let channelData = Array.from({length: audioBuf.numberOfChannels}, (i)=> audioBuf.getChannelData(i))
+    let channelData = Array.from({ length: audioBuf.numberOfChannels }, (i) => audioBuf.getChannelData(i))
     ops.push(['file', {
       name: src,
       numberOfChannels: audioBuf.numberOfChannels,
@@ -596,5 +591,3 @@ async function loadAudioFromURL (url = new URL(location)) {
 if (location.search.length) {
   loadAudioFromURL()
 }
-
-

@@ -8,24 +8,24 @@
 * [x] loses caret on play, like insert silence, press play etc
 * [x] serialize file in url: ?src=path/to/url/file/to/fetch
 * [x] sprae :onfile-attachment-accepted
-* [x] add preloader (sprae mount-unmount)
-* [x] delete fragments -> updates audio
-* [x] create silence by space
-* [x] download
+* [ ] add preloader (sprae mount-unmount)
+* [ ] delete fragments -> updates audio
+* [ ] create silence by space
+* [ ] download
 * [x] caret must be able to be reoriented during the playback
 * [x] Safari: wrong current time positioning
 * [x] BUG: stopping drops focus
 * [x] Make 'Enter' create segments
 * [x] time codes next to lines
-* [x] br
-* [x] del
+* [ ] br
+* [ ] del
   * [x] fix deleting tail properly
 * [x] normalize
 * [x] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
 * [x] faster encoder by just copying changed subbuffer data, opposed to full rerender
 * [x] fix playback multiple segments
 * [x] Add vertical shift of average
-* [x] Shift + select
+* [ ] Shift + select
 * [x] ~~interleaved buffers pointing to chunks of wav file, rather than audiobuffers~~ same as below
 * [x] ~~immediate audio ops via copy~~ - saves 15ms, takes a lot in terms of losing AudioBuffer primitive
 * [x] worker processor
@@ -57,16 +57,26 @@
 * [x] Alt-Space for start/stop
 * [x] Loop play selection
 
-## Must fix v1
+## [ ] V1
 
-* [ ] History separate from URLs
+* [ ] FIXME: make MVP work with sprae10
+* [ ] FIXME: rethink if we need build step, ideally not
+* [ ] Create UI tester - playwright vs puppeteer vs cypress vs nightwatch
+* [ ] FIXME: make selectable time (now click doesn't work)
+* [ ] Move play a bit to the left from time (like debug button)
+* [ ] FIXME: It displays some false signal at the beginning. Must be precice waveform
+* [ ] FIXME: Selection sometimes doesn't happen
+* [ ] FIXME: Proper deleting
+* [ ] Fragments by Enter
+* [ ] Current time under cursor
+* [ ] History - separate from URLs
   * [ ] Ctrl-z/y
   * [ ] Collapse last operation, eg. delete
+
 * [x] Outsource audio-decode, add missing codecs
 * [x] Outsource media loopStart / loopEnd
 * [x] Better selection logic: must be immediate
 * [x] Display open/loading status
-* [ ] Enter for frags
 * [ ] Display + for newlines
 * [ ] . for silence
 * [x] Empty URL shows "Open file"
@@ -166,3 +176,26 @@
 * [ ] Vary color based on spectrum
 * [x] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
 * [ ] Editable labeling / phrases
+
+## Final vision
+
+* [ ] Stable, reliable, simple audio editor
+  * [ ] Drop/open any audio: movie speech track
+  * [ ] Separate by fragments (scenes) via enter
+  * [ ] Reliably playback, no glitches
+    * [ ] Playback bar with current time, play/stop, more
+      * [ ] Position: bottom floating/appearing, bottom fixed, balloon next to cursor, no (melded into UI)
+  * [ ] Delete / space out pieces
+    * [ ] Ctrl+C/Ctrl+V
+  * [ ] Normalize audio (from playback bar?)
+  * [ ] Revolume selected fragments
+  * [ ] Noise-gate plugin
+  * [ ] Speedup silences (plugin?)
+  * [ ] Change number of channels
+  * [ ] Save / download
+* [ ] Customizable view (3-5 themes)
+  * [ ] Bar size (zoom)
+  * [ ] Inline vs multiline
+  * [ ] Freq weighting
+  * [ ] Paletter
+* [ ] 11labs integration: generate speech of length

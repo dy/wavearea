@@ -8,6 +8,10 @@
 * wavee
 * waveplay
   + free
+  + works with waveplayer
+* wavely
+  + wave-ply
+  + works with wavedy for editor
 * waveplayer
 * playwave
 * waev
@@ -16,6 +20,7 @@
   + free
   + refers to sprae
   - can be done without sprae
+  - registered company name
 * wavea
   + wavearea
 * wavescope
@@ -27,6 +32,7 @@
   + player
   + refers to waveplae
   + refers to sprae
+  - taken
 * wavr
   + registered
   + short for wave-area
@@ -246,4 +252,3 @@
 3. web-audio-player https://github.com/Jam3/web-audio-player
 + attempt to fix many gotchas
 - switches between 2 modes: element / waa
-
