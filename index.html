@@ -41,7 +41,7 @@
         </button>
         <span class="w-caret-line"></span>
         <div class="w-loader" :if="loading" :ref="loader" :with="{str:''}"
-             :="console.log(123),clearInterval(loader._id),console.log(456), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
+             :="clearInterval(loader._id), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
              :text="str">
           ...</div>
         <div class="w-opener" :if="!segments.length && !loading">

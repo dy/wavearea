@@ -62,6 +62,10 @@
 * [ ] FIXME: make MVP work with sprae10
 * [ ] FIXME: rethink if we need build step, ideally not
 * [ ] Create UI tester - playwright vs puppeteer vs cypress vs nightwatch
+* [ ] Componentize
+  * [ ] Waveform + editarea attr
+  * [ ] Playback bar
+  * [ ] Timecodes
 * [ ] FIXME: make selectable time (now click doesn't work)
 * [ ] Move play a bit to the left from time (like debug button)
 * [ ] FIXME: It displays some false signal at the beginning. Must be precice waveform
@@ -108,9 +112,6 @@
 * [x] Bug: doesn't renavigate by click
 * [x] Bug: doesn't scroll on caret offset
 * [x] Bug: loop playback selection is broken
-
-## Improvements
-
 * [x] Make play always cover the time, then it leaves space for "record" button
 * [ ] Zoom
 * [ ] Render only visible part (virtual) - must reduce rendering load significantly
@@ -177,7 +178,7 @@
 * [x] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
 * [ ] Editable labeling / phrases
 
-## Final vision
+## Wavey (editor / play)
 
 * [ ] Stable, reliable, simple audio editor
   * [ ] Drop/open any audio: movie speech track
@@ -199,3 +200,4 @@
   * [ ] Freq weighting
   * [ ] Paletter
 * [ ] 11labs integration: generate speech of length
+* [ ] Switchable main-thread / worker / GPU processing
