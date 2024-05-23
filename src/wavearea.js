@@ -27,6 +27,8 @@ const audioCtx = new AudioContext()
 
 // UI state
 let state = sprae(wavearea, {
+  // globals
+  raf: (fn) => window.requestAnimationFrame(fn),
 
   // state
   loading: false,
@@ -280,6 +282,7 @@ let state = sprae(wavearea, {
     }
   },
 
+  // util
   timecode
 });
 
@@ -337,7 +340,6 @@ const whatsLatency = async () => {
   wavearea.removeEventListener('mousedown', whatsLatency)
   wavearea.removeEventListener('keydown', whatsLatency)
   state.latency = await measureLatency()
-  console.log('measured latency', state.latency)
 }
 wavearea.addEventListener('touchstart', whatsLatency)
 wavearea.addEventListener('mousedown', whatsLatency)
@@ -387,6 +389,7 @@ const selection = (start, end) => {
     }
   }
 
+  // return unknown selection
   if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
 
   // collect start/end offsets

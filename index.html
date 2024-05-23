@@ -61,7 +61,7 @@
             Record
           </button> -->
         </div>
-        <div class="w-status" :if="!segments.length" :text="loading || 'Add'">
+        <div class="w-status" :if="!segments.length" :text="loading || 'Open'">
         </div>
         <div contenteditable inputmode="none" :ref="editarea"
              class="w-editable wavefont" :class="{'w-playing':playing}"
@@ -69,10 +69,9 @@
              :oninput="e => (handleCaret(e), updateTimecodes())"
              :onbeforeinput="handleBeforeInput"
              :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('w-dragover'),e=>editarea.classList.remove('w-dragover'))"
-             :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()">
-          <p class="w-segment"
-             :each="segment, id1 in (segments.length ? segments : [''])"
-             :key="id1" :text="segment" :data="{id:id1-1}"></p>
+             :ondrop="e=>e.preventDefault()">
+          <p class="w-segment" :each="segment, id1 in segments" :key="id1"
+             :text="segment" :data="{id:id1-1}"></p>
         </div>
         <div class="w-timecodes"></div>
       </div>
