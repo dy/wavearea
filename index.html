@@ -3,51 +3,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wavearea</title>
 
-<link href="./main.css" rel="stylesheet"/>
+<link href="./main.css" rel="stylesheet" />
 
 <body>
-  <div class="wavearea"
-    :onpopstate.window="e => goto(e.state)"
-    :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
-    >
+  <div class="wavearea" :onpopstate.window="e => goto(e.state)"
+       :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)">
     <div class="w-container"
-      :onkeydown.arrow="e=>raf(handleCaret)"
-      :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret(e)))"
-      :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))"
-    >
-      <div class="w-waveform wavefont" :style="{
+         :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret(e)))"
+         :onkeydown.arrow="e=>raf(handleCaret)"
+         :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))">
+      <div class="w-waveform wavefont" :ref="waveform" :style="{
         '--cols': cols,
-        '--carety': (caretY - this.getBoundingClientRect().top) + 'px',
-        '--caretx': (caretX - this.getBoundingClientRect().left) + 'px'
+        '--carety': (caretY - waveform.getBoundingClientRect().top) + 'px',
+        '--caretx': (caretX - waveform.getBoundingClientRect().left) + 'px'
       }">
-        <button class="w-play"
-          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-          :class="{'w-loading':loading}"
-          :hidden="!segments.length"
-          :onclick.toggle="play"
-          :onkeydown.document.space="e=>this.click(e)"
-          tabindex="-1"
-          :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
-          :style="{
+        <button class="w-play" :ref="playButton"
+                :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
+                :class="{'w-loading':loading}" :hidden="!segments.length"
+                :onclick..onclick="play"
+                :onkeydown.document.space="e=>playButton.click(e)" tabindex="-1"
+                :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
+                :style="{
             position: !caretOffscreen ? 'absolute' : 'fixed',
             ...(!caretOffscreen ? {} : caretOffscreen > 0 ? {top:0} : {bottom:0,top:'auto'})
           }">
           <span class="w-play-clickarea"></span>
-          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
-          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
+               height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+            <path d="M0 0h24v24H0V0z" fill="none" />
+            <path d="M8 5v14l11-7L8 5z" />
+          </svg>
+          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg"
+               height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+            <path d="M0 0h24v24H0V0z" fill="none" />
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+          </svg>
         </button>
         <span class="w-caret-line"></span>
-        <div class="w-loader"
-          :if="loading"
-          :with="{str:''}"
-          :="clearInterval(this._id), loading ? (this._id = setInterval(()=>(str+='.'), 50)) : str = ''"
-          :text="str"
-        >...</div>
+        <div class="w-loader" :if="loading" :ref="loader" :with="{str:''}"
+             :="clearInterval(loader._id), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
+             :text="str">
+          ...</div>
         <div class="w-opener" :if="!segments.length && !loading">
-          <input id="w-file" class="w-file" type="file" accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*" :onchange="handleFile"/>
+          <input id="w-file" class="w-file" type="file"
+                 accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
+                 :onchange="handleFile" />
           <label for="w-file" title="Open file">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24px" width="24px" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                 viewBox="0 0 24 24" height="24px" width="24px"
+                 stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 6v12m6-6H6" />
             </svg>
           </label>
           <!-- <button class="w-record">
@@ -55,15 +61,18 @@
             Record
           </button> -->
         </div>
-        <div class="w-status" :if="!segments.length" :text="loading || 'Add'"></div>
-        <div contenteditable inputmode="none" :ref="editarea" class="w-editable wavefont"
-          :class="{'w-playing':playing}"
-          :oninput="e => (handleCaret(e), updateTimecodes())"
-          :onbeforeinput="handleBeforeInput"
-          :ondblclick.prevent
-          :ondragenter..ondragleave:ondragenter..ondrop="e=>(this.classList.add('w-dragover'),e=>this.classList.remove('w-dragover'))"
-          :ondrop="e=>console.log(e.dataTransfer.types)||e.preventDefault()"
-        ><p class="w-segment" :each="segment, id1 in (segments.length ? segments : [''])" :key="id1" :text="segment" :data="{id:id1-1}"></p></div>
+        <div class="w-status" :if="!segments.length" :text="loading || 'Open'">
+        </div>
+        <div contenteditable inputmode="none" :ref="editarea"
+             class="w-editable wavefont" :class="{'w-playing':playing}"
+             :ondblclick.prevent
+             :oninput="e => (handleCaret(e), updateTimecodes())"
+             :onbeforeinput="handleBeforeInput"
+             :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('w-dragover'),e=>editarea.classList.remove('w-dragover'))"
+             :ondrop="e=>e.preventDefault()">
+          <p class="w-segment" :each="segment, id1 in segments" :key="id1"
+             :text="segment" :data="{id:id1-1}"></p>
+        </div>
         <div class="w-timecodes"></div>
       </div>
 
@@ -108,4 +117,3 @@
 
   <script type="module" src="./dist/wavearea.js"></script>
 </body>
-
