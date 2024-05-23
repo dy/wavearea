@@ -13,7 +13,6 @@ history.scrollRestoration = 'manual'
 // refs
 const wavearea = document.querySelector('.wavearea')
 const editarea = wavearea.querySelector('.w-editable')
-const played = wavearea.querySelector('.w-played')
 const timecodes = wavearea.querySelector('.w-timecodes')
 const playButton = wavearea.querySelector('.w-play')
 const waveform = wavearea.querySelector('.w-waveform')
@@ -210,6 +209,7 @@ let state = sprae(wavearea, {
     // TODO: markLoopRange()
 
     audio.addEventListener('ended', toggleStop);
+
     return () => {
       audio.removeEventListener('seeked', resetStartTime)
       audio.removeEventListener('ended', toggleStop);
