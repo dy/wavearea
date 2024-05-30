@@ -447,7 +447,7 @@ function renderAudio({ url, segments, duration, offsets }) {
 
 // reconstruct audio from url
 async function loadAudioFromURL(url = new URL(location)) {
-  state.loading = 'Fetching'
+  state.loading = ' '
 
   let ops = []
   for (const [op, arg] of url.searchParams) ops.push(...arg.split('..').map(arg => {

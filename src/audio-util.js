@@ -83,9 +83,8 @@ export function drawAudio(audioBuffer) {
   const VISUAL_AMP = 2
   const RANGE = 128
 
-  let min = -1, max = 1
   for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
-    let ssum = 0, sum = 0, x, avg, v
+    let ssum = 0, sum = 0, x, avg, v, shift
 
     // avg amp method - waveform is too small
     // for (; i < nextBlock; i++) {
@@ -93,30 +92,44 @@ export function drawAudio(audioBuffer) {
     //   sum += Math.abs(x)
     // }
     // avg = sum / BLOCK_SIZE
-    // v = Math.ceil(avg * 100)
+    // v = Math.ceil(avg * RANGE)
+    // shift = 0
 
     // rms method
     // drawback: waveform is smaller than needed
-    for (; i < nextBlock; i++) {
-      x = i >= channelData.length ? 0 : channelData[i]
-      sum += x
-      ssum += x ** 2
-    }
-    avg = sum / BLOCK_SIZE
-    const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    v = Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max - min))) || 0
+    // for (; i < nextBlock; i++) {
+    //   x = i >= channelData.length ? 0 : channelData[i]
+    //   sum += x
+    //   ssum += x ** 2
+    // }
+    // avg = sum / BLOCK_SIZE
+    // const rms = Math.sqrt(ssum / BLOCK_SIZE)
+    // v = Math.min(RANGE, Math.ceil(rms * RANGE * VISUAL_AMP / 2)) || 0
+    // shift = Math.round(avg * RANGE / 2)
 
     // signal energy loudness
     // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
     // same as RMS essentially, different power
     // const STEVENS_POW = 0.67
-    // for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
+    // for (; i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
     // const value = (ssum / BLOCK_SIZE) ** STEVENS_POW
-    // v =  Math.min(100, Math.ceil(value * 100 * VISUAL_AMP))
+    // v = Math.min(RANGE, Math.ceil(value * RANGE * VISUAL_AMP))
+    // shift = 0
+
+    // peak amplitude
+    let max = -1, min = 1
+    for (; i < nextBlock; i++) {
+      x = i >= channelData.length ? 0 : channelData[i]
+      sum += x
+      max = Math.max(max, x)
+      min = Math.min(min, x)
+    }
+    avg = sum / BLOCK_SIZE
+    v = Math.min(RANGE, Math.ceil(RANGE * (max - min) / 2)) || 0
+    shift = Math.round(RANGE * (max + min) / 2)
 
     str += String.fromCharCode(0x0100 + v)
-    let shift = Math.abs(Math.round(avg * RANGE / 2))
-    str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
+    str += (shift > 0 ? '\u0301' : '\u0300').repeat(Math.abs(shift))
 
     nextBlock += BLOCK_SIZE
   }

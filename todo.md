@@ -1,7 +1,7 @@
 * [x] Finish sprae 10
 * [x] no-caret (0 focus) play bug
 * [x] space repeat
-* [ ] head of audio is boosted for some reason
+* [x] head of audio is boosted for some reason
 * [ ] discrepancy of caret with sound
 * [ ] caret is super buggy
 
