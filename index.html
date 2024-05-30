@@ -9,7 +9,7 @@
   <div class="wavearea" :onpopstate.window="e => goto(e.state)"
        :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)">
     <div class="w-container"
-         :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret(e)))"
+         :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret()))"
          :onkeydown.arrow="e=>raf(handleCaret)"
          :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))">
       <div class="w-waveform wavefont" :ref="waveform" :style="{
@@ -65,13 +65,14 @@
         </div>
         <div contenteditable inputmode="none" :ref="editarea"
              class="w-editable wavefont" :class="{'w-playing':playing}"
+             :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
              :ondblclick.prevent
              :oninput="e => (handleCaret(e), updateTimecodes())"
              :onbeforeinput="handleBeforeInput"
              :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('w-dragover'),e=>editarea.classList.remove('w-dragover'))"
              :ondrop="e=>e.preventDefault()">
-          <p class="w-segment" :each="segment, id1 in segments" :key="id1"
-             :text="segment" :data="{id:id1-1}"></p>
+          <p class="w-segment" :each="segment, id1 in segments" :text="segment"
+             :data="{id:id1-1}"></p>
         </div>
         <div class="w-timecodes"></div>
       </div>

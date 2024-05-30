@@ -393,7 +393,6 @@ const selection = {
     if (end == null) end = start
 
     // find start/end nodes
-    console.log(start)
     let [startNode, startNodeOffset] = relOffset(start)
     let [endNode, endNodeOffset] = relOffset(end)
 
