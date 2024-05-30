@@ -83,31 +83,28 @@ export function drawAudio(audioBuffer) {
   const VISUAL_AMP = 2
   const RANGE = 128
 
-  let min = 1, max = -1
+  let min = -1, max = 1
   for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
-    let ssum = 0, sum = 0
+    let ssum = 0, sum = 0, x, avg, v
 
     // avg amp method - waveform is too small
-    // for (; i < nextBlock; i++) sum += Math.abs(i >= channelData.length ? 0 : channelData[i])
-    // const avg = sum / BLOCK_SIZE
-    // str += String.fromCharCode(0x0100 + Math.ceil(avg * 100))
+    // for (; i < nextBlock; i++) {
+    //   x = i >= channelData.length ? 0 : channelData[i]
+    //   sum += Math.abs(x)
+    // }
+    // avg = sum / BLOCK_SIZE
+    // v = Math.ceil(avg * 100)
 
     // rms method
     // drawback: waveform is smaller than needed
     for (; i < nextBlock; i++) {
-      let x = i >= channelData.length ? 0 : channelData[i]
+      x = i >= channelData.length ? 0 : channelData[i]
       sum += x
       ssum += x ** 2
-      min = Math.min(min, x)
-      max = Math.max(max, x)
     }
-    const avg = sum / BLOCK_SIZE
+    avg = sum / BLOCK_SIZE
     const rms = Math.sqrt(ssum / BLOCK_SIZE)
-    let v = Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max - min))) || 0
-
-    str += String.fromCharCode(0x0100 + v)
-    let shift = Math.abs(Math.round(avg * RANGE / 2))
-    str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
+    v = Math.min(100, Math.ceil(rms * RANGE * VISUAL_AMP / (max - min))) || 0
 
     // signal energy loudness
     // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
@@ -115,8 +112,11 @@ export function drawAudio(audioBuffer) {
     // const STEVENS_POW = 0.67
     // for (;i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
     // const value = (ssum / BLOCK_SIZE) ** STEVENS_POW
-    // let v =  Math.min(100, Math.ceil(value * 100 * VISUAL_AMP))
-    // str += String.fromCharCode(0x0100 + v)
+    // v =  Math.min(100, Math.ceil(value * 100 * VISUAL_AMP))
+
+    str += String.fromCharCode(0x0100 + v)
+    let shift = Math.abs(Math.round(avg * RANGE / 2))
+    str += (avg > 0 ? '\u0301' : '\u0300').repeat(shift)
 
     nextBlock += BLOCK_SIZE
   }

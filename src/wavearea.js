@@ -246,7 +246,7 @@ let state = sprae(wavearea, {
     selection.set(state.caretOffset)
   },
 
-  // make sure play/caret line pointer is correct
+  // make sure play/caret line pointer matches audio
   updateCaretLine(sel) {
     // let caretLine = Math.floor(sel.end / state.cols);
     // // last of segment edge case
@@ -274,7 +274,7 @@ let state = sprae(wavearea, {
       // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
       for (let i = 0; i < lines; i++) {
         let a = document.createElement('a')
-        let tc = timecode(i * (state.cols || 0) + offset)
+        let tc = this.timecode(i * (state.cols || 0) + offset)
         a.href = `#${tc}`
         a.textContent = tc
         timecodes.appendChild(a)
@@ -283,8 +283,11 @@ let state = sprae(wavearea, {
     }
   },
 
-  // util
-  timecode
+  // produce display time from frames
+  timecode(block, ms = 0) {
+    let time = ((block / state?.total)) * state?.duration || 0
+    return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
+  }
 });
 
 
@@ -346,11 +349,6 @@ wavearea.addEventListener('touchstart', whatsLatency)
 wavearea.addEventListener('mousedown', whatsLatency)
 wavearea.addEventListener('keydown', whatsLatency)
 
-// produce display time from frames
-function timecode(block, ms = 0) {
-  let time = ((block / state?.total)) * state?.duration || 0
-  return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
-}
 
 // create play button position observer
 const caretObserver = new IntersectionObserver(([item]) => {
