@@ -3,11 +3,37 @@
 * [x] space repeat
 * [x] head of audio is boosted for some reason
 * [~] discrepancy of caret with sound -> can't reproduce
+* [ ] click on time must not reload anything
+  * [ ] loading link with time should navigate to the line
 
-* [ ] Customize block size
+## Backlog
+
+* [ ] Automatic tests
+* [ ] Shift play button to the left
+  * [ ] Display current time
+* [ ] All editing operations
+  * [ ] delete
+  * [ ] ctrl+C / ctrl+V
+* [ ] Undo/redo history (separate from browser history)
+* [ ] Save result
+* [ ] Adjustable view
+  * [ ] block size
+  * [ ] color theme
 * [ ] player backends
   * [ ] Audio
   * [ ] WAA
+* [ ] Drag-n-drop
+* [ ] Separate by fragments (scenes) via enter
+* [ ] Playback bar with current time, play/stop, more
+  * [ ] Position: bottom floating/appearing, bottom fixed, balloon next to cursor, no (melded into UI)
+* [ ] Operations
+  * [ ] Normalize audio (from playback bar?)
+  * [ ] Revolume selected fragments
+  * [ ] Noise-gate plugin
+  * [ ] Speedup silences (plugin?)
+* [ ] Change number of channels
+* [ ] 11labs integration: generate speech of length
+* [ ] Switchable main-thread / worker / GPU processing
 
 ## Reiterating
 
@@ -46,7 +72,6 @@
 
 ## [ ] MVP: basic dubs editor
 
-* [ ] Reconstruct non-existent history entry from history path
 * [ ] Make delete: `from-to` signature instead of `from-count`
 * [ ] Debounce delete better
 * [ ] "Open audio"
@@ -70,25 +95,6 @@
 * [ ] Alt-Space for start/stop
 * [ ] Loop play selection
 
-## [ ] V1 (Move to waveplay/etc)
-
-* [ ] FIXME: make MVP work with sprae10
-* [ ] FIXME: rethink if we need build step, ideally not
-* [ ] Create UI tester - playwright vs puppeteer vs cypress vs nightwatch
-* [ ] Componentize
-  * [ ] Waveform + editarea attr
-  * [ ] Playback bar
-  * [ ] Timecodes
-* [ ] FIXME: make selectable time (now click doesn't work)
-* [ ] Move play a bit to the left from time (like debug button)
-* [ ] FIXME: It displays some false signal at the beginning. Must be precice waveform
-* [ ] FIXME: Selection sometimes doesn't happen
-* [ ] FIXME: Proper deleting
-* [ ] Fragments by Enter
-* [ ] Current time under cursor
-* [ ] History - separate from URLs
-  * [ ] Ctrl-z/y
-  * [ ] Collapse last operation, eg. delete
 
 * [ ] Outsource audio-decode, add missing codecs
 * [ ] Outsource media loopStart / loopEnd
@@ -190,27 +196,3 @@
 * [ ] Vary color based on spectrum
 * [ ] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
 * [ ] Editable labeling / phrases
-
-## Wavey (editor / play)
-
-* [ ] Stable, reliable, simple audio editor
-  * [ ] Drop/open any audio: movie speech track
-  * [ ] Separate by fragments (scenes) via enter
-  * [ ] Reliably playback, no glitches
-    * [ ] Playback bar with current time, play/stop, more
-      * [ ] Position: bottom floating/appearing, bottom fixed, balloon next to cursor, no (melded into UI)
-  * [ ] Delete / space out pieces
-    * [ ] Ctrl+C/Ctrl+V
-  * [ ] Normalize audio (from playback bar?)
-  * [ ] Revolume selected fragments
-  * [ ] Noise-gate plugin
-  * [ ] Speedup silences (plugin?)
-  * [ ] Change number of channels
-  * [ ] Save / download
-* [ ] Customizable view (3-5 themes)
-  * [ ] Bar size (zoom)
-  * [ ] Inline vs multiline
-  * [ ] Freq weighting
-  * [ ] Paletter
-* [ ] 11labs integration: generate speech of length
-* [ ] Switchable main-thread / worker / GPU processing

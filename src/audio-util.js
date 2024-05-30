@@ -124,7 +124,6 @@ export function drawAudio(audioBuffer) {
       max = Math.max(max, x)
       min = Math.min(min, x)
     }
-    avg = sum / BLOCK_SIZE
     v = Math.min(RANGE, Math.ceil(RANGE * (max - min) / 2)) || 0
     shift = Math.round(RANGE * (max + min) / 2)
 
