@@ -27,12 +27,12 @@ body {
 
 .wavefont {
   display: block;
-  --wght: 20;
+  --wght: 33;
   font-family: wavefont;
   letter-spacing: 1.5ch;
   font-size: var(--wavefont-size, 50px);
   line-height: var(--wavefont-lh);
-  font-variation-settings: 'wght' var(--wght), 'ROND' 0, 'YALN' 0;
+  font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'YALN' 0;
   text-rendering: optimizeSpeed;
   font-smooth: grayscale;
   -webkit-font-smoothing: grayscale;
@@ -99,9 +99,7 @@ body {
 
 /* played samples dimmer */
 .w-editable.w-playing:before,
-.w-editable:focus:before,
-.w-editable.w-playing:after,
-.w-editable:focus:after {
+.w-editable.w-playing:after {
   content: '';
   position: absolute;
   background: rgba(255, 255, 255, .75);
