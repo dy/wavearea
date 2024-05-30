@@ -21,7 +21,8 @@
                 :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
                 :class="{'w-loading':loading}" :hidden="!segments.length"
                 :onclick..onclick="() => play()"
-                :onkeydown.document.space="e=>playButton.click(e)" tabindex="-1"
+                :onkeydown.document.space..onkeyup.document.space="e=>playButton.click(e)"
+                tabindex="-1"
                 :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
                 :style="{
             position: !caretOffscreen ? 'absolute' : 'fixed',
