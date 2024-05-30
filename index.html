@@ -62,10 +62,10 @@
             Record
           </button> -->
         </div>
-        <div class="w-status" :if="!segments.length" :text="loading || 'Open'">
+        <div class="w-status" :if="!segments.length" :text="loading || ''">
         </div>
         <div contenteditable inputmode="none" :ref="editarea"
-             class="w-editable wavefont" :class="{'w-playing':playing}"
+             class="w-editarea wavefont" :class="{'w-playing':playing}"
              :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
              :ondblclick.prevent
              :oninput="e => (handleCaret(e), updateTimecodes())"

@@ -1,19 +1,19 @@
 // main audio processing API / backend
 import { BLOCK_SIZE, SAMPLE_RATE } from "./const.js";
-import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, fileToArrayBuffer } from "./audio-utils.js";
+import { fetchAudio, cloneAudio, drawAudio, encodeAudio, sliceAudio, fileToArrayBuffer } from "./audio-util.js";
 import decodeAudio from 'audio-decode'
 import AudioBuffer from "audio-buffer";
 import storage from 'kv-storage-polyfill';
 
 // shim worker for Safari
 if (!globalThis.Worker) {
-  let {default: Worker} = await import('pseudo-worker')
+  let { default: Worker } = await import('pseudo-worker')
   globalThis.Worker = Worker
 }
 
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
-  let {id, ops} = e.data, resultBuffers
+  let { id, ops } = e.data, resultBuffers
 
   // revert history if needed
   while (id < history.length) history.pop()()
@@ -31,11 +31,11 @@ self.onmessage = async e => {
 // render waveform & audio, post to client
 const renderAudio = async (buffers) => {
   let segments = buffers.map(buffer => drawAudio(buffer))
-  let duration = buffers.reduce((total, {duration}) => total + duration, 0)
+  let duration = buffers.reduce((total, { duration }) => total + duration, 0)
   let wavBuffer = await encodeAudio(...buffers);
-  let blob = new Blob([wavBuffer], {type:'audio/wav'});
-  let url = URL.createObjectURL( blob );
-  self.postMessage({id: history.length, url, segments, duration});
+  let blob = new Blob([wavBuffer], { type: 'audio/wav' });
+  let url = URL.createObjectURL(blob);
+  self.postMessage({ id: history.length, url, segments, duration });
 }
 
 
@@ -48,7 +48,7 @@ let buffers = []
 // dict of operations - supposed to update history & current buffers
 const Ops = {
   // load/decode file from url
-  async src (...urls) {
+  async src(...urls) {
     history.push(() => buffers = [])
     buffers = await Promise.all(urls.map(fetchAudio))
     return buffers
@@ -123,7 +123,7 @@ const Ops = {
       for (let j = end[1]; j < endData.length; j++) outData[i] = endData[j], i++
     }
 
-    let deleted = buffers.splice(start[0], end[0]-start[0]+1, outBuffer)
+    let deleted = buffers.splice(start[0], end[0] - start[0] + 1, outBuffer)
 
     return buffers
   },
@@ -252,11 +252,11 @@ const Ops = {
 // return [bufIdx, bufOffset] from absolute offset
 const bufferIndex = (blockOffset) => {
   let frameOffset = blockOffset * BLOCK_SIZE
-  if (frameOffset === 0) return [ 0, 0 ]
+  if (frameOffset === 0) return [0, 0]
   var start = 0, end
   for (let i = 0; i < buffers.length; i++) {
     end = start + buffers[i].length
-    if (frameOffset < end) return [ i, frameOffset - start ]
+    if (frameOffset < end) return [i, frameOffset - start]
     start = end
   }
 
@@ -267,6 +267,3 @@ const bufferIndex = (blockOffset) => {
 }
 
 const DB_KEY = 'wavearea-audio'
-
-
-

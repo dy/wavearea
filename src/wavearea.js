@@ -2,9 +2,10 @@
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
-import { fileToArrayBuffer } from './audio-utils';
+import { fileToArrayBuffer } from './audio-util';
 import playClip from './play-loop';
 import { measureLatency } from './measure-latency';
+import { selection, cleanText } from './util';
 
 history.scrollRestoration = 'manual'
 
@@ -12,7 +13,7 @@ history.scrollRestoration = 'manual'
 
 // refs
 const wavearea = document.querySelector('.wavearea')
-const editarea = wavearea.querySelector('.w-editable')
+const editarea = wavearea.querySelector('.w-editarea')
 const timecodes = wavearea.querySelector('.w-timecodes')
 const playButton = wavearea.querySelector('.w-play')
 const waveform = wavearea.querySelector('.w-waveform')
@@ -345,102 +346,6 @@ wavearea.addEventListener('touchstart', whatsLatency)
 wavearea.addEventListener('mousedown', whatsLatency)
 wavearea.addEventListener('keydown', whatsLatency)
 
-// get normalized selection
-/**
- *
- * @param {number | Array} start – absolute offset (excluding modifier chars) or relative offset [node, offset]
- * @param {number | Array} end – absolute offset (excluding modifier chars) or relative offset [node, offset]
- * @returns {start, , end}
- */
-const selection = {
-  get() {
-    let s = window.getSelection()
-
-    // return unknown selection
-    if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
-
-    // collect start/end offsets
-    let start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
-
-    // swap selection direction
-    let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
-      endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
-    if (start > end) {
-      [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
-        [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
-    }
-
-    return {
-      start,
-      startNode,
-      startNodeOffset,
-      end,
-      endNode,
-      endNodeOffset,
-      collapsed: s.isCollapsed,
-      range: s.getRangeAt(0)
-    }
-  },
-
-  set(start, end) {
-    let s = window.getSelection()
-
-    if (Array.isArray(start)) start = absOffset(...start)
-    if (Array.isArray(end)) end = absOffset(...end)
-
-    // start/end must be within limits
-    start = Math.max(0, start)
-    if (end == null) end = start
-
-    // find start/end nodes
-    let [startNode, startNodeOffset] = relOffset(start)
-    let [endNode, endNodeOffset] = relOffset(end)
-
-    let currentRange = s.getRangeAt(0)
-    if (
-      !(currentRange.startContainer === startNode.firstChild && currentRange.startOffset === startNodeOffset) &&
-      !(currentRange.endContainer === endNode.firstChild && currentRange.endOffset === endNodeOffset)
-    ) {
-      // NOTE: Safari doesn't support reusing range
-      s.removeAllRanges()
-      let range = new Range()
-      range.setStart(startNode.firstChild, startNodeOffset)
-      range.setEnd(endNode.firstChild, endNodeOffset)
-      s.addRange(range)
-    }
-
-    return {
-      start, startNode, end, endNode,
-      startNodeOffset, endNodeOffset,
-      collapsed: s.isCollapsed,
-      range: s.getRangeAt(0)
-    }
-  }
-}
-
-// calculate absolute offset from relative pair
-function absOffset(node, relOffset) {
-  let prevNode = node.parentNode.closest('.w-segment')
-  let offset = cleanText(prevNode.textContent.slice(0, relOffset)).length
-  while (prevNode = prevNode.previousSibling) offset += cleanText(prevNode.textContent).length
-  return offset
-}
-
-// calculate node and relative offset from absolute offset
-function relOffset(offset) {
-  let node = editarea.firstChild, len
-  // discount previous nodes
-  while (offset > (len = cleanText(node.textContent).length)) {
-    offset -= len, node = node.nextSibling
-  }
-  // convert current node to relative offset
-  let skip = 0
-  for (let content = node.textContent, i = 0; i < offset; i++) {
-    while (content[i + skip] >= '\u0300') skip++
-  }
-  return [node, offset + skip]
-}
-
 // produce display time from frames
 function timecode(block, ms = 0) {
   let time = ((block / state?.total)) * state?.duration || 0
@@ -521,11 +426,6 @@ function runOp(...ops) {
       resolve(e.data)
     }, { once: true })
   })
-}
-
-// return clean from modifiers text
-function cleanText(str) {
-  return str.replace(/\u0300|\u0301/g, '')
 }
 
 // update audio url & assert waveform
