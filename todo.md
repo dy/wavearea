@@ -2,8 +2,7 @@
 * [x] no-caret (0 focus) play bug
 * [x] space repeat
 * [x] head of audio is boosted for some reason
-* [ ] discrepancy of caret with sound
-* [ ] caret is super buggy
+* [~] discrepancy of caret with sound -> can't reproduce
 
 * [ ] Customize block size
 * [ ] player backends
