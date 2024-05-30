@@ -66,7 +66,7 @@ let state = sprae(wavearea, {
   // caret repositioned my mouse
   async handleCaret() {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
-    let sel = selection()
+    let sel = selection.get()
     // skip unchanged
     if (!sel || (sel.start === state.caretOffset && sel.collapsed)) return
     state.caretOffset = sel.start;
@@ -93,7 +93,7 @@ let state = sprae(wavearea, {
       e.preventDefault();
       e.stopPropagation();
       // avoid double space insertion (osx)
-      if (e.data === '. ') selection(state.caretOffset)
+      if (e.data === '. ') selection.set(state.caretOffset)
     } else {
       handler.call(this, e);
     }
@@ -155,7 +155,7 @@ let state = sprae(wavearea, {
     editarea.focus();
 
     // from the end to the beginning
-    if (state.caretOffset === state.total) selection(state.caretOffset = state.clipStart = 0)
+    if (state.caretOffset === state.total) selection.set(state.caretOffset = state.clipStart = 0)
 
     state.scrollIntoCaret();
 
@@ -186,16 +186,16 @@ let state = sprae(wavearea, {
 
     const syncCaret = () => {
       checkScroll()
-      if (!state.selecting) {
-        let playedTime = (performance.now() * 0.001 - state._startTime);
-        let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
-        if (loop) currentBlock = Math.min(currentBlock, clipEnd)
+      if (state.selecting) return
 
-        let sel = selection(state.caretOffset = currentBlock)
+      let playedTime = (performance.now() * 0.001 - state._startTime);
+      let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
+      if (loop) currentBlock = Math.min(currentBlock, clipEnd)
 
-        state.updateCaretLine(sel)
-        state.scrollIntoCaret();
-      }
+      let sel = selection.set(state.caretOffset = currentBlock)
+
+      state.updateCaretLine(sel)
+      state.scrollIntoCaret();
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
@@ -223,10 +223,10 @@ let state = sprae(wavearea, {
 
       // return selection if there was any
       //TODO: unmarkLoopRange()
-      if (state.loop) selection(clipStart, clipEnd)
+      if (state.loop) selection.set(clipStart, clipEnd)
 
       // adjust end caret position
-      else if (audio.currentTime >= audio.duration) selection(state.total)
+      else if (audio.currentTime >= audio.duration) selection.set(state.total)
 
       editarea.focus()
     }
@@ -242,7 +242,7 @@ let state = sprae(wavearea, {
       // try updating blob in history state by rebuilding audio
       await loadAudioFromURL()
     }
-    selection(state.caretOffset)
+    selection.set(state.caretOffset)
   },
 
   // make sure play/caret line pointer is correct
@@ -345,18 +345,46 @@ wavearea.addEventListener('touchstart', whatsLatency)
 wavearea.addEventListener('mousedown', whatsLatency)
 wavearea.addEventListener('keydown', whatsLatency)
 
-// get/set normalized selection
+// get normalized selection
 /**
  *
  * @param {number | Array} start – absolute offset (excluding modifier chars) or relative offset [node, offset]
  * @param {number | Array} end – absolute offset (excluding modifier chars) or relative offset [node, offset]
  * @returns {start, , end}
  */
-const selection = (start, end) => {
-  let s = window.getSelection()
+const selection = {
+  get() {
+    let s = window.getSelection()
 
-  // set selection, if passed
-  if (start != null) {
+    // return unknown selection
+    if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
+
+    // collect start/end offsets
+    let start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
+
+    // swap selection direction
+    let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
+      endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
+    if (start > end) {
+      [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
+        [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
+    }
+
+    return {
+      start,
+      startNode,
+      startNodeOffset,
+      end,
+      endNode,
+      endNodeOffset,
+      collapsed: s.isCollapsed,
+      range: s.getRangeAt(0)
+    }
+  },
+
+  set(start, end) {
+    let s = window.getSelection()
+
     if (Array.isArray(start)) start = absOffset(...start)
     if (Array.isArray(end)) end = absOffset(...end)
 
@@ -365,6 +393,7 @@ const selection = (start, end) => {
     if (end == null) end = start
 
     // find start/end nodes
+    console.log(start)
     let [startNode, startNodeOffset] = relOffset(start)
     let [endNode, endNodeOffset] = relOffset(end)
 
@@ -387,31 +416,6 @@ const selection = (start, end) => {
       collapsed: s.isCollapsed,
       range: s.getRangeAt(0)
     }
-  }
-
-  // return unknown selection
-  if (!s.anchorNode || !editarea.contains(s.anchorNode)) return
-
-  // collect start/end offsets
-  start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
-
-  // swap selection direction
-  let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
-    endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
-  if (start > end) {
-    [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
-      [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
-  }
-
-  return {
-    start,
-    startNode,
-    startNodeOffset,
-    end,
-    endNode,
-    endNodeOffset,
-    collapsed: s.isCollapsed,
-    range: s.getRangeAt(0)
   }
 }
 

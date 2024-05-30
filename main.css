@@ -139,6 +139,7 @@ body {
 
   word-break: break-all;
   white-space: break-spaces;
+  line-break: anywhere;
 }
 
 .w-timecodes,
