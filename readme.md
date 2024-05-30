@@ -32,10 +32,4 @@ Supported operations are (measured in blocks, each block is 1024 samples wide):
 <!-- * `fadein=start-duration`, `fadeout=start-duration` -->
 
 
-## Alternatives
-
-* [wavesurfer](https://wavesurfer-js.org/)
-* [waves-ui](https://github.com/wavesjs/waves-ui)
-* [gl-waveform](https://github.com/dy/gl-waveform)
-
 <p align=center><a href="https://github.com/krishnized/license/">🕉</a></p>
