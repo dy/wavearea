@@ -35,6 +35,6 @@
     "wavefont": "^3.5.0"
   },
   "devDependencies": {
-    "esbuild": "^0.16.12"
+    "esbuild": "^0.25.0"
   }
 }
