@@ -20,8 +20,7 @@
         <button class="w-play" :ref="playButton"
                 :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
                 :class="{'w-loading':loading}" :hidden="!segments.length"
-                :onclick..onclick="() => play()"
-                :onkeydown.document.space..onkeyup.document.space="e=>playButton.click(e)"
+                :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
                 tabindex="-1"
                 :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
                 :style="{
@@ -41,8 +40,8 @@
           </svg>
         </button>
         <span class="w-caret-line"></span>
-        <div class="w-loader" :if="loading" :ref="loader" :with="{str:''}"
-             :="clearInterval(loader._id), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
+        <div class="w-loader" :if="loading" :ref="loader" :scope="{str:''}"
+             :fx="clearInterval(loader._id), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
              :text="str">
           ...</div>
         <div class="w-opener" :if="!segments.length && !loading">
@@ -114,7 +113,7 @@
       </svg>
     </button>
     -->
-    <a class="w-krsnzd" href="https://krishnized.github.io/license/">ॐ</a>
+    <!-- <a class="w-krsnzd" href="https://krishnized.github.io/license/">ॐ</a> -->
   </div>
 
   <script type="module" src="./dist/wavearea.js"></script>

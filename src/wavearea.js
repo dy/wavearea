@@ -2,14 +2,13 @@
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
-import { fileToArrayBuffer } from './audio-util';
-import playClip from './play-loop';
-import { measureLatency } from './measure-latency';
-import { selection, cleanText } from './util';
+import { fileToArrayBuffer } from './audio-util.js';
+import playClip from './play-loop.js';
+import { measureLatency } from './measure-latency.js';
+import { selection, cleanText } from './selection.js';
 
 history.scrollRestoration = 'manual'
 
-// CSS.paintWorklet.addModule(`./node_modules/css-houdini-squircle/squircle.min.js`);
 
 // refs
 const wavearea = document.querySelector('.wavearea')

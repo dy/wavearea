@@ -55,6 +55,7 @@ export default function playClip (media, clip) {
   media.addEventListener('durationchange', toSeekableRange);
   media.addEventListener('seeking', toSeekableRange);
   media.addEventListener('timeupdate', onTimeupdate);
+
   let timeUpdateInterval = setInterval(onTimeupdate, 50) // safari is too bad
   media.addEventListener('playing', onPlaying);
 

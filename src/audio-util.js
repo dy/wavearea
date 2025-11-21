@@ -81,7 +81,7 @@ export function drawAudio(audioBuffer) {
   // create wavefont string
   // amp coef brings up value a bit
   const VISUAL_AMP = 2
-  const RANGE = 128
+  const RANGE = 128, AMP = 2
 
   for (let i = 0, nextBlock = BLOCK_SIZE; i < channelData.length;) {
     let ssum = 0, sum = 0, x, avg, v, shift
@@ -124,8 +124,8 @@ export function drawAudio(audioBuffer) {
       max = Math.max(max, x)
       min = Math.min(min, x)
     }
-    v = Math.min(RANGE, Math.ceil(RANGE * (max - min) / 2)) || 0
-    shift = Math.round(RANGE * (max + min) / 2)
+    v = Math.min(RANGE, Math.ceil(RANGE * (max - min) / AMP)) || 0
+    shift = Math.round(RANGE * (max + min) / (2 * AMP))
 
     str += String.fromCharCode(0x0100 + v)
     str += (shift > 0 ? '\u0301' : '\u0300').repeat(Math.abs(shift))
