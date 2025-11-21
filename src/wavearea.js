@@ -25,7 +25,7 @@ const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
 
-// UI state
+// UI
 let state = sprae(wavearea, {
   // globals
   raf: (fn) => window.requestAnimationFrame(fn),
@@ -260,32 +260,19 @@ let state = sprae(wavearea, {
     state.caretY = rect.top
   },
 
-  // FIXME: this must be done by sprae ideally
-  // but it needs to dynamically have access to children
-  updateTimecodes() {
-    timecodes.replaceChildren()
-    if (!editarea.textContent) return
-    let offset = 0
-    for (let segNode of editarea.children) {
-      let range = new Range
-      range.selectNodeContents(editarea)
-      let lines = Math.round(range.getBoundingClientRect().height / range.getClientRects()[1].height)
-      // let lines = Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
-      for (let i = 0; i < lines; i++) {
-        let a = document.createElement('a')
-        let tc = this.timecode(i * (state.cols || 0) + offset)
-        a.href = `#${tc}`
-        a.textContent = tc
-        timecodes.appendChild(a)
-      }
-      offset += segNode.textContent.length
-    }
-  },
-
   // produce display time from frames
   timecode(block, ms = 0) {
     let time = ((block / state?.total)) * state?.duration || 0
     return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
+  },
+
+  // count number of lines in element
+  lines(el) {
+    let range = new Range
+    range.selectNodeContents(el)
+    // Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
+    let h = range.getBoundingClientRect().height
+    return h && Math.round(h / range.getClientRects()[1].height)
   }
 });
 
@@ -367,7 +354,6 @@ caretObserver.observe(caretLinePointer);
 const resizeObserver = new ResizeObserver((entries) => {
   // let width = entries[0].contentRect.width
   state.cols = measureLines()
-  state.updateTimecodes()
 })
 resizeObserver.observe(editarea);
 
@@ -432,7 +418,6 @@ function renderAudio({ url, segments, duration, offsets }) {
   state.duration = duration
   state.segments = segments
   if (!state.cols) state.cols = measureLines()
-  state.updateTimecodes()
   // URL.revokeObjectURL(audio.src) // can be persisted from history, so we keep it
   audio.src = url
   audio.preload = "metadata" // preload avoids redundant fetch requests and needed by Safari

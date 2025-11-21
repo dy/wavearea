@@ -67,14 +67,18 @@
              class="w-editarea wavefont" :class="{'w-playing':playing}"
              :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
              :ondblclick.prevent
-             :oninput="e => (handleCaret(e), updateTimecodes())"
+             :oninput="e => (handleCaret(e))"
              :onbeforeinput="handleBeforeInput"
              :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('w-dragover'),e=>editarea.classList.remove('w-dragover'))"
              :ondrop="e=>e.preventDefault()">
           <p class="w-segment" :each="segment, id1 in segments" :text="segment"
              :data="{id:id1-1}"></p>
         </div>
-        <div class="w-timecodes"></div>
+        <div class="w-timecodes" :scope="
+          offset = 0;
+        ">
+          <a :each="i in (cols, lines(editarea))" :href="`#${timecode(i * (cols || 0) + offset)}`" :text="timecode(i * (cols || 0) + offset)"></a>
+        </div>
       </div>
 
       <!--

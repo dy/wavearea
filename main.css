@@ -196,7 +196,7 @@ body {
   border: none;
   background: none;
   cursor: pointer;
-  position: relative;
+  position: absolute;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
