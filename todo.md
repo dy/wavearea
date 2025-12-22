@@ -3,6 +3,8 @@
 * [x] space repeat
 * [x] head of audio is boosted for some reason
 * [~] discrepancy of caret with sound -> can't reproduce
+* [ ] play button position via sticky
+* [ ] parameters manager (based on settings panel)
 * [ ] click on time must not reload anything
   * [ ] loading link with time should navigate to the line
 
@@ -196,3 +198,7 @@
 * [ ] Vary color based on spectrum
 * [ ] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
 * [ ] Editable labeling / phrases
+
+## Ideas
+
+* Export as audiobook (choose cover)

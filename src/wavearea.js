@@ -12,11 +12,11 @@ history.scrollRestoration = 'manual'
 
 // refs
 const wavearea = document.querySelector('.wavearea')
-const editarea = wavearea.querySelector('.w-editarea')
-const timecodes = wavearea.querySelector('.w-timecodes')
-const playButton = wavearea.querySelector('.w-play')
-const waveform = wavearea.querySelector('.w-waveform')
-const caretLinePointer = wavearea.querySelector('.w-caret-line')
+const editarea = wavearea.querySelector('.editarea')
+const timecodes = wavearea.querySelector('.timecodes')
+const playButton = wavearea.querySelector('.play')
+const waveform = wavearea.querySelector('.waveform')
+const caretLinePointer = wavearea.querySelector('.caret-line')
 const audio = new Audio
 
 
@@ -27,9 +27,6 @@ const audioCtx = new AudioContext()
 
 // UI
 let state = sprae(wavearea, {
-  // globals
-  raf: (fn) => window.requestAnimationFrame(fn),
-
   // state
   loading: false,
   recording: false,
@@ -60,10 +57,9 @@ let state = sprae(wavearea, {
   caretX: 0, // caret row coordinate
 
   // chars per line (~5s with block==1024)
-  // FIXME: make responsive
   cols: 216,
 
-  // caret repositioned my mouse
+  // caret repositioned
   async handleCaret() {
     // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
     let sel = selection.get()
@@ -87,6 +83,7 @@ let state = sprae(wavearea, {
     audio.currentTime = state.duration * state.caretOffset / state.total;
   },
 
+  // handle beforeinput event to process deletions & insertions
   async handleBeforeInput(e) {
     let handler = inputHandlers[e.inputType];
     if (!handler) {
@@ -99,6 +96,7 @@ let state = sprae(wavearea, {
     }
   },
 
+  // handle file drop
   async handleDrop(e) {
     let files = e.dataTransfer.files
     let file = files[0]
@@ -153,6 +151,7 @@ let state = sprae(wavearea, {
     state.playing = true;
     state.scrolling = false;
     editarea.focus();
+    console.log('play from', state.caretOffset);
 
     // from the end to the beginning
     if (state.caretOffset === state.total) selection.set(state.caretOffset = state.clipStart = 0)
@@ -264,15 +263,6 @@ let state = sprae(wavearea, {
   timecode(block, ms = 0) {
     let time = ((block / state?.total)) * state?.duration || 0
     return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
-  },
-
-  // count number of lines in element
-  lines(el) {
-    let range = new Range
-    range.selectNodeContents(el)
-    // Math.ceil(cleanText(segNode.textContent).length / state.cols) || 1;
-    let h = range.getBoundingClientRect().height
-    return h && Math.round(h / range.getClientRects()[1].height)
   }
 });
 
@@ -404,6 +394,7 @@ async function pushOp(...ops) {
 function runOp(...ops) {
   return new Promise(resolve => {
     // worker manages history, so id indicates which point in history we commit changes to
+    console.log('Post message', ops)
     worker.postMessage({ id: history.state?.id || 0, ops })
     worker.addEventListener('message', e => {
       resolve(e.data)

@@ -6,49 +6,38 @@
 <link href="./main.css" rel="stylesheet" />
 
 <body>
-  <div class="wavearea" :onpopstate.window="e => goto(e.state)"
-       :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)">
-    <div class="w-container"
-         :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret()))"
-         :onkeydown.arrow="e=>raf(handleCaret)"
-         :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))">
-      <div class="w-waveform wavefont" :ref="waveform" :style="{
+  <div class="wavearea"
+      :onpopstate.window="e => goto(e.state)"
+      :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
+      :scope="{
+        // count number of lines in element
+        lines(el) {
+          let range = new Range
+          range.selectNodeContents(el)
+          // Math.ceil(cleanText(el.textContent).length / state.cols) || 1;
+          let h = range.getBoundingClientRect().height
+          return h && Math.round(h / range.getClientRects()[1].height)
+        }
+      }">
+    <div class="container"
+        :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret()))"
+        :onkeydown.arrow.throttle-raf="handleCaret"
+        :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))">
+      <div class="waveform wavefont" :ref="waveform" :style="{
         '--cols': cols,
         '--carety': (caretY - waveform.getBoundingClientRect().top) + 'px',
         '--caretx': (caretX - waveform.getBoundingClientRect().left) + 'px'
       }">
-        <button class="w-play" :ref="playButton"
-                :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-                :class="{'w-loading':loading}" :hidden="!segments.length"
-                :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
-                tabindex="-1"
-                :onfocus="e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())"
-                :style="{
-            position: !caretOffscreen ? 'absolute' : 'fixed',
-            ...(!caretOffscreen ? {} : caretOffscreen > 0 ? {top:0} : {bottom:0,top:'auto'})
-          }">
-          <span class="w-play-clickarea"></span>
-          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
-               height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
-            <path d="M0 0h24v24H0V0z" fill="none" />
-            <path d="M8 5v14l11-7L8 5z" />
-          </svg>
-          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg"
-               height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
-            <path d="M0 0h24v24H0V0z" fill="none" />
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-        </button>
-        <span class="w-caret-line"></span>
-        <div class="w-loader" :if="loading" :ref="loader" :scope="{str:''}"
-             :fx="clearInterval(loader._id), loading ? (loader._id = setInterval(()=>(str+='.'), 50)) : str = ''"
+        <span class="caret-line"></span>
+        <div class="loader" :if="loading" :ref="loader" :scope="str=''"
+             :fx="() => {let _id = setInterval(() => (str+='.'), 50); return () => (clearInterval(_id), str = '')}"
              :text="str">
           ...</div>
-        <div class="w-opener" :if="!segments.length && !loading">
-          <input id="w-file" class="w-file" type="file"
+        <div class="opener" :if="!segments.length && !loading">
+          <input id="file" class="file" type="file"
                  accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
                  :onchange="handleFile" />
-          <label for="w-file" title="Open file">
+          <label for="file" title="Open file">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none"
                  viewBox="0 0 24 24" height="24px" width="24px"
                  stroke-width="1.5" stroke="currentColor">
@@ -56,53 +45,75 @@
                     d="M12 6v12m6-6H6" />
             </svg>
           </label>
-          <!-- <button class="w-record">
+          <!-- <button class="record">
             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
             Record
           </button> -->
         </div>
-        <div class="w-status" :if="!segments.length" :text="loading || ''">
+        <div class="status" :if="!segments.length" :text="loading || ''">
         </div>
         <div contenteditable inputmode="none" :ref="editarea"
-             class="w-editarea wavefont" :class="{'w-playing':playing}"
+             class="editarea wavefont" :class="{'playing':playing}"
              :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
              :ondblclick.prevent
              :oninput="e => (handleCaret(e))"
              :onbeforeinput="handleBeforeInput"
-             :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('w-dragover'),e=>editarea.classList.remove('w-dragover'))"
+             :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
              :ondrop="e=>e.preventDefault()">
-          <p class="w-segment" :each="segment, id1 in segments" :text="segment"
+          <p class="segment" :each="segment, id1 in segments" :text="segment"
              :data="{id:id1-1}"></p>
         </div>
-        <div class="w-timecodes" :scope="
+        <div class="timecodes" :ref="timecodes" :scope="
           offset = 0;
         ">
           <a :each="i in (cols, lines(editarea))" :href="`#${timecode(i * (cols || 0) + offset)}`" :text="timecode(i * (cols || 0) + offset)"></a>
         </div>
+
+        <div class="playback">
+          <button class="play" :ref="playButton"
+                  :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
+                  :class="{'loading':loading}" :hidden="!segments.length"
+                  :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
+                  tabindex="-1"
+                  :onfocus="/*e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())*/"
+                  :portal="">
+            <span class="clickarea"></span>
+            <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
+                height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+              <path d="M0 0h24v24H0V0z" fill="none" />
+              <path d="M8 5v14l11-7L8 5z" />
+            </svg>
+            <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg"
+                height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+              <path d="M0 0h24v24H0V0z" fill="none" />
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!--
-      <div class="w-playback" :if="false">
-        <button class="w-play"
+      <div class="playback" :if="false">
+        <button class="play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-          :class="{'w-loading':loading}"
+          :class="{'loading':loading}"
           :disabled="loading"
           :hidden="!segments.length"
           :onclick.toggle="play"
           :onkeydown.document.space="e=>this.click(e)">
-          <span class="w-play-clickarea"></span>
+          <span class="play-clickarea"></span>
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <span class="w-time" title="Current time" :text="timecode(caretOffset, 2)"></span>
+        <span class="time" title="Current time" :text="timecode(caretOffset, 2)"></span>
         <span style="opacity: .25">/</span>
-        <span class="w-time" title="Time until the end" :text="'‒' + timecode(total - caretOffset, 2)"></span>
+        <span class="time" title="Time until the end" :text="'‒' + timecode(total - caretOffset, 2)"></span>
       </div>
     -->
     </div>
 
     <!--
-    <dialog class="w-info-dialog" id="info-dialog" :ref="info" :onclick="e => {
+    <dialog class="info-dialog" id="info-dialog" :ref="info" :onclick="e => {
       if (e.offsetX < 0 || e.offsetX > e.target.offsetWidth || e.offsetY < 0 || e.offsetY > e.target.offsetHeight) {
         info.close();
       }
@@ -111,13 +122,13 @@
       <p align="center"><a href="https://github.com/dy/wavearea">Github</a></p>
       <p align="center"><a href="https://krishnized.github.io/license/">ॐ</a></p>
     </dialog>
-    <button class="w-info-button" id="show-info-dialog" :onclick="e => info.showModal();">
+    <button class="info-button" id="shoinfo-dialog" :onclick="e => info.showModal();">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="32" height="32">
         <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12m-9-3.75h.008v.008H12V8.25z" />
       </svg>
     </button>
     -->
-    <!-- <a class="w-krsnzd" href="https://krishnized.github.io/license/">ॐ</a> -->
+    <!-- <a class="krsnzd" href="https://krishnized.github.io/license/">ॐ</a> -->
   </div>
 
   <script type="module" src="./dist/wavearea.js"></script>

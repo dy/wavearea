@@ -13,6 +13,7 @@ if (!globalThis.Worker) {
 
 // ops worker - schedules message processing with debounced update
 self.onmessage = async e => {
+  console.log('Worker message', e)
   let { id, ops } = e.data, resultBuffers
 
   // revert history if needed
@@ -68,13 +69,20 @@ const Ops = {
     }
 
     history.push(() => buffers.pop())
-    let audioBuffer = new AudioBuffer({
-      numberOfChannels: data.numberOfChannels,
-      length: data.length,
-      sampleRate: data.sampleRate
-    });
-    data.channelData.forEach((data, channel) => audioBuffer.getChannelData(channel).set(data));
-    buffers.push(audioBuffer)
+
+    // overcome alloc limit by creating multiple buffers
+    let maxLength = 108 * SAMPLE_RATE // 108 sec
+    for (let i = 0; i < data.length; i += maxLength) {
+      let length = Math.min(maxLength, data.length - i)
+      console.log(length);
+      let audioBuffer = new AudioBuffer({
+        numberOfChannels: data.numberOfChannels,
+        length,
+        sampleRate: data.sampleRate
+      });
+      data.channelData.forEach((data, channel) => audioBuffer.getChannelData(channel).set(data.subarray(i, i + length)))
+      buffers.push(audioBuffer)
+    }
 
     // save to storage
     let blob = new Blob([await encodeAudio(...buffers)])

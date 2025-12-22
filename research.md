@@ -19,6 +19,7 @@
   + anagram
   + free
   + refers to sprae
+  + phonetically correct form of "wave"
   - can be done without sprae
   - registered company name
 * wavea

@@ -5,14 +5,14 @@ export const selection = {
     let s = window.getSelection()
 
     // return unknown selection
-    if (!s.anchorNode || !s.anchorNode.parentNode.closest('.w-editarea')) return
+    if (!s.anchorNode || !s.anchorNode.parentNode.closest('.editarea')) return
 
     // collect start/end offsets
     let start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
 
     // swap selection direction
-    let startNode = s.anchorNode.parentNode.closest('.w-segment'), startNodeOffset = s.anchorOffset,
-      endNode = s.focusNode.parentNode.closest('.w-segment'), endNodeOffset = s.focusOffset;
+    let startNode = s.anchorNode.parentNode.closest('.segment'), startNodeOffset = s.anchorOffset,
+      endNode = s.focusNode.parentNode.closest('.segment'), endNodeOffset = s.focusOffset;
     if (start > end) {
       [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
         [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
@@ -47,7 +47,7 @@ export const selection = {
     if (end == null) end = start
 
     // find start/end nodes
-    let editarea = document.querySelector('.w-editarea')
+    let editarea = document.querySelector('.editarea')
     let [startNode, startNodeOffset] = relOffset(editarea, start)
     let [endNode, endNodeOffset] = relOffset(editarea, end)
 
@@ -75,7 +75,7 @@ export const selection = {
 
 // calculate absolute offset from relative pair
 function absOffset(node, relOffset) {
-  let prevNode = node.parentNode.closest('.w-segment')
+  let prevNode = node.parentNode.closest('.segment')
   let offset = cleanText(prevNode.textContent.slice(0, relOffset)).length
   while (prevNode = prevNode.previousSibling) offset += cleanText(prevNode.textContent).length
   return offset
