@@ -11,12 +11,12 @@ history.scrollRestoration = 'manual'
 
 
 // refs
-const wavearea = document.querySelector('.wavearea')
-const editarea = wavearea.querySelector('.editarea')
-const timecodes = wavearea.querySelector('.timecodes')
-const playButton = wavearea.querySelector('.play')
-const waveform = wavearea.querySelector('.waveform')
-const caretLinePointer = wavearea.querySelector('.caret-line')
+const wavearea = document.querySelector('#wavearea')
+const editarea = wavearea.querySelector('#editarea')
+const timecodes = wavearea.querySelector('#timecodes')
+const playButton = wavearea.querySelector('#play')
+const waveform = wavearea.querySelector('#waveform')
+const caretLinePointer = wavearea.querySelector('#caret-line')
 const audio = new Audio
 
 

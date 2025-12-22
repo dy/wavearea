@@ -39,7 +39,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.wavearea {
+#wavearea {
   height: 100%;
   margin: 0;
   padding: 0 2vw;
@@ -52,11 +52,11 @@ body {
   --secondary: rgb(0 0 0 / 33%);
   --primary: black;
 
-  .loading {
+  #loading {
     cursor: wait !important;
   }
 
-  .container {
+  #container {
     display: flex;
     position: relative;
     width: 100%;
@@ -65,7 +65,7 @@ body {
     justify-content: center;
   }
 
-  .waveform {
+  #waveform {
     position: relative;
     width: 100%;
     /* this 0.5ch fixes inconsistent breaking, seemingly round error */
@@ -74,31 +74,31 @@ body {
     margin-left: 4rem;
   }
 
-  .waveform.dragover {
+  #waveform.dragover {
     /* cursor: drop; */
   }
 
-  .editarea,
-  .loader {
+  #editarea,
+  #loader {
     outline: none;
     width: 100%;
     color: var(--primary);
   }
 
-  .editarea {
+  #editarea {
     /* background-size: 1px calc(var(--wavefont-size) * 1.4);
     background-position: 0% 4.2rem;
     background-image:  repeating-linear-gradient(0deg, var(--secondary) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
     position: relative;
+    p::selection {
+      background-color: var(--secondary);
+    }
   }
 
-  .editarea p::selection {
-    background-color: var(--secondary);
-  }
 
   /* played samples dimmer */
-  .editarea.playing:before,
-  .editarea.playing:after {
+  #editarea.playing:before,
+  #editarea.playing:after {
     content: '';
     position: absolute;
     background: rgba(255, 255, 255, .75);
@@ -106,21 +106,21 @@ body {
     z-index: 1;
   }
 
-  .editarea:before {
+  #editarea:before {
     bottom: 0;
     left: -1px;
     right: -1px;
     top: calc(var(--carety) + var(--wavefont-lh));
   }
 
-  .editarea:after {
+  #editarea:after {
     top: var(--carety);
     right: -1px;
     left: var(--caretx);
     height: var(--wavefont-lh);
   }
 
-  .loader {
+  #loader {
     top: 0;
     display: block;
     position: absolute;
@@ -141,8 +141,8 @@ body {
     line-break: anywhere;
   }
 
-  .timecodes,
-  .status {
+  #timecodes,
+  #status {
     position: absolute;
     top: 0;
     left: -3rem;
@@ -156,24 +156,24 @@ body {
     line-height: var(--wavefont-lh);
   }
 
-  .timecodes {
+  #timecodes {
     display: flex;
     flex-direction: column;
   }
 
-  .timecodes>* {
+  #timecodes>* {
     margin: 0;
     text-decoration: none;
     color: var(--secondary);
   }
 
-  .status {
+  #status {
     left: -4rem;
   }
 
-  .playback,
-  .caret-line,
-  .opener {
+  #playback,
+  #caret-line,
+  #opener {
     position: absolute;
     margin-left: -3.8rem;
     width: 3rem;
@@ -184,16 +184,16 @@ body {
     justify-content: center;
   }
 
-  .opener {
+  #opener {
     margin-left: -3.2rem;
   }
 
-  .caret-line {
+  #caret-line {
     pointer-events: none;
     margin-left: -4rem;
   }
 
-  .file {
+  #file {
     width: 0.1px;
     height: 0.1px;
     opacity: 0;
@@ -202,7 +202,7 @@ body {
     z-index: -1;
   }
 
-  .file+label {
+  #file+label {
     display: flex;
     align-items: center;
     font-size: 1rem;
@@ -210,7 +210,7 @@ body {
     user-select: none;
   }
 
-  .record {
+  #record {
     align-items: center;
     padding: 0;
     text-align: center;
@@ -224,7 +224,7 @@ body {
   }
 
 
-  .playback {
+  #playback {
     /* position: fixed;
     bottom: 4rem;
     width: auto;
@@ -236,12 +236,12 @@ body {
     font-size: .8rem;
     padding: 1rem 1.2rem;
     border-radius: 50px;
-    /* border: 1px solid rgb(0 0 0 / 3%); */
-    /* box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px; */
+    border: 1px solid rgb(0 0 0 / 3%);
+    box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
     background: linear-gradient(to bottom, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 100%) 33%, rgb(255 255 255 / 100%) 100%);
     /* -webkit-backdrop-filter: blur(2px); */
     /* backdrop-filter: blur(2px); */
-    .play {
+    #play {
       padding: 0;
       text-align: center;
       appearance: none;
@@ -254,7 +254,7 @@ body {
       background: none;
       /* background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%); */
 
-      .clickarea {
+      #clickarea {
         height: calc(var(--wavefont-lh) * 3);
         width: 100%;
         position: absolute;
@@ -271,11 +271,11 @@ body {
     }
   }
 
-  .time {
+  #time {
     font-variant-numeric: tabular-nums;
   }
 
-  .krsnzd {
+  #krsnzd {
     position: fixed;
     bottom: 1.08rem;
     right: 1.08rem;
@@ -286,11 +286,11 @@ body {
     transition: .108s ease-out;
   }
 
-  .krsnzd:hover {
+  #krsnzd:hover {
     opacity: .82;
   }
 
-  .info-button {
+  #info-button {
     position: fixed;
     bottom: .8rem;
     right: .8rem;
@@ -301,11 +301,11 @@ body {
     cursor: pointer;
   }
 
-  .info-button:hover {
+  #info-button:hover {
     opacity: 1;
   }
 
-  .info-dialog {
+  #info-dialog {
     padding: 1.2rem;
     border: none;
     border-radius: .8rem;
@@ -317,25 +317,25 @@ body {
     inset: 0;
   }
 
-  .info-dialog[open] {
+  #info-dialog[open] {
     opacity: 1;
     margin: auto;
     display: block;
     transition: opacity .2s ease-out;
   }
 
-  .info-dialog>* {
+  #info-dialog>* {
     margin: 0
   }
 
-  .info-dialog::backdrop {
+  #info-dialog::backdrop {
     background: rgba(108, 108, 108, .16);
     -webkit-backdrop-filter: blur(0px);
     backdrop-filter: blur(0px);
     transition: opacity .5s ease-out;
   }
 
-  .info-dialog[open]::backdrop {
+  #info-dialog[open]::backdrop {
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }

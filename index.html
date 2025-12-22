@@ -6,7 +6,7 @@
 <link href="./main.css" rel="stylesheet" />
 
 <body>
-  <div class="wavearea"
+  <div id="wavearea"
       :onpopstate.window="e => goto(e.state)"
       :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
       :scope="{
@@ -19,22 +19,24 @@
           return h && Math.round(h / range.getClientRects()[1].height)
         }
       }">
-    <div class="container"
+    <div id="container"
         :onselectionchange.document="e => (!playing && (e.stopImmediatePropagation(), selecting = false, handleCaret()))"
         :onkeydown.arrow.throttle-raf="handleCaret"
         :onselectstart..onselectionchange.document.once="e => (selecting = true, () => (selecting = false, handleCaret()))">
-      <div class="waveform wavefont" :ref="waveform" :style="{
+      <div id="waveform" class="wavefont" :ref="waveform" :style="{
         '--cols': cols,
         '--carety': (caretY - waveform.getBoundingClientRect().top) + 'px',
         '--caretx': (caretX - waveform.getBoundingClientRect().left) + 'px'
       }">
-        <span class="caret-line"></span>
-        <div class="loader" :if="loading" :ref="loader" :scope="str=''"
+        <span id="caret-line"></span>
+
+        <div id="loader" :if="loading" :ref="loader" :scope="str=''"
              :fx="() => {let _id = setInterval(() => (str+='.'), 50); return () => (clearInterval(_id), str = '')}"
              :text="str">
           ...</div>
-        <div class="opener" :if="!segments.length && !loading">
-          <input id="file" class="file" type="file"
+
+        <div id="opener" :if="!segments.length && !loading">
+          <input id="file" id="file" type="file"
                  accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
                  :onchange="handleFile" />
           <label for="file" title="Open file">
@@ -50,10 +52,11 @@
             Record
           </button> -->
         </div>
-        <div class="status" :if="!segments.length" :text="loading || ''">
+        <div id="status" :if="!segments.length" :text="loading || ''">
         </div>
         <div contenteditable inputmode="none" :ref="editarea"
-             class="editarea wavefont" :class="{'playing':playing}"
+             id="editarea" class="wavefont"
+             :class="{'playing':playing}"
              :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
              :ondblclick.prevent
              :oninput="e => (handleCaret(e))"
@@ -63,13 +66,13 @@
           <p class="segment" :each="segment, id1 in segments" :text="segment"
              :data="{id:id1-1}"></p>
         </div>
-        <div class="timecodes" :ref="timecodes" :scope="
+        <div id="timecodes" :ref="timecodes" :scope="
           offset = 0;
         ">
           <a :each="i in (cols, lines(editarea))" :href="`#${timecode(i * (cols || 0) + offset)}`" :text="timecode(i * (cols || 0) + offset)"></a>
         </div>
 
-        <div class="playback">
+        <!-- <div class="playback">
           <button class="play" :ref="playButton"
                   :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
                   :class="{'loading':loading}" :hidden="!segments.length"
@@ -89,12 +92,12 @@
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
             </svg>
           </button>
-        </div>
+        </div> -->
       </div>
 
-      <!--
-      <div class="playback" :if="false">
-        <button class="play"
+
+      <div id="playback" :if="false">
+        <button id="play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'loading':loading}"
           :disabled="loading"
@@ -109,7 +112,7 @@
         <span style="opacity: .25">/</span>
         <span class="time" title="Time until the end" :text="'‒' + timecode(total - caretOffset, 2)"></span>
       </div>
-    -->
+
     </div>
 
     <!--
