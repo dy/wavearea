@@ -39,6 +39,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.container {
+  display: flex;
+  position: relative;
+  width: 100%;
+  margin: 1rem auto;
+  padding: 0 0 0;
+  justify-content: center;
+}
+
 #wavearea {
   height: 100%;
   margin: 0;
@@ -54,15 +63,6 @@ body {
 
   #loading {
     cursor: wait !important;
-  }
-
-  #container {
-    display: flex;
-    position: relative;
-    width: 100%;
-    margin: 1rem auto;
-    padding: 0 0 0;
-    justify-content: center;
   }
 
   #waveform {
@@ -171,7 +171,6 @@ body {
     left: -4rem;
   }
 
-  #playback,
   #caret-line,
   #opener {
     position: absolute;
@@ -225,10 +224,10 @@ body {
 
 
   #playback {
-    /* position: fixed;
+    position: fixed;
     bottom: 4rem;
     width: auto;
-    margin: auto; */
+    margin: auto;
     z-index: 2;
     display: flex;
     gap: .6rem;
@@ -247,7 +246,6 @@ body {
       appearance: none;
       border: none;
       cursor: pointer;
-      position: absolute;
       justify-content: center;
       -webkit-tap-highlight-color: transparent;
       z-index: 1;
@@ -269,10 +267,10 @@ body {
         margin: auto;
       }
     }
-  }
 
-  #time {
-    font-variant-numeric: tabular-nums;
+    .time {
+      font-variant-numeric: tabular-nums;
+    }
   }
 
   #krsnzd {

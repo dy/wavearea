@@ -289,8 +289,8 @@ const inputHandlers = {
   // deleteContent(){},
   async deleteContentBackward(e) {
     let range = e.getTargetRanges()[0]
-    let fromNode = range.startContainer.parentNode.closest('.w-segment'),
-      toNode = range.endContainer.parentNode.closest('.w-segment'),
+    let fromNode = range.startContainer.parentNode.closest('.segment'),
+      toNode = range.endContainer.parentNode.closest('.segment'),
       fromId = Number(fromNode.dataset.id), toId = Number(toNode.dataset.id)
     let from = range.startOffset + state.segments.slice(0, fromId).reduce((off, seg) => off + seg.length, 0),
       to = range.endOffset + state.segments.slice(0, toId).reduce((off, seg) => off + seg.length, 0)

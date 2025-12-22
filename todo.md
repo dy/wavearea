@@ -1,3 +1,14 @@
+## [ ] Restructure
+
+* [ ] Audio loading via web audio codecs
+* [ ] Audio playback via audio worklet
+* [ ] History operations built-in
+* [ ] settings-panel
+* [ ] Move all handlers to markup, leave app for logic
+
+
+## Backlog
+
 * [x] Finish sprae 10
 * [x] no-caret (0 focus) play bug
 * [x] space repeat
@@ -7,9 +18,6 @@
 * [ ] parameters manager (based on settings panel)
 * [ ] click on time must not reload anything
   * [ ] loading link with time should navigate to the line
-
-## Backlog
-
 * [ ] Automatic tests
 * [ ] Shift play button to the left
   * [ ] Display current time

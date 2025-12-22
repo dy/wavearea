@@ -5,7 +5,7 @@ export const selection = {
     let s = window.getSelection()
 
     // return unknown selection
-    if (!s.anchorNode || !s.anchorNode.parentNode.closest('.editarea')) return
+    if (!s.anchorNode || !s.anchorNode.parentNode.closest('#editarea')) return
 
     // collect start/end offsets
     let start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
@@ -47,7 +47,7 @@ export const selection = {
     if (end == null) end = start
 
     // find start/end nodes
-    let editarea = document.querySelector('.editarea')
+    let editarea = document.querySelector('#editarea')
     let [startNode, startNodeOffset] = relOffset(editarea, start)
     let [endNode, endNodeOffset] = relOffset(editarea, end)
 
