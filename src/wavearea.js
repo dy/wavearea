@@ -27,7 +27,7 @@ const audioCtx = new AudioContext()
 
 // UI
 let state = sprae(wavearea, {
-  // state
+  // mode
   loading: false,
   recording: false,
   playing: false,
@@ -39,11 +39,13 @@ let state = sprae(wavearea, {
   clipStart: 0,
   loop: false,
   clipEnd: null,
+
+  // ???
   _startTime: 0,
   _startTimeOffset: 0,
 
+  audio,
   volume: 1,
-
   latency: 0, // time between playback and the first sample
 
   // waveform segments
@@ -53,35 +55,13 @@ let state = sprae(wavearea, {
 
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
   caretOffset: 0, // current caret offset, characters
+  caretLine: 0, // caret line number
   caretY: waveform.getBoundingClientRect().top,
   caretX: 0, // caret row coordinate
 
   // chars per line (~5s with block==1024)
   cols: 216,
 
-  // caret repositioned
-  async handleCaret() {
-    // we need to do that in order to capture only manual selection change, not as result of programmatic caret move
-    let sel = selection.get()
-    // skip unchanged
-    if (!sel || (sel.start === state.caretOffset && sel.collapsed)) return
-    state.caretOffset = sel.start;
-    state.updateCaretLine(sel)
-
-    state.clipStart = state.caretOffset;
-    if (!state.playing) {
-      state.clipEnd = !sel.collapsed ? sel.end : state.total;
-      state.loop = audio.loop = !sel.collapsed;
-    }
-    else {
-      // FIXME: latency compensation in Safari: not perfect, but better than nothing
-      state._startTime = (performance.now() + state.latency) * 0.001
-      state._startTimeOffset = state.caretOffset
-    }
-
-    // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-    audio.currentTime = state.duration * state.caretOffset / state.total;
-  },
 
   // handle beforeinput event to process deletions & insertions
   async handleBeforeInput(e) {
@@ -191,9 +171,14 @@ let state = sprae(wavearea, {
       let currentBlock = Math.min(state._startTimeOffset + Math.round(state.total * playedTime / state.duration), state.total)
       if (loop) currentBlock = Math.min(currentBlock, clipEnd)
 
+      // FIXME: optimize this chunk, just animate via CSS
       let sel = selection.set(state.caretOffset = currentBlock)
+      state.caretLine = Math.floor(sel.end / state.cols);
+      let rects = sel.range.getClientRects()
+      let rect = rects[rects.length - 1]
+      state.caretX = rect.right
 
-      state.updateCaretLine(sel)
+      // FIXME
       state.scrollIntoCaret();
     }
 
@@ -244,26 +229,13 @@ let state = sprae(wavearea, {
     selection.set(state.caretOffset)
   },
 
-  // make sure play/caret line pointer matches audio
-  updateCaretLine(sel) {
-    // let caretLine = Math.floor(sel.end / state.cols);
-    // // last of segment edge case
-    // if (sel.startNode && !(state.caretOffset % state.cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
-
-    // if (state.caretLine !== caretLine) state.caretLine = caretLine;
-
-    // calculate caret x coordinate
-    let rects = sel.range.getClientRects()
-    let rect = rects[rects.length - 1]
-    state.caretX = rect.right
-    state.caretY = rect.top
-  },
-
   // produce display time from frames
   timecode(block, ms = 0) {
     let time = ((block / state?.total)) * state?.duration || 0
     return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
-  }
+  },
+
+  selection
 });
 
 

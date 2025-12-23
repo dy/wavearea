@@ -14,7 +14,7 @@
         countLines(el) {
           let range = new Range
           range.selectNodeContents(el)
-          // Math.ceil(cleanText(el.textContent).length / state.cols) || 1;
+          // Math.ceil(cleanText(el.textContent).length / cols) || 1;
           let h = range.getBoundingClientRect().height
           return h && Math.round(h / range.getClientRects()[1].height)
         }
@@ -36,8 +36,37 @@
             :ondblclick.prevent
             :oninput="/*e => (handleCaret(e))*/"
             :onbeforeinput.prevent="handleBeforeInput"
-            :onkeydown.arrow.throttle-raf="handleCaret"
-            :onclick:onkeyup:ontouchend:onselect:onfocus="handleCaret"
+            :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
+              let sel = selection.get()
+              // skip unchanged
+              if (!sel || (sel.start === caretOffset && sel.collapsed)) return
+
+              caretOffset = sel.start;
+
+              caretLine = Math.floor(sel.end / cols);
+              // // last of segment edge case
+              // if (sel.startNode && !(caretOffset % cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
+
+              // calculate caret x coordinate
+              let rects = sel.range.getClientRects()
+              let rect = rects[rects.length - 1]
+              caretX = rect.right
+              caretY = rect.top
+
+              clipStart = caretOffset;
+              if (!playing) {
+                clipEnd = !sel.collapsed ? sel.end : total;
+                loop = audio.loop = !sel.collapsed;
+              }
+              else {
+                // FIXME: latency compensation in Safari: not perfect, but better than nothing
+                _startTime = (performance.now() + latency) * 0.001
+                _startTimeOffset = caretOffset
+              }
+
+              // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+              audio.currentTime = duration * caretOffset / total;
+            "
             :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
             :ondrop="e=>e.preventDefault()">
           <p class="segment" :each="segment, id1 in segments" :text="segment"
@@ -45,17 +74,18 @@
         </div>
 
         <div id="timecodes" :ref="timecodes">
-          <a :each="_, i in (cols, countLines(editarea))" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+          <a :each="_, i in (cols, countLines(editarea))" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
         </div>
 
-        <!--
-          <button class="play" :ref="playButton"
-                  :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-                  :class="{'loading':loading}" :hidden="!segments.length"
-                  :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
-                  tabindex="-1"
-                  :onfocus="/*e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())*/"
-                  :portal="">
+        <div id="floater" :ref="floater" :fx.delay="loading; timecodes.querySelector(`[data-id='${caretLine}']`)?.after(floater)">
+          <button id="play"
+            class=""
+            :ref="playButton"
+            :class="{'loading':loading}" :hidden="!segments.length"
+            :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
+            :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
+            tabindex="-1"
+            :onfocus="/*e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())*/">
             <span class="clickarea"></span>
             <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
                 height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
@@ -68,7 +98,7 @@
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
             </svg>
           </button>
-        -->
+        </div>
       </div>
 
       <div id="loader" :if="loading" :ref="loader" :scope="str=''"
@@ -98,19 +128,19 @@
       </div>
 
 
-      <div id="playback" :scope="showDuration=true">
+      <!-- <div id="playback" :scope="{duration: true}">
         <span class="time" title="Current time" :text="timecode(caretOffset, 2)"></span>
         <button id="play"
           :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
           :class="{'loading':loading}"
           :disabled="loading"
           :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()">
-          <span class="play-clickarea"></span>
+          <span class="clickarea"></span>
           <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
           <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <span class="time" title="Time until the end" :text="showDuration ? timecode(total) : ('‒' + timecode(total - caretOffset, 2))" :onclick="showDuration=!showDuration"></span>
-      </div>
+        <span class="time" title="Time until the end" :text="duration ? timecode(total) : ('‒' + timecode(total - caretOffset, 2))" :onclick="duration=!duration"></span>
+      </div> -->
 
     </div>
 
