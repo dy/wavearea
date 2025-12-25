@@ -63,69 +63,6 @@ let state = sprae(wavearea, {
   cols: 216,
 
 
-  // handle beforeinput event to process deletions & insertions
-  async handleBeforeInput(e) {
-    let handler = inputHandlers[e.inputType];
-    if (!handler) {
-      e.preventDefault();
-      e.stopPropagation();
-      // avoid double space insertion (osx)
-      if (e.data === '. ') selection.set(state.caretOffset)
-    } else {
-      handler.call(this, e);
-    }
-  },
-
-  // handle file drop
-  async handleDrop(e) {
-    let files = e.dataTransfer.files
-    let file = files[0]
-    if (!file.type.startsWith('audio')) return false;
-    // FIXME: save file to storage under the name
-
-    // recode into wav
-    state.loading = true;
-    state.segments = [];
-
-    let arrayBuf = await fileToArrayBuffer(file);
-    let audioBuf = await decodeAudio(arrayBuf);
-    let wavBuffer = await encodeAudio(audioBuf);
-    let blob = new Blob([wavBuffer], { type: 'audio/wav' });
-    let url = URL.createObjectURL(blob);
-    await applyOp(['src', url]);
-
-    state.loading = false;
-
-    return arrayBuf;
-  },
-
-  async handleFile(e) {
-    // let url = URL.createObjectURL(e.target.files[0])
-    // pushOp(['src', url])
-    state.loading = 'Decoding'
-    let file = e.target.files[0];
-    let arrayBuf = await fileToArrayBuffer(file);
-    let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
-    let channelData = Array.from({ length: audioBuf.numberOfChannels }, (i) => audioBuf.getChannelData(i))
-
-    await pushOp(['file', {
-      name: file.name,
-      numberOfChannels: audioBuf.numberOfChannels,
-      sampleRate: audioBuf.sampleRate,
-      length: audioBuf.length,
-      channelData
-    }])
-    state.loading = false
-  },
-
-  scrollIntoCaret() {
-    if (state.caretOffscreen && !state.scrolling) {
-      caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      state.scrolling = true
-      setTimeout(() => (state.scrolling = false), 108)
-    }
-  },
-
   // start playback
   play(e) {
     state.playing = true;
@@ -135,8 +72,6 @@ let state = sprae(wavearea, {
 
     // from the end to the beginning
     if (state.caretOffset === state.total) selection.set(state.caretOffset = state.clipStart = 0)
-
-    state.scrollIntoCaret();
 
     let { clipStart, clipEnd, loop } = state;
 
@@ -178,8 +113,11 @@ let state = sprae(wavearea, {
       let rect = rects[rects.length - 1]
       state.caretX = rect.right
 
-      // FIXME
-      state.scrollIntoCaret();
+      if (state.caretOffscreen && !state.scrolling) {
+        caretLinePointer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        state.scrolling = true
+        setTimeout(() => (state.scrolling = false), 108)
+      }
     }
 
     // audio takes time to init before play on mobile, so we hold on caret
@@ -235,7 +173,12 @@ let state = sprae(wavearea, {
     return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
   },
 
-  selection
+  // deps
+  selection,
+  measureLatency,
+  fileToArrayBuffer,
+  audioCtx,
+  pushOp
 });
 
 
@@ -285,17 +228,6 @@ const inputHandlers = {
   // historyRedo(){},
 
 }
-
-// measure safari latency
-const whatsLatency = async () => {
-  wavearea.removeEventListener('touchstart', whatsLatency)
-  wavearea.removeEventListener('mousedown', whatsLatency)
-  wavearea.removeEventListener('keydown', whatsLatency)
-  state.latency = await measureLatency()
-}
-wavearea.addEventListener('touchstart', whatsLatency)
-wavearea.addEventListener('mousedown', whatsLatency)
-wavearea.addEventListener('keydown', whatsLatency)
 
 
 // create play button position observer

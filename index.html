@@ -8,17 +8,19 @@
 
 <body>
   <main id="wavearea"
-      :onpopstate.window="e => goto(e.state)"
-      :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
-      :scope="{
-        countLines(el) {
-          let range = new Range
-          range.selectNodeContents(el)
-          // Math.ceil(cleanText(el.textContent).length / cols) || 1;
-          let h = range.getBoundingClientRect().height
-          return h && Math.round(h / range.getClientRects()[1].height)
-        }
-      }">
+    :onpopstate.window="e => goto(e.state)"
+    :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
+    :scope="{
+      countLines(el) {
+        let range = new Range
+        range.selectNodeContents(el)
+        // Math.ceil(cleanText(el.textContent).length / cols) || 1;
+        let h = range.getBoundingClientRect().height
+        return h && Math.round(h / range.getClientRects()[1].height)
+      }
+    }"
+    :ontouchstart.once:onmousedown.once:onkeydown.once="latency = await measureLatency()"
+    >
 
     <div class="container"
         :style="{
@@ -35,7 +37,16 @@
             :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
             :ondblclick.prevent
             :oninput="/*e => (handleCaret(e))*/"
-            :onbeforeinput.prevent="handleBeforeInput"
+            :onbeforeinput.prevent="
+            /*let handler = inputHandlers[e.inputType];
+            if (!handler) {
+              e.preventDefault();
+              e.stopPropagation();
+              // avoid double space insertion (osx)
+              if (e.data === '. ') selection.set(state.caretOffset)
+            } else {
+              handler.call(this, e);
+            }*/"
             :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
               let sel = selection.get()
               // skip unchanged
@@ -68,7 +79,24 @@
               audio.currentTime = duration * caretOffset / total;
             "
             :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
-            :ondrop="e=>e.preventDefault()">
+            :ondrop.prevent="async e => {
+                let files = e.dataTransfer.files
+                let file = files[0]
+                if (!file.type.startsWith('audio')) return false;
+                // FIXME: save file to storage under the name
+                // recode into wav
+                state.loading = true;
+                state.segments = [];
+                let arrayBuf = await fileToArrayBuffer(file);
+                let audioBuf = await decodeAudio(arrayBuf);
+                let wavBuffer = await encodeAudio(audioBuf);
+                let blob = new Blob([wavBuffer], { type: 'audio/wav' });
+                let url = URL.createObjectURL(blob);
+                await applyOp(['src', url]);
+                state.loading = false;
+                return arrayBuf;
+              }
+            ">
           <p class="segment" :each="segment, id1 in segments" :text="segment"
              :data="{id:id1-1}"></p>
         </div>
@@ -109,7 +137,24 @@
       <div id="opener" :if="!segments.length && !loading">
         <input id="file" id="file" type="file"
               accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
-              :onchange="handleFile" />
+              :onchange="async e => {
+                // let url = URL.createObjectURL(e.target.files[0])
+                // pushOp(['src', url])
+                loading = 'Decoding'
+                let file = e.target.files[0];
+                let arrayBuf = await fileToArrayBuffer(file);
+                let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
+                let channelData = Array.from({ length: audioBuf.numberOfChannels }, (i) => audioBuf.getChannelData(i))
+
+                await pushOp(['file', {
+                  name: file.name,
+                  numberOfChannels: audioBuf.numberOfChannels,
+                  sampleRate: audioBuf.sampleRate,
+                  length: audioBuf.length,
+                  channelData
+                }])
+                loading = false
+              }" />
         <label for="file" title="Open file">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none"
               viewBox="0 0 24 24" height="24px" width="24px"
