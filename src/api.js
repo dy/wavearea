@@ -19,13 +19,14 @@ const worklet = Comlink.wrap(playbackNode.port);
 const api = {
   // load file provided by user
   async loadFile(file, onProgress) {
+    console.log('API loadFile', file);
+
     // load from store if file is ID
     if (typeof file === 'string') {
       file = await store.getFile(file);
     }
 
-    console.time('loadFile');
-    console.log('Loading file stream via AudioDecoder...')
+    // console.time('loadFile');
     const segments = []
     await worker.decode(file, Comlink.proxy({
       onProgress: (chunk) => {
@@ -34,7 +35,7 @@ const api = {
       },
       onError: (e) => console.error('AudioDecoder error:', e)
     }));
-    console.timeEnd('loadFile');
+    // console.timeEnd('loadFile');
 
     const duration = segments.reduce((sum, chunk) => sum + chunk.length, 0) / 44100; // estimate duration
 
@@ -42,6 +43,7 @@ const api = {
   },
 
   async saveFile(file, meta) {
+    console.log('API saveFile', file);
     await store.addFile(file, meta);
   },
 

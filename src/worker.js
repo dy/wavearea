@@ -18,7 +18,7 @@ const codecMap = {
 
 Comlink.expose({
   async decode(file, cb) {
-    console.log('Decoding started for', file.name);
+    console.log('Worker: Decoding started for', file.name);
     let count = 0, chunk = new Float32Array(CHUNK_SIZE)
 
     const decoder = new AudioDecoder({

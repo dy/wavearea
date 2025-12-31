@@ -17,7 +17,8 @@
         range.selectNodeContents(el)
         // Math.ceil(cleanText(el.textContent).length / cols) || 1;
         let h = range.getBoundingClientRect().height
-        return h && Math.round(h / range.getClientRects()[1].height)
+        let rects = range.getClientRects()
+        return h && Math.round(h / rects[rects.length - 1].height)
       }
     }"
     >
@@ -157,9 +158,6 @@
                   loading = 'Loading'
                   try {
                     const segments = await api.loadFile(fileInfo.id, (samples) => waveform += samplesToWaveform(samples))
-                    for (const chunk of segments) {
-                      waveform += samplesToWaveform(chunk)
-                    }
                   } catch(err) {
                     console.error('Failed to load file:', err)
                     alert('Failed to load file: ' + err.message)
