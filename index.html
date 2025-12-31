@@ -31,74 +31,65 @@
       <div id="waveform" class="wavefont" :ref="waveform">
         <span id="caret-line"></span>
 
-        <div id="editarea" contenteditable inputmode="none" :ref="editarea"
-            class="wavefont"
-            :class="{'playing':playing}"
-            :fx="/* remove blank textnodes */[...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());"
-            :ondblclick.prevent
-            :oninput="/*e => (handleCaret(e))*/"
-            :onbeforeinput.prevent="
-            /*let handler = inputHandlers[e.inputType];
-            if (!handler) {
-              e.preventDefault();
-              e.stopPropagation();
-              // avoid double space insertion (osx)
-              if (e.data === '. ') selection.set(state.caretOffset)
-            } else {
-              handler.call(this, e);
-            }*/"
-            :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
-              let sel = selection.get()
-              // skip unchanged
-              if (!sel || (sel.start === caretOffset && sel.collapsed)) return
+        <div id="editarea" contenteditable inputmode="none"
+          class="wavefont"
+          :ref="editarea"
+          :class="{'playing':playing}"
+          :fx="/* remove blank textnodes // [...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
+          :ondblclick.prevent
+          :oninput="/* e => (handleCaret(e)) */"
+          :onbeforeinput.prevent="
+          /*let handler = inputHandlers[e.inputType];
+          if (!handler) {
+            e.preventDefault();
+            e.stopPropagation();
+            // avoid double space insertion (osx)
+            if (e.data === '. ') selection.set(state.caretOffset)
+          } else {
+            handler.call(this, e);
+          }*/"
+          :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
+            let sel = selection.get()
+            // skip unchanged
+            if (!sel || (sel.start === caretOffset && sel.collapsed)) return
 
-              caretOffset = sel.start;
+            caretOffset = sel.start;
 
-              caretLine = Math.floor(sel.end / cols);
-              // // last of segment edge case
-              // if (sel.startNode && !(caretOffset % cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
+            caretLine = Math.floor(sel.end / cols);
+            // // last of segment edge case
+            // if (sel.startNode && !(caretOffset % cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
 
-              // calculate caret x coordinate
-              let rects = sel.range.getClientRects()
-              let rect = rects[rects.length - 1]
-              caretX = rect.right
-              caretY = rect.top
+            // calculate caret x coordinate
+            let rects = sel.range.getClientRects()
+            let rect = rects[rects.length - 1]
+            caretX = rect.right
+            caretY = rect.top
 
-              clipStart = caretOffset;
-              if (!playing) {
-                clipEnd = !sel.collapsed ? sel.end : total;
-                loop = audio.loop = !sel.collapsed;
-              }
-              else {
-                // FIXME: latency compensation in Safari: not perfect, but better than nothing
-                _startTime = (performance.now() + latency) * 0.001
-                _startTimeOffset = caretOffset
-              }
+            clipStart = caretOffset;
+            if (!playing) {
+              clipEnd = !sel.collapsed ? sel.end : total;
+              loop = audio.loop = !sel.collapsed;
+            }
+            else {
+              // FIXME: latency compensation in Safari: not perfect, but better than nothing
+              _startTime = (performance.now() + latency) * 0.001
+              _startTimeOffset = caretOffset
+            }
 
-              // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-              audio.currentTime = duration * caretOffset / total;
-            "
-            :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
-            :ondrop.prevent="async e => {
-                let files = e.dataTransfer.files
-                let file = files[0]
-                if (!file.type.startsWith('audio')) return false;
-                // FIXME: save file to storage under the name
-                // recode into wav
-                state.loading = true;
-                state.segments = [];
-                let arrayBuf = await fileToArrayBuffer(file);
-                let audioBuf = await decodeAudio(arrayBuf);
-                let wavBuffer = await encodeAudio(audioBuf);
-                let blob = new Blob([wavBuffer], { type: 'audio/wav' });
-                let url = URL.createObjectURL(blob);
-                await applyOp(['src', url]);
-                state.loading = false;
-                return arrayBuf;
-              }
-            ">
-          <p class="segment" :each="segment, id1 in segments" :text="segment"
-             :data="{id:id1-1}"></p>
+            // audio.currentTime converts to float32 which may cause artifacts with caret jitter
+            audio.currentTime = duration * caretOffset / total;
+          "
+          :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
+          :ondrop.prevent="async e => {
+              let files = e.dataTransfer.files
+              let file = files[0]
+              if (!file.type.startsWith('audio')) return false;
+              return arrayBuf;
+            }
+          "
+          :text.throttle-raf="str">
+        <!-- <p class="segment" :each="segment, id1 in segments" :text="segment"
+            :data="{id:id1-1}"></p> -->
         </div>
 
         <div id="timecodes" :ref="timecodes">
@@ -109,7 +100,7 @@
           <button id="play"
             class=""
             :ref="playButton"
-            :class="{'loading':loading}" :hidden="!segments.length"
+            :class="{'loading':loading}" :hidden="!str.length"
             :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
             :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
             tabindex="-1"
@@ -129,30 +120,17 @@
         </div>
       </div>
 
-      <div id="loader" :if="loading" :ref="loader" :scope="str=''"
+      <!-- <div id="loader" :if="loading" :ref="loader" :scope="str=''"
           :fx="() => {let _id = setInterval(() => (str+='.'), 50); return () => (clearInterval(_id), str = '')}"
           :text="str">
-        ...</div>
+        ...</div> -->
 
-      <div id="opener" :if="!segments.length && !loading">
+      <div id="opener" :if="!str.length && !loading">
         <input id="file" id="file" type="file"
               accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
               :onchange="async e => {
-                // let url = URL.createObjectURL(e.target.files[0])
-                // pushOp(['src', url])
                 loading = 'Decoding'
-                let file = e.target.files[0];
-                let arrayBuf = await fileToArrayBuffer(file);
-                let audioBuf = await audioCtx.decodeAudioData(arrayBuf);
-                let channelData = Array.from({ length: audioBuf.numberOfChannels }, (i) => audioBuf.getChannelData(i))
-
-                await pushOp(['file', {
-                  name: file.name,
-                  numberOfChannels: audioBuf.numberOfChannels,
-                  sampleRate: audioBuf.sampleRate,
-                  length: audioBuf.length,
-                  channelData
-                }])
+                await api.loadFile(e.target.files[0])
                 loading = false
               }" />
         <label for="file" title="Open file">
@@ -169,7 +147,7 @@
         </button> -->
       </div>
 
-      <div id="status" :if="!segments.length" :text="loading || ''">
+      <div id="status" :if="!str.length" :text="loading || ''">
       </div>
 
 

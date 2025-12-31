@@ -2,10 +2,10 @@
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
-import { fileToArrayBuffer } from './audio-util.js';
 import playClip from './play-loop.js';
 import { measureLatency } from './measure-latency.js';
 import { selection, cleanText } from './selection.js';
+import api from './api.js';
 
 history.scrollRestoration = 'manual'
 
@@ -21,12 +21,11 @@ const audio = new Audio
 
 
 // init backend - receives messages from worker with rendered audio & waveform
-const worker = new Worker('./dist/worker.js', { type: "module" });
 const audioCtx = new AudioContext()
 
 
 // UI
-let state = sprae(wavearea, {
+export let state = sprae(wavearea, {
   // mode
   loading: false,
   recording: false,
@@ -48,9 +47,8 @@ let state = sprae(wavearea, {
   volume: 1,
   latency: 0, // time between playback and the first sample
 
-  // waveform segments
-  segments: [],
-  total: 0, // # segments
+  // waveform sring
+  str: '',
   duration: 0, // duration (received from backend)
 
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
@@ -176,9 +174,8 @@ let state = sprae(wavearea, {
   // deps
   selection,
   measureLatency,
-  fileToArrayBuffer,
   audioCtx,
-  pushOp
+  api
 });
 
 
@@ -226,7 +223,6 @@ const inputHandlers = {
   // deleteContentForward(){},
   // historyUndo(){},
   // historyRedo(){},
-
 }
 
 
@@ -255,7 +251,7 @@ resizeObserver.observe(editarea);
 // measure number of characters per line
 function measureLines() {
   let range = new Range();
-  let textNode = editarea.firstChild.firstChild
+  let textNode = editarea.firstChild
   if (!textNode?.textContent) return
   let str = textNode.textContent
 
@@ -271,6 +267,9 @@ function measureLines() {
 
   return str.length
 }
+
+
+
 
 // update history, post operation & schedule update
 // NOTE: we imply that ops are applied once and not multiple times
@@ -294,17 +293,6 @@ async function pushOp(...ops) {
   return renderAudio(params)
 }
 
-// post op message and wait for update response
-function runOp(...ops) {
-  return new Promise(resolve => {
-    // worker manages history, so id indicates which point in history we commit changes to
-    console.log('Post message', ops)
-    worker.postMessage({ id: history.state?.id || 0, ops })
-    worker.addEventListener('message', e => {
-      resolve(e.data)
-    }, { once: true })
-  })
-}
 
 // update audio url & assert waveform
 function renderAudio({ url, segments, duration, offsets }) {
@@ -369,8 +357,3 @@ async function loadAudioFromURL(url = new URL(location)) {
 //   location.search = `?src=${src}`
 // }
 // history.replaceState({segments:[]}, '', '/')
-
-// apply operations from URL, like src=path/to/file&clip=from-to&br=a..b..c
-if (location.search.length) {
-  loadAudioFromURL()
-}

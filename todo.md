@@ -1,6 +1,6 @@
 ## [ ] Restructure
 
-* [ ] Audio loading via web audio codecs
+* [x] Audio loading via web audio codecs
 * [ ] Audio playback via audio worklet
 * [ ] History operations built-in
 * [ ] settings-panel
@@ -210,3 +210,4 @@
 ## Ideas
 
 * Export as audiobook (choose cover)
+* Soft insert (via crossfade) to prevent clicks
