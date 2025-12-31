@@ -4,8 +4,8 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=.",
-    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist"
+    "start": "esbuild ./src/wavearea.js ./src/worker.js ./src/audio-worklet.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=.",
+    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/audio-worklet.js ./src/worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist"
   },
   "repository": {
     "type": "git",
@@ -31,9 +31,8 @@
     "audio-decode": "^2.1.0",
     "codec-parser": "^2.5.0",
     "comlink": "^4.4.2",
-    "kv-storage-polyfill": "^2.0.0",
     "pseudo-worker": "^1.3.0",
-    "sprae": "^12.3.7",
+    "sprae": "^12.3.9",
     "wavefont": "^3.5.0"
   },
   "devDependencies": {

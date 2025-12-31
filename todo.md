@@ -2,6 +2,10 @@
 
 * [x] Audio loading via web audio codecs
 * [ ] Audio playback via audio worklet
+  * [ ] Worklet via comlink
+  * [ ] Store segments in indexDB
+  * [ ] Load 3-5min into playback worklet
+* [ ] Virtualize waveform display (we don't need exact text selections)
 * [ ] History operations built-in
 * [ ] settings-panel
 * [ ] Move all handlers to markup, leave app for logic

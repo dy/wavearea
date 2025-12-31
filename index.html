@@ -11,6 +11,7 @@
     :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
     :scope="{
+      waveform: '',
       countLines(el) {
         let range = new Range
         range.selectNodeContents(el)
@@ -19,25 +20,27 @@
         return h && Math.round(h / range.getClientRects()[1].height)
       }
     }"
-    :ontouchstart.once:onmousedown.once:onkeydown.once="latency = await measureLatency()"
     >
 
     <div class="container"
-        :style="{
-          '--cols': cols,
-          '--carety': (caretY - waveform.getBoundingClientRect().top) + 'px',
-          '--caretx': (caretX - waveform.getBoundingClientRect().left) + 'px'
-        }">
-      <div id="waveform" class="wavefont" :ref="waveform">
+      :ref="refs.container"
+      :style="{
+        '--cols': cols,
+        '--carety': (caretY - refs.container.getBoundingClientRect().top) + 'px',
+        '--caretx': (caretX - refs.container.getBoundingClientRect().left) + 'px'
+      }">
+      <div id="waveform" class="wavefont"
+        :ref="refs.waveform"
+        :hidden="!waveform">
         <span id="caret-line"></span>
 
         <div id="editarea" contenteditable inputmode="none"
           class="wavefont"
-          :ref="editarea"
+          :ref="refs.editarea"
           :class="{'playing':playing}"
-          :fx="/* remove blank textnodes // [...editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
+          :fx="/* remove blank textnodes // [...refs.editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
           :ondblclick.prevent
-          :oninput="/* e => (handleCaret(e)) */"
+          :oninput="// e => (handleCaret(e))"
           :onbeforeinput.prevent="
           /*let handler = inputHandlers[e.inputType];
           if (!handler) {
@@ -87,24 +90,22 @@
               return arrayBuf;
             }
           "
-          :text.throttle-raf="str">
-        <!-- <p class="segment" :each="segment, id1 in segments" :text="segment"
-            :data="{id:id1-1}"></p> -->
+          :text.throttle-raf="waveform">
         </div>
 
-        <div id="timecodes" :ref="timecodes">
-          <a :each="_, i in (cols, countLines(editarea))" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+        <div id="timecodes" :ref="refs.timecodes">
+          <a :each="_, i in (cols, countLines(refs.editarea))" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
         </div>
 
-        <div id="floater" :ref="floater" :fx.delay="loading; timecodes.querySelector(`[data-id='${caretLine}']`)?.after(floater)">
+        <div id="floater" :ref="refs.floater" :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.after(refs.floater)">
           <button id="play"
             class=""
-            :ref="playButton"
-            :class="{'loading':loading}" :hidden="!str.length"
+            :ref="refs.playButton"
+            :class="{'loading':loading}" :hidden="!waveform.length"
             :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
             :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
             tabindex="-1"
-            :onfocus="/*e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())*/">
+            :onfocus="//e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())">
             <span class="clickarea"></span>
             <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
                 height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
@@ -125,12 +126,17 @@
           :text="str">
         ...</div> -->
 
-      <div id="opener" :if="!str.length && !loading">
+      <div id="opener"
+        :if="!waveform && !loading"
+        :scope="{files: [], sortBy: 'date'}"
+        :fx="async () => {files = await api.getFiles({sortBy})}">
         <input id="file" id="file" type="file"
               accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
               :onchange="async e => {
                 loading = 'Decoding'
-                await api.loadFile(e.target.files[0])
+                let file = e.target.files[0]
+                const segments = await api.loadFile(file, (samples) => waveform += samplesToWaveform(samples))
+                await api.saveFile(file, { duration: segments.duration });
                 loading = false
               }" />
         <label for="file" title="Open file">
@@ -141,13 +147,40 @@
                   d="M12 6v12m6-6H6" />
           </svg>
         </label>
+
+        <!-- Files list -->
+        <div id="files" :if="files.length">
+          <ul>
+            <li :each="fileInfo in files">
+              <button class="file-button"
+                :onclick="async e => {
+                  loading = 'Loading'
+                  try {
+                    const segments = await api.loadFile(fileInfo.id, (samples) => waveform += samplesToWaveform(samples))
+                    for (const chunk of segments) {
+                      waveform += samplesToWaveform(chunk)
+                    }
+                  } catch(err) {
+                    console.error('Failed to load file:', err)
+                    alert('Failed to load file: ' + err.message)
+                  }
+                  loading = false
+                }"
+                :title="`${fileInfo.name} (${(fileInfo.size / 1024 / 1024).toFixed(2)} MB)`">
+                <span class="file-name" :text="fileInfo.name"></span>
+                <span class="file-date" :text="new Date(fileInfo.timestamp).toLocaleDateString()"></span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
         <!-- <button class="record">
           <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
           Record
         </button> -->
       </div>
 
-      <div id="status" :if="!str.length" :text="loading || ''">
+      <div id="status" :if="!waveform.length" :text="loading || ''">
       </div>
 
 

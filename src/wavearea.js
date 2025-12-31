@@ -2,67 +2,45 @@
 // handles user interactions and sends commands to worker
 // all the data is stored and processed in worker
 import sprae from 'sprae';
-import playClip from './play-loop.js';
-import { measureLatency } from './measure-latency.js';
 import { selection, cleanText } from './selection.js';
 import api from './api.js';
 
 history.scrollRestoration = 'manual'
 
 
-// refs
-const wavearea = document.querySelector('#wavearea')
-const editarea = wavearea.querySelector('#editarea')
-const timecodes = wavearea.querySelector('#timecodes')
-const playButton = wavearea.querySelector('#play')
-const waveform = wavearea.querySelector('#waveform')
-const caretLinePointer = wavearea.querySelector('#caret-line')
-const audio = new Audio
-
-
-// init backend - receives messages from worker with rendered audio & waveform
-const audioCtx = new AudioContext()
-
-
 // UI
 export let state = sprae(wavearea, {
+  // refs
+  refs: {},
+
   // mode
   loading: false,
   recording: false,
   playing: false,
   selecting: false,
-  isMouseDown: false,
   scrolling: false,
 
-  // current playback start/end time
+  // audio
+  duration: 0, // duration (received from backend)
+  volume: 1,
+
+  // selection start/end time
   clipStart: 0,
   loop: false,
   clipEnd: null,
 
-  // ???
-  _startTime: 0,
-  _startTimeOffset: 0,
-
-  audio,
-  volume: 1,
-  latency: 0, // time between playback and the first sample
-
-  // waveform sring
-  str: '',
-  duration: 0, // duration (received from backend)
-
+  // caret position
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
   caretOffset: 0, // current caret offset, characters
   caretLine: 0, // caret line number
-  caretY: waveform.getBoundingClientRect().top,
+  caretY: 0,
   caretX: 0, // caret row coordinate
 
   // chars per line (~5s with block==1024)
   cols: 216,
 
-
   // start playback
-  play(e) {
+  play() {
     state.playing = true;
     state.scrolling = false;
     editarea.focus();
@@ -152,19 +130,6 @@ export let state = sprae(wavearea, {
     }
   },
 
-  // navigate to history state
-  async goto(params) {
-    try {
-      await renderAudio(params)
-    }
-    catch (e) {
-      // failed to load audio means likely history is discontinuous:
-      // try updating blob in history state by rebuilding audio
-      await loadAudioFromURL()
-    }
-    selection.set(state.caretOffset)
-  },
-
   // produce display time from frames
   timecode(block, ms = 0) {
     let time = ((block / state?.total)) * state?.duration || 0
@@ -173,8 +138,7 @@ export let state = sprae(wavearea, {
 
   // deps
   selection,
-  measureLatency,
-  audioCtx,
+  samplesToWaveform,
   api
 });
 
@@ -227,6 +191,7 @@ const inputHandlers = {
 
 
 // create play button position observer
+/*
 const caretObserver = new IntersectionObserver(([item]) => {
   state.caretOffscreen = item.isIntersecting ? 0 :
     (item.intersectionRect.top <= item.rootBounds.top ? 1 :
@@ -238,14 +203,16 @@ const caretObserver = new IntersectionObserver(([item]) => {
   rootMargin: '0px'
 });
 caretObserver.observe(caretLinePointer);
-
+*/
 
 // create line width observer
 const resizeObserver = new ResizeObserver((entries) => {
   // let width = entries[0].contentRect.width
   state.cols = measureLines()
 })
-resizeObserver.observe(editarea);
+console.log(state.refs.editarea)
+resizeObserver.observe(state.refs.editarea);
+
 
 // inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
 // measure number of characters per line
@@ -268,7 +235,77 @@ function measureLines() {
   return str.length
 }
 
+// convert f32 0..1 samples to waveform string
 
+const BAR_SIZE = 1024; // Number of samples per block for waveform calculation
+
+function samplesToWaveform(samples, { blockSize = 1024 } = {}) {
+  const LEVELS = 128, RANGE = 2
+
+  let str = ''
+  for (let i = 0, nextBlock = blockSize; i < samples.length;) {
+    let ssum = 0, sum = 0, x, avg, v, shift
+
+    // avg amp method - waveform is too small
+    // for (; i < nextBlock; i++) {
+    //   x = i >= samples.length ? 0 : samples[i]
+    //   sum += Math.abs(x)
+    // }
+    // avg = sum / blockSize
+    // v = Math.ceil(avg * levels)
+    // shift = 0
+
+    // rms method - waveform is smaller than needed
+    // for (; i < nextBlock; i++) {
+    //   x = i >= samples.length ? 0 : samples[i]
+    //   sum += x
+    //   ssum += x ** 2
+    // }
+    // avg = sum / blockSize
+    // const rms = Math.sqrt(ssum / blockSize)
+    // v = Math.min(levels, Math.ceil(rms * levels * VISUAL_AMP / 2)) || 0
+    // shift = Math.round(avg * levels / 2)
+
+    // signal energy loudness - same as RMS essentially, different power
+    // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
+    // const STEVENS_POW = 0.67
+    // for (; i < nextBlock; i++) ssum += i >= samples.length ? 0 : samples[i] ** 2
+    // const value = (ssum / blockSize) ** STEVENS_POW
+    // v = Math.min(levels, Math.ceil(value * levels * VISUAL_AMP))
+    // shift = 0
+
+    // peak amplitude
+    let max = -1, min = 1
+    for (; i < nextBlock; i++) {
+      x = i >= samples.length ? 0 : samples[i]
+      sum += x
+      max = Math.max(max, x)
+      min = Math.min(min, x)
+    }
+    v = Math.min(LEVELS, Math.ceil(LEVELS * (max - min) / RANGE)) || 0
+    shift = Math.round(LEVELS * (max + min) / (2 * RANGE))
+
+    str += String.fromCharCode(0x0100 + v)
+    str += (shift > 0 ? '\u0301' : '\u0300').repeat(Math.abs(shift))
+
+    nextBlock += blockSize
+  }
+
+  return str
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// FIXME: remove everything below
 
 
 // update history, post operation & schedule update

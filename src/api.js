@@ -1,83 +1,113 @@
-import { state } from './wavearea.js';
+// main thread UI-facing API layer connecting UI, worker, storage and playback worklet
+
 import * as Comlink from 'comlink';
+import store from './store/index.js';
 
 
-const worker = Comlink.wrap(new Worker(new URL('./worker.js', import.meta.url), {type: 'module'}));
+// decoder worker
+const worker = Comlink.wrap(new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }));
 
 
-const BAR_SIZE = 1024; // Number of samples per block for waveform calculation
-let audioStore = []
+// playback worklet
+const audioContext = new AudioContext()
+await audioContext.audioWorklet.addModule(new URL('./audio-worklet.js', import.meta.url));
+const playbackNode = new AudioWorkletNode(audioContext, 'playback');
+playbackNode.connect(audioContext.destination);
+const worklet = Comlink.wrap(playbackNode.port);
 
-const api ={
-  async loadFile(file) {
+
+const api = {
+  // load file provided by user
+  async loadFile(file, onProgress) {
+    // load from store if file is ID
+    if (typeof file === 'string') {
+      file = await store.getFile(file);
+    }
+
     console.time('loadFile');
     console.log('Loading file stream via AudioDecoder...')
+    const segments = []
     await worker.decode(file, Comlink.proxy({
-      onProgress: (audioChunk) => {
-        audioStore.push(audioChunk);
-        state.str += samplesToWaveform(audioChunk);
+      onProgress: (chunk) => {
+        segments.push(chunk);
+        onProgress?.(chunk);
       },
       onError: (e) => console.error('AudioDecoder error:', e)
     }));
     console.timeEnd('loadFile');
-  }
-}
 
+    const duration = segments.reduce((sum, chunk) => sum + chunk.length, 0) / 44100; // estimate duration
 
-function samplesToWaveform(channelData, {blockSize=BAR_SIZE}={}) {
-  const LEVELS = 128, AMP = 2
+    return Object.assign(segments, {duration});
+  },
 
-  let str = ''
-  for (let i = 0, nextBlock = blockSize; i < channelData.length;) {
-    let ssum = 0, sum = 0, x, avg, v, shift
+  async saveFile(file, meta) {
+    await store.addFile(file, meta);
+  },
 
-    // avg amp method - waveform is too small
-    // for (; i < nextBlock; i++) {
-    //   x = i >= channelData.length ? 0 : channelData[i]
-    //   sum += Math.abs(x)
-    // }
-    // avg = sum / blockSize
-    // v = Math.ceil(avg * levels)
-    // shift = 0
+  async delete() {
 
-    // rms method
-    // drawback: waveform is smaller than needed
-    // for (; i < nextBlock; i++) {
-    //   x = i >= channelData.length ? 0 : channelData[i]
-    //   sum += x
-    //   ssum += x ** 2
-    // }
-    // avg = sum / blockSize
-    // const rms = Math.sqrt(ssum / blockSize)
-    // v = Math.min(levels, Math.ceil(rms * levels * VISUAL_AMP / 2)) || 0
-    // shift = Math.round(avg * levels / 2)
+  },
 
-    // signal energy loudness
-    // ref: https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudness.cpp
-    // same as RMS essentially, different power
-    // const STEVENS_POW = 0.67
-    // for (; i < nextBlock; i++) ssum += i >= channelData.length ? 0 : channelData[i] ** 2
-    // const value = (ssum / blockSize) ** STEVENS_POW
-    // v = Math.min(levels, Math.ceil(value * levels * VISUAL_AMP))
-    // shift = 0
+  async save() {
 
-    // peak amplitude
-    let max = -1, min = 1
-    for (; i < nextBlock; i++) {
-      x = i >= channelData.length ? 0 : channelData[i]
-      sum += x
-      max = Math.max(max, x)
-      min = Math.min(min, x)
+  },
+
+  async insert() {
+
+  },
+
+  async getFiles(options) {
+    return store.getFiles(options);
+  },
+
+  // normalize audio content to -1..1 range
+  async normalize() {
+    let origBuffers = buffers.map(buffer => cloneAudio(buffer))
+
+    // remove static - calculate avg and subtract
+    let sum = 0, total = 0
+    for (let buffer of buffers) {
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        let channelData = buffer.getChannelData(c);
+        total += channelData.length
+        for (let i = 0; i < channelData.length; i++)
+          sum += channelData[i]
+      }
     }
-    v = Math.min(LEVELS, Math.ceil(LEVELS * (max - min) / AMP)) || 0
-    shift = Math.round(LEVELS * (max + min) / (2 * AMP))
+    let avg = sum / total
+    for (let buffer of buffers) {
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        let channelData = buffer.getChannelData(c);
+        total += channelData.length
+        for (let i = 0; i < channelData.length; i++)
+          channelData[i] -= avg
+      }
+    }
 
-    str += String.fromCharCode(0x0100 + v)
-    str += (shift > 0 ? '\u0301' : '\u0300').repeat(Math.abs(shift))
+    // amplify max to meet 1
+    let max = 0
+    for (let buffer of buffers) {
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        let channelData = buffer.getChannelData(c);
+        for (let i = 0; i < channelData.length; i++)
+          max = Math.max(Math.abs(channelData[i]), max)
+      }
+    }
 
-    nextBlock += blockSize
+    let amp = Math.max(1 / max, 1);
+
+    for (let buffer of buffers) {
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        let channelData = buffer.getChannelData(c);
+        for (let i = 0; i < channelData.length; i++)
+          channelData[i] = Math.min(1, Math.max(-1, channelData[i] * amp));
+      }
+    }
+
+    return () => origBuffers
   }
-  return str
 }
+
 
 export default api;
