@@ -19,6 +19,10 @@ body {
   opacity: .5;
 }
 
+[\:if], [\:else], [\:each] {
+  display: none!important;
+}
+
 @font-face {
   font-family: wavefont;
   font-display: block;
@@ -70,7 +74,7 @@ body {
     width: 100%;
     /* this 0.5ch fixes inconsistent breaking, seemingly round error */
     max-width: calc(4 * 216 * 1ch + 0.5ch);
-    margin: 1rem;
+    margin: 0 1rem;
     margin-left: 4rem;
   }
 
@@ -191,7 +195,7 @@ body {
     height: 0;
     display: flex;
     line-height: 0;
-    margin-top: calc(-1*var(--wavefont-lh));
+    /* margin-top: calc(-1*var(--wavefont-lh)); */
 
     #play {
       background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%);
@@ -318,6 +322,12 @@ body {
 
 
   #opener {
+    nav {
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+    }
+
     #file {
       width: 0.1px;
       height: 0.1px;

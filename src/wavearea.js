@@ -10,6 +10,11 @@ history.scrollRestoration = 'manual'
 
 // UI
 export let state = sprae(wavearea, {
+  // deps
+  selection,
+  samplesToWaveform,
+  api,
+
   // refs
   refs: {},
 
@@ -35,9 +40,6 @@ export let state = sprae(wavearea, {
   caretLine: 0, // caret line number
   caretY: 0,
   caretX: 0, // caret row coordinate
-
-  // chars per line (~5s with block==1024)
-  cols: 216,
 
   // start playback
   play() {
@@ -136,10 +138,45 @@ export let state = sprae(wavearea, {
     return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
   },
 
-  // deps
-  selection,
-  samplesToWaveform,
-  api
+  // count number of lines in an element
+  countLines(el) {
+    let range = new Range
+    range.selectNodeContents(el)
+    let h = range.getBoundingClientRect().height
+    let rects = range.getClientRects()
+    return h && Math.round(h / rects[rects.length - 1].height)
+  },
+
+  // measure number of characters per line in an element using binary search
+  // inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+  countCols(el) {
+    let range = new Range();
+    let textNode = el.firstChild
+    if (!textNode?.textContent) return
+    let str = textNode.textContent
+
+    range.setStart(textNode, 0), range.setEnd(textNode, 1)
+    let y = range.getClientRects()[0].y
+
+    // Binary search for the wrap point
+    let left = 0, right = str.length
+    while (left < right) {
+      let mid = Math.floor((left + right + 1) / 2)
+
+      let pos = mid
+      while (pos < str.length && str[pos] >= '\u0300') pos++
+
+      range.setStart(textNode, 0), range.setEnd(textNode, pos)
+      let rects = range.getClientRects()
+
+      if (rects[rects.length - 1].y > y) right = mid - 1; else left = mid;
+    }
+
+    let count = 0
+    for (let i = 0; i < left; i++) if (str[i] < '\u0300') count++
+
+    return count
+  }
 });
 
 
@@ -205,40 +242,9 @@ const caretObserver = new IntersectionObserver(([item]) => {
 caretObserver.observe(caretLinePointer);
 */
 
-// create line width observer
-const resizeObserver = new ResizeObserver((entries) => {
-  // let width = entries[0].contentRect.width
-  state.cols = measureLines()
-})
-console.log(state.refs.editarea)
-resizeObserver.observe(state.refs.editarea);
 
-
-// inspired by https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-// measure number of characters per line
-function measureLines() {
-  let range = new Range();
-  let textNode = editarea.firstChild
-  if (!textNode?.textContent) return
-  let str = textNode.textContent
-
-  range.setStart(textNode, 0), range.setEnd(textNode, 1)
-  let y = range.getClientRects()[0].y
-  for (var i = 0, offset = 0; i < str.length; offset++) {
-    let skip = 1; while (str[i + skip] >= '\u0300') skip++;
-    range.setStart(textNode, 0), range.setEnd(textNode, i = i + skip);
-    // 2nd line means we counted chars per line
-    let rects = range.getClientRects()
-    if (rects[rects.length - 1].y > y) return offset
-  }
-
-  return str.length
-}
 
 // convert f32 0..1 samples to waveform string
-
-const BAR_SIZE = 1024; // Number of samples per block for waveform calculation
-
 function samplesToWaveform(samples, { blockSize = 1024 } = {}) {
   const LEVELS = 128, RANGE = 2
 

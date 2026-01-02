@@ -4,22 +4,23 @@
 <title>Wavearea</title>
 
 <link href="./main.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
 
 <body>
   <main id="wavearea"
     :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
-    :scope="{
+    :scope="lines=0, cols=null, {
+      // string with waveform characters
       waveform: '',
-      countLines(el) {
-        let range = new Range
-        range.selectNodeContents(el)
-        // Math.ceil(cleanText(el.textContent).length / cols) || 1;
-        let h = range.getBoundingClientRect().height
-        let rects = range.getClientRects()
-        return h && Math.round(h / rects[rects.length - 1].height)
-      }
+
+      lines: 0, // number of lines in the waveform
+      cols: null, // number of columns (characters per line)
+
+      measureWaveform: () => {
+        cols = countCols(refs.editarea)
+        lines = countLines(refs.editarea)
+      },
     }"
     >
 
@@ -30,16 +31,17 @@
         '--carety': (caretY - refs.container.getBoundingClientRect().top) + 'px',
         '--caretx': (caretX - refs.container.getBoundingClientRect().left) + 'px'
       }">
-      <div id="waveform" class="wavefont"
+      <div id="waveform"
         :ref="refs.waveform"
-        :hidden="!waveform">
+        :if="waveform">
         <span id="caret-line"></span>
 
-        <div id="editarea" contenteditable inputmode="none"
+        <div id="editarea" class="wavefont" contenteditable inputmode="none"
           class="wavefont"
           :ref="refs.editarea"
           :class="{'playing':playing}"
-          :fx="/* remove blank textnodes // [...refs.editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
+          :fx.resize="() => { const ro = new ResizeObserver(measureWaveform); ro.observe(refs.editarea); return () => ro.disconnect(); }"
+          :fx.clean="/* remove blank textnodes // [...refs.editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
           :ondblclick.prevent
           :oninput="// e => (handleCaret(e))"
           :onbeforeinput.prevent="
@@ -95,7 +97,7 @@
         </div>
 
         <div id="timecodes" :ref="refs.timecodes">
-          <a :each="_, i in (cols, countLines(refs.editarea))" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+          <a :each="_, i in lines" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
         </div>
 
         <div id="floater" :ref="refs.floater" :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.after(refs.floater)">
@@ -131,23 +133,23 @@
         :if="!waveform && !loading"
         :scope="{files: [], sortBy: 'date'}"
         :fx="async () => {files = await api.getFiles({sortBy})}">
-        <input id="file" id="file" type="file"
-              accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
-              :onchange="async e => {
-                loading = 'Decoding'
-                let file = e.target.files[0]
-                const segments = await api.loadFile(file, (samples) => waveform += samplesToWaveform(samples))
-                await api.saveFile(file, { duration: segments.duration });
-                loading = false
-              }" />
-        <label for="file" title="Open file">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-              viewBox="0 0 24 24" height="24px" width="24px"
-              stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M12 6v12m6-6H6" />
-          </svg>
-        </label>
+        <nav>
+          <input id="file" id="file" type="file"
+                accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
+                :onchange="async e => {
+                  loading = 'Decoding'
+                  const file = e.target.files[0]
+                  const segments = await api.loadFile(file, (samples) => (waveform += samplesToWaveform(samples)))
+                  await api.saveFile(file, { name: file.name, duration: segments.duration });
+                  loading = false
+                }" />
+          <label for="file" title="Open file">
+            <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </label>
+          <label for="file" title="Open file">
+            <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </label>
+        </nav>
 
         <!-- Files list -->
         <div id="files" :if="files.length">
@@ -180,7 +182,6 @@
 
       <div id="status" :if="!waveform.length" :text="loading || ''">
       </div>
-
 
       <!-- <div id="playback" :scope="{duration: true}">
         <span class="time" title="Current time" :text="timecode(caretOffset, 2)"></span>
