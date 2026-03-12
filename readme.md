@@ -35,4 +35,4 @@ Supported operations are (measured in blocks, each block is 1024 samples wide):
 https://github.com/bugbakery/audapolis
 -->
 
-<p align=center><a href="https://github.com/krishnized/license/">🕉</a></p>
+<p align=center><a href="https://github.com/krishnized/license/">ॐ</a></p>

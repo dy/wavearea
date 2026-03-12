@@ -1,3 +1,5 @@
+* [ ] Open .m4a recording file, split and trim parts of them
+
 ## [ ] Restructure
 
 * [x] Audio loading via web audio codecs

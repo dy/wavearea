@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm list:*)",
+      "Bash(grep -n \"function playClip\\\\|const playClip\\\\|export.*playClip\" /Users/div/projects/wavearea/src/*.js /Users/div/projects/wavearea/index.html)",
+      "WebFetch(domain:chatgpt.com)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm info:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/div/.claude/projects/-Users-div-projects-wavearea"
+    ]
+  }
+}
