@@ -19,3 +19,5 @@ demo
 
 image
 .DS_Store
+/dist
+/test-results

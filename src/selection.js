@@ -1,102 +1,83 @@
 
 export const selection = {
-  // get normalized selection
+  // get normalized selection within editarea
   get() {
     let s = window.getSelection()
+    if (!s.rangeCount) return
 
-    // return unknown selection
-    if (!s.anchorNode || !s.anchorNode.parentNode.closest('#editarea')) return
+    let editarea = document.querySelector('#editarea')
+    let node = s.anchorNode
 
-    // collect start/end offsets
-    let start = absOffset(s.anchorNode, s.anchorOffset), end = absOffset(s.focusNode, s.focusOffset)
+    // selection must be inside editarea
+    if (!node || !editarea.contains(node)) return
 
-    // swap selection direction
-    let startNode = s.anchorNode.parentNode.closest('.segment'), startNodeOffset = s.anchorOffset,
-      endNode = s.focusNode.parentNode.closest('.segment'), endNodeOffset = s.focusOffset;
-    if (start > end) {
-      [end, endNode, endNodeOffset, start, startNode, startNodeOffset] =
-        [start, startNode, startNodeOffset, end, endNode, endNodeOffset]
-    }
+    let range = s.getRangeAt(0)
+    let start = cleanOffset(range.startContainer, range.startOffset, editarea)
+    let end = cleanOffset(range.endContainer, range.endOffset, editarea)
 
-    return {
-      start,
-      startNode,
-      startNodeOffset,
-      end,
-      endNode,
-      endNodeOffset,
-      collapsed: s.isCollapsed,
-      range: s.getRangeAt(0)
-    }
+    // swap if backwards
+    if (start > end) [start, end] = [end, start]
+
+    return { start, end, collapsed: s.isCollapsed, range }
   },
 
-  /**
-   * Set normalized selection
-   * @param {number | Array} start – absolute offset (excluding modifier chars) or relative offset [node, offset]
-   * @param {number | Array} end – absolute offset (excluding modifier chars) or relative offset [node, offset]
-   * @returns {start, , end}
-   */
+  // set selection by clean offsets (excluding combining marks)
   set(start, end) {
     let s = window.getSelection()
 
-    if (Array.isArray(start)) start = absOffset(...start)
-    if (Array.isArray(end)) end = absOffset(...end)
-
-    // start/end must be within limits
     start = Math.max(0, start)
     if (end == null) end = start
 
-    // find start/end nodes
     let editarea = document.querySelector('#editarea')
-    let [startNode, startNodeOffset] = relOffset(editarea, start)
-    let [endNode, endNodeOffset] = relOffset(editarea, end)
+    let textNode = editarea.firstChild
+    if (!textNode) return { start, end, collapsed: start === end, range: null }
 
-    let currentRange = s.getRangeAt(0)
-    if (
-      !(currentRange.startContainer === startNode.firstChild && currentRange.startOffset === startNodeOffset) &&
-      !(currentRange.endContainer === endNode.firstChild && currentRange.endOffset === endNodeOffset)
-    ) {
-      // NOTE: Safari doesn't support reusing range
-      s.removeAllRanges()
-      let range = new Range()
-      range.setStart(startNode.firstChild, startNodeOffset)
-      range.setEnd(endNode.firstChild, endNodeOffset)
-      s.addRange(range)
+    let rawStart = cleanToRaw(textNode.textContent, start)
+    let rawEnd = cleanToRaw(textNode.textContent, end)
+
+    // skip if already at correct position
+    if (s.rangeCount) {
+      let cur = s.getRangeAt(0)
+      if (cur.startContainer === textNode && cur.startOffset === rawStart &&
+          cur.endContainer === textNode && cur.endOffset === rawEnd) {
+        return { start, end, collapsed: start === end, range: cur }
+      }
     }
 
-    return {
-      start, startNode, end, endNode,
-      startNodeOffset, endNodeOffset,
-      collapsed: s.isCollapsed,
-      range: s.getRangeAt(0)
-    }
+    // Safari doesn't support reusing range
+    s.removeAllRanges()
+    let range = new Range()
+    range.setStart(textNode, rawStart)
+    range.setEnd(textNode, rawEnd)
+    s.addRange(range)
+
+    return { start, end, collapsed: start === end, range: s.getRangeAt(0) }
   }
 }
 
-// calculate absolute offset from relative pair
-function absOffset(node, relOffset) {
-  let prevNode = node.parentNode.closest('.segment')
-  let offset = cleanText(prevNode.textContent.slice(0, relOffset)).length
-  while (prevNode = prevNode.previousSibling) offset += cleanText(prevNode.textContent).length
-  return offset
+// convert raw (node, offset) to clean offset (excluding combining marks)
+function cleanOffset(node, rawOffset, editarea) {
+  // if node is the editarea itself, rawOffset is child index
+  if (node === editarea) {
+    let textNode = editarea.firstChild
+    return textNode ? cleanText(textNode.textContent).length : 0
+  }
+  return cleanText(node.textContent.slice(0, rawOffset)).length
 }
 
-// calculate node and relative offset from absolute offset
-function relOffset(editarea, offset) {
-  let node = editarea.firstChild, len
-  // discount previous nodes
-  while (offset > (len = cleanText(node.textContent).length)) {
-    offset -= len, node = node.nextSibling
+// convert clean offset to raw offset (including combining marks)
+function cleanToRaw(content, cleanPos) {
+  let clean = 0, raw = 0
+  while (clean < cleanPos && raw < content.length) {
+    if (content[raw] < '\u0300') clean++
+    raw++
+    // skip combining marks after this character
+    while (raw < content.length && content[raw] >= '\u0300') raw++
   }
-  // convert current node to relative offset
-  let skip = 0
-  for (let content = node.textContent, i = 0; i < offset; i++) {
-    while (content[i + skip] >= '\u0300') skip++
-  }
-  return [node, offset + skip]
+  return raw
 }
 
-// return clean from modifiers text
+// return text with combining marks removed
 export function cleanText(str) {
-  return str.replace(/\u0300|\u0301/g, '')
+  return str.replace(/[\u0300\u0301]/g, '')
 }

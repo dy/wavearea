@@ -43,55 +43,62 @@
 ## Phase 0: Cleanup & Foundation
 > Clean slate. Remove dead weight, fix the pipeline, know the limits.
 
-* [ ] Update sprae 12.3.9 → 12.4.15
-  * [ ] Audit breaking changes (`:html` template support, directive dispose changes)
-  * [ ] Update import paths if needed
-  * [ ] Verify all existing sprae bindings still work
-* [ ] Remove dead code
-  * [ ] `pushOp`, `runOp`, `renderAudio`, `loadAudioFromURL` — dead references
-  * [ ] `inputHandlers` object — commented-out handlers, broken `deleteContentBackward`
-  * [ ] `caretObserver` IntersectionObserver — commented out
-  * [ ] Sample URL loader at bottom of wavearea.js
-  * [ ] `normalize()` stub in api.js — references undefined `buffers`
-  * [ ] `delete()`, `save()`, `insert()` empty stubs in api.js
-  * [ ] `<audio>` element playback code in wavearea.js (`playClip`, `audio.*` refs)
-    — don't fix, just strip. Phase 1 replaces with AudioWorklet.
-  * [ ] Audit index.html: remove commented-out sections (loader, playback panel, dialog, krsnzd link)
-* [ ] Move samplesToWaveform to Worker
-  * [ ] Worker generates waveform string per decoded chunk
-  * [ ] Worker sends waveform string (not raw samples) to main thread via Comlink
-  * [ ] Main thread NEVER receives raw PCM — only waveform strings
-  * [ ] Remove samplesToWaveform from wavearea.js
-  * [ ] Update api.js loadFile: onProgress receives waveform string, not Float32Array
-* [ ] Fix Worker: decode all channels
-  * [ ] Current worker.js only reads planeIndex:0 — stereo files lose R channel
-  * [ ] Store both channels as planar Float32Arrays (or interleaved)
-  * [ ] Generate waveform string per channel (L and R separately for stereo rendering later)
-  * [ ] Mono files: single channel, same as now
-* [ ] Fix api.js
-  * [ ] loadFile: clean interface — accept File or OPFS file ID, return {duration, channels}
+* [x] Update sprae 12.3.9 → 12.4.15
+  * [x] Audit breaking changes — none found, all directives/modifiers identical
+  * [x] Import paths unchanged
+  * [x] All existing sprae bindings verified working (browser-tested)
+* [x] Remove dead code
+  * [x] `pushOp`, `runOp`, `renderAudio`, `loadAudioFromURL` — removed
+  * [x] `inputHandlers` object — removed
+  * [x] `caretObserver` IntersectionObserver — removed
+  * [x] Sample URL loader at bottom of wavearea.js — removed
+  * [x] `normalize()` stub in api.js — removed
+  * [x] `delete()`, `save()`, `insert()` empty stubs in api.js — removed
+  * [x] `<audio>` element playback code — stripped entirely (playClip, audio.* refs)
+  * [x] audio-worklet.js — deleted (dead stub)
+  * [x] index.html: removed commented-out loader, playback panel, dialog, krsnzd link
+  * [x] main.css: removed #loader, #playback, #krsnzd, #info-dialog, #info-button, #record, #loading
+  * [x] Unused deps removed: audio-buffer, audio-decode, pseudo-worker
+* [x] Move samplesToWaveform to Worker
+  * [x] Worker generates waveform string per decoded chunk
+  * [x] Worker sends waveform string (not raw samples) to main thread via Comlink
+  * [x] Main thread NEVER receives raw PCM — only waveform strings
+  * [x] samplesToWaveform removed from wavearea.js, lives in worker.js
+  * [x] api.js loadFile: onWaveform receives waveform string
+* [x] Fix Worker: decode all channels
+  * [x] Decodes all channels via planeIndex per channel
+  * [x] Stores planar Float32Arrays per channel: chunks[ch] = [Float32Array, ...]
+  * [x] Waveform string generated from channel 0 (primary display channel)
+  * [x] Mono files: single channel, same as before
+* [x] Fix api.js
+  * [x] loadFile: clean interface — accepts File or OPFS ID, returns {duration, channels, sampleRate}
   * [ ] Error handling: decode failure, unsupported codec, empty file
+* [x] Fix selection.js
+  * [x] Rewrote for flat text node structure (no .segment children)
+  * [x] cleanOffset/cleanToRaw handle combining marks correctly
 * [ ] Fix store/opfs.js
-  * [ ] Verify works across Chrome, Firefox, Safari
+  * [x] Opening stored file works end-to-end (browser-tested)
+  * [ ] Verify works across Firefox, Safari
   * [ ] Handle storage quota exceeded
-  * [ ] Opening stored file must work end-to-end
 * [ ] Benchmark contenteditable limits
   * [ ] Generate synthetic waveform strings: 10K, 50K, 100K, 200K chars
   * [ ] Measure: DOM layout time, selection/caret response, scroll performance
   * [ ] Find the threshold where it degrades
   * [ ] Document: "files longer than Xmin at blockSize=1024 need virtualization"
-  * [ ] This determines whether Phase 4 virtual rendering is critical or nice-to-have
-* [ ] Setup Playwright
-  * [ ] Install playwright, configure browsers (chromium, firefox, webkit)
-  * [ ] Create test fixtures: 1s silence, 3s sine wave, 30s speech (small mp3s)
-  * [ ] Test: open app, verify empty state renders
-  * [ ] Test: load fixture file, verify waveform appears
-  * [ ] Test: click waveform, verify caret positions
+* [x] Setup Playwright
+  * [x] Install playwright, configure chromium
+  * [x] Create test fixture: 3s sine wave MP3
+  * [x] Test: open app, verify empty state renders
+  * [x] Test: load fixture file, verify waveform appears
+  * [x] Test: click waveform, verify no errors and caret positions
+  * [x] Test: space toggles playback
+  * [x] Test: play button starts/stops playback
+  * [x] Test: timecodes render
   * [ ] Test: onbeforeinput coverage — which inputTypes fire in each browser
-* [ ] Build system
-  * [ ] Verify esbuild config handles sprae 12.4.15
-  * [ ] Add `npm test` script for playwright
-  * [ ] Dev server with watch mode
+* [x] Build system
+  * [x] esbuild handles sprae 12.4.15
+  * [x] `npm test` script runs playwright
+  * [x] Dev server with `npm start`
 
 
 ## Phase 1: Solid Playback

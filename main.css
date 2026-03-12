@@ -65,10 +65,6 @@ body {
   --secondary: rgb(0 0 0 / 33%);
   --primary: black;
 
-  #loading {
-    cursor: wait !important;
-  }
-
   #waveform {
     position: relative;
     width: 100%;
@@ -78,21 +74,10 @@ body {
     margin-left: 4rem;
   }
 
-  #waveform.dragover {
-    /* cursor: drop; */
-  }
-
-  #editarea,
-  #loader {
+  #editarea {
     outline: none;
     width: 100%;
     color: var(--primary);
-  }
-
-  #editarea {
-    /* background-size: 1px calc(var(--wavefont-size) * 1.4);
-    background-position: 0% 4.2rem;
-    background-image:  repeating-linear-gradient(0deg, var(--secondary) -0.5px, rgb(255 255 255 / 0%) 0.5px, rgb(255 255 255 / 0%)); */
     position: relative;
     p::selection {
       background-color: var(--secondary);
@@ -123,16 +108,6 @@ body {
     left: var(--caretx);
     height: var(--wavefont-lh);
   }
-
-  #loader {
-    top: 0;
-    display: block;
-    position: absolute;
-    z-index: 1;
-    pointer-events: none;
-    color: var(--secondary);
-  }
-
 
   .segment {
     position: relative;
@@ -232,95 +207,6 @@ body {
     }
   }
 
-  #playback {
-    position: fixed;
-    bottom: 4rem;
-    width: auto;
-    margin: auto;
-    z-index: 2;
-    display: flex;
-    gap: .6rem;
-    align-items: center;
-    font-size: .8rem;
-    padding: 1rem 1.2rem;
-    border-radius: 50px;
-    border: 1px solid rgb(0 0 0 / 3%);
-    box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 100%) 33%, rgb(255 255 255 / 100%) 100%);
-    /* -webkit-backdrop-filter: blur(2px); */
-    /* backdrop-filter: blur(2px); */
-
-    .time {
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  #krsnzd {
-    position: fixed;
-    bottom: 1.08rem;
-    right: 1.08rem;
-    margin: 0 auto;
-    text-decoration: none;
-    color: var(--primary);
-    opacity: .108;
-    transition: .108s ease-out;
-  }
-
-  #krsnzd:hover {
-    opacity: .82;
-  }
-
-  #info-button {
-    position: fixed;
-    bottom: .8rem;
-    right: .8rem;
-    appearance: none;
-    background: none;
-    border: none;
-    opacity: 0.25;
-    cursor: pointer;
-  }
-
-  #info-button:hover {
-    opacity: 1;
-  }
-
-  #info-dialog {
-    padding: 1.2rem;
-    border: none;
-    border-radius: .8rem;
-    box-shadow: rgb(0 0 0 / 22%) 0px 4px 16px -8px, rgb(0 0 0 / 7%) 0px 1px 2px;
-    background: white;
-    opacity: 0;
-    display: none;
-    transition: opacity .2s ease-out;
-    inset: 0;
-  }
-
-  #info-dialog[open] {
-    opacity: 1;
-    margin: auto;
-    display: block;
-    transition: opacity .2s ease-out;
-  }
-
-  #info-dialog>* {
-    margin: 0
-  }
-
-  #info-dialog::backdrop {
-    background: rgba(108, 108, 108, .16);
-    -webkit-backdrop-filter: blur(0px);
-    backdrop-filter: blur(0px);
-    transition: opacity .5s ease-out;
-  }
-
-  #info-dialog[open]::backdrop {
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-  }
-
-
   #opener {
     nav {
       display: flex;
@@ -345,18 +231,6 @@ body {
       user-select: none;
     }
 
-    #record {
-      align-items: center;
-      padding: 0;
-      text-align: center;
-      display: flex;
-      appearance: none;
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 1rem;
-      user-select: none;
-    }
   }
 
   /* Files list */

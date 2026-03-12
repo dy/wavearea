@@ -4,11 +4,9 @@
 <title>Wavearea</title>
 
 <link href="./main.css" rel="stylesheet" />
-<!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
 
 <body>
   <main id="wavearea"
-    :onpopstate.window="e => goto(e.state)"
     :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
     :scope="lines=0, cols=null, {
       // string with waveform characters
@@ -37,23 +35,11 @@
         <span id="caret-line"></span>
 
         <div id="editarea" class="wavefont" contenteditable inputmode="none"
-          class="wavefont"
           :ref="refs.editarea"
           :class="{'playing':playing}"
           :fx.resize="() => { const ro = new ResizeObserver(measureWaveform); ro.observe(refs.editarea); return () => ro.disconnect(); }"
-          :fx.clean="/* remove blank textnodes // [...refs.editarea.childNodes].forEach(node => node.nodeValue && !node.nodeValue.trim() && node.remove());*/"
           :ondblclick.prevent
-          :oninput="// e => (handleCaret(e))"
-          :onbeforeinput.prevent="
-          /*let handler = inputHandlers[e.inputType];
-          if (!handler) {
-            e.preventDefault();
-            e.stopPropagation();
-            // avoid double space insertion (osx)
-            if (e.data === '. ') selection.set(state.caretOffset)
-          } else {
-            handler.call(this, e);
-          }*/"
+          :onbeforeinput.prevent
           :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
             let sel = selection.get()
             // skip unchanged
@@ -62,35 +48,25 @@
             caretOffset = sel.start;
 
             caretLine = Math.floor(sel.end / cols);
-            // // last of segment edge case
-            // if (sel.startNode && !(caretOffset % cols) && sel.startNodeOffset === editarea.children[sel.startNode.dataset.id].textContent.length) caretLine--;
 
             // calculate caret x coordinate
             let rects = sel.range.getClientRects()
             let rect = rects[rects.length - 1]
+            if (!rect) return
             caretX = rect.right
             caretY = rect.top
 
             clipStart = caretOffset;
             if (!playing) {
               clipEnd = !sel.collapsed ? sel.end : total;
-              loop = audio.loop = !sel.collapsed;
+              loop = !sel.collapsed;
             }
-            else {
-              // FIXME: latency compensation in Safari: not perfect, but better than nothing
-              _startTime = (performance.now() + latency) * 0.001
-              _startTimeOffset = caretOffset
-            }
-
-            // audio.currentTime converts to float32 which may cause artifacts with caret jitter
-            audio.currentTime = duration * caretOffset / total;
           "
           :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
           :ondrop.prevent="async e => {
               let files = e.dataTransfer.files
               let file = files[0]
               if (!file.type.startsWith('audio')) return false;
-              return arrayBuf;
             }
           "
           :text.throttle-raf="waveform">
@@ -102,13 +78,11 @@
 
         <div id="floater" :ref="refs.floater" :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.after(refs.floater)">
           <button id="play"
-            class=""
             :ref="refs.playButton"
             :class="{'loading':loading}" :hidden="!waveform.length"
             :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
             :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
-            tabindex="-1"
-            :onfocus="//e => (e.relatedTarget ? e.relatedTarget.focus() : e.target.blur())">
+            tabindex="-1">
             <span class="clickarea"></span>
             <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg"
                 height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
@@ -124,30 +98,26 @@
         </div>
       </div>
 
-      <!-- <div id="loader" :if="loading" :ref="loader" :scope="str=''"
-          :fx="() => {let _id = setInterval(() => (str+='.'), 50); return () => (clearInterval(_id), str = '')}"
-          :text="str">
-        ...</div> -->
-
       <div id="opener"
         :if="!waveform && !loading"
         :scope="{files: [], sortBy: 'date'}"
         :fx="async () => {files = await api.getFiles({sortBy})}">
         <nav>
-          <input id="file" id="file" type="file"
+          <input id="file" type="file"
                 accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
                 :onchange="async e => {
                   loading = 'Decoding'
                   const file = e.target.files[0]
-                  const segments = await api.loadFile(file, (samples) => (waveform += samplesToWaveform(samples)))
-                  await api.saveFile(file, { name: file.name, duration: segments.duration });
+                  const meta = await api.loadFile(file, (str) => (waveform += str, total = cleanText(waveform).length))
+                  duration = meta.duration
+                  await api.saveFile(file, { name: file.name, duration: meta.duration });
                   loading = false
                 }" />
           <label for="file" title="Open file">
             <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
           </label>
           <label for="file" title="Open file">
-            <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
           </label>
         </nav>
 
@@ -159,7 +129,8 @@
                 :onclick="async e => {
                   loading = 'Loading'
                   try {
-                    const segments = await api.loadFile(fileInfo.id, (samples) => waveform += samplesToWaveform(samples))
+                    const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total = cleanText(waveform).length))
+                    duration = meta.duration
                   } catch(err) {
                     console.error('Failed to load file:', err)
                     alert('Failed to load file: ' + err.message)
@@ -173,49 +144,12 @@
             </li>
           </ul>
         </div>
-
-        <!-- <button class="record">
-          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><circle cx="12" cy="12" r="8"/></svg>
-          Record
-        </button> -->
       </div>
 
       <div id="status" :if="!waveform.length" :text="loading || ''">
       </div>
 
-      <!-- <div id="playback" :scope="{duration: true}">
-        <span class="time" title="Current time" :text="timecode(caretOffset, 2)"></span>
-        <button id="play"
-          :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-          :class="{'loading':loading}"
-          :disabled="loading"
-          :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()">
-          <span class="clickarea"></span>
-          <svg :hidden="playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M8 5v14l11-7L8 5z"/></svg>
-          <svg :hidden="!playing" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-        </button>
-        <span class="time" title="Time until the end" :text="duration ? timecode(total) : ('‒' + timecode(total - caretOffset, 2))" :onclick="duration=!duration"></span>
-      </div> -->
-
     </div>
-
-    <!--
-    <dialog class="info-dialog" id="info-dialog" :ref="info" :onclick="e => {
-      if (e.offsetX < 0 || e.offsetX > e.target.offsetWidth || e.offsetY < 0 || e.offsetY > e.target.offsetHeight) {
-        info.close();
-      }
-    }">
-      <h3 align="center" style="margin-bottom:.4rem">Wavearea</h3>
-      <p align="center"><a href="https://github.com/dy/wavearea">Github</a></p>
-      <p align="center"><a href="https://krishnized.github.io/license/">ॐ</a></p>
-    </dialog>
-    <button class="info-button" id="shoinfo-dialog" :onclick="e => info.showModal();">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="32" height="32">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12m-9-3.75h.008v.008H12V8.25z" />
-      </svg>
-    </button>
-    -->
-    <!-- <a class="krsnzd" href="https://krishnized.github.io/license/">ॐ</a> -->
   </main>
 
   <script type="module" src="./dist/wavearea.js"></script>
