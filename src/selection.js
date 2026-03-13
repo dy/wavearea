@@ -57,8 +57,11 @@ export const selection = {
 
 // convert raw (node, offset) to clean offset (excluding combining marks)
 function cleanOffset(node, rawOffset, editarea) {
-  // if node is the editarea itself, rawOffset is child index
+  // if node is the editarea element itself, rawOffset is child index (not char offset)
   if (node === editarea) {
+    // child index 0 = before first child = position 0
+    // child index >= childNodes.length = after last child = end of text
+    if (rawOffset === 0) return 0
     let textNode = editarea.firstChild
     return textNode ? cleanText(textNode.textContent).length : 0
   }

@@ -21,3 +21,5 @@ image
 .DS_Store
 /dist
 /test-results
+.DS_Store
+/.claude

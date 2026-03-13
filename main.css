@@ -79,6 +79,8 @@ body {
     width: 100%;
     color: var(--primary);
     position: relative;
+    word-break: break-all;
+    white-space: break-spaces;
     p::selection {
       background-color: var(--secondary);
     }
@@ -109,16 +111,6 @@ body {
     height: var(--wavefont-lh);
   }
 
-  .segment {
-    position: relative;
-    margin: 0;
-    padding: 0;
-    min-height: var(--wavefont-lh);
-
-    word-break: break-all;
-    white-space: break-spaces;
-    line-break: anywhere;
-  }
 
   #timecodes,
   #status {
