@@ -18,10 +18,13 @@ const api = {
       file = await store.getFile(file);
     }
 
-    return worker.decode(file, Comlink.proxy({
+    let decodeError = null;
+    const result = await worker.decode(file, Comlink.proxy({
       onWaveform,
-      onError: (e) => console.error('Decode error:', e)
+      onError: (e) => { decodeError = e }
     }));
+    if (decodeError) throw decodeError;
+    return result;
   },
 
   async saveFile(file, meta) {

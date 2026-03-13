@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 
 const FIXTURE = path.resolve('test/fixtures/sine-3s.mp3');
+const BAD_FIXTURE = path.resolve('test/fixtures/bad.mp3');
+const EMPTY_FIXTURE = path.resolve('test/fixtures/empty.mp3');
 
 // helper: load a file into wavearea via file input
 async function loadFile(page, filePath = FIXTURE) {
@@ -311,6 +313,66 @@ test.describe('wavearea', () => {
     await page.waitForTimeout(200);
 
     expect(errors).toEqual([]);
+  });
+
+  test('invalid file shows error in UI', async ({ page }) => {
+    const fileInput = page.locator('input#file');
+    await fileInput.waitFor({ state: 'attached', timeout: 5000 });
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      fileInput.dispatchEvent('click')
+    ]);
+    await fileChooser.setFiles(BAD_FIXTURE);
+
+    // error should appear
+    let error = page.locator('#error');
+    await expect(error).toBeVisible({ timeout: 15000 });
+    let text = await error.textContent();
+    expect(text.length).toBeGreaterThan(0);
+
+    // waveform should not be visible
+    await expect(page.locator('#editarea')).not.toBeVisible();
+  });
+
+  test('empty file shows error in UI', async ({ page }) => {
+    const fileInput = page.locator('input#file');
+    await fileInput.waitFor({ state: 'attached', timeout: 5000 });
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      fileInput.dispatchEvent('click')
+    ]);
+    await fileChooser.setFiles(EMPTY_FIXTURE);
+
+    // error should appear
+    let error = page.locator('#error');
+    await expect(error).toBeVisible({ timeout: 15000 });
+  });
+
+  test('error clears on successful load', async ({ page }) => {
+    // first load bad file
+    let fileInput = page.locator('input#file');
+    await fileInput.waitFor({ state: 'attached', timeout: 5000 });
+    let [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      fileInput.dispatchEvent('click')
+    ]);
+    await fileChooser.setFiles(BAD_FIXTURE);
+    await expect(page.locator('#error')).toBeVisible({ timeout: 15000 });
+
+    // now load valid file
+    [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      fileInput.dispatchEvent('click')
+    ]);
+    await fileChooser.setFiles(FIXTURE);
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#editarea');
+      return el && el.textContent.length > 10;
+    }, { timeout: 15000 });
+
+    // error should be gone, waveform visible
+    await expect(page.locator('#error')).not.toBeVisible();
+    await expect(page.locator('#editarea')).toBeVisible();
   });
 
   test('timecodes render after loading', async ({ page }) => {

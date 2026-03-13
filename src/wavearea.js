@@ -24,6 +24,7 @@ export let state = sprae(wavearea, {
   playing: false,
   selecting: false,
   scrolling: false,
+  error: null,
 
   // audio
   duration: 0, // duration (received from backend)

@@ -2,6 +2,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   margin: 0;
@@ -62,7 +66,7 @@ body {
   --wavefont-lh: calc(var(--wavefont-size) * 1.4);
   --wavefont-spacing: 0px;
   --wavefont-wght: 25;
-  --wavefont-rond: 100;
+  --wavefont-rond: 0;
   --wavefont-yaln: 0;
   --secondary: rgb(0 0 0 / 33%);
   --primary: black;
@@ -142,6 +146,14 @@ body {
 
   #status {
     left: -4rem;
+  }
+
+  #error {
+    font-family: sans-serif;
+    font-size: .875rem;
+    color: #999;
+    text-align: center;
+    padding: 2rem 1rem;
   }
 
   #caret-line {

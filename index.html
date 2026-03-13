@@ -107,10 +107,17 @@
                 accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
                 :onchange="async e => {
                   loading = 'Decoding'
+                  error = null
                   const file = e.target.files[0]
-                  const meta = await api.loadFile(file, (str) => (waveform += str, total = cleanText(waveform).length))
-                  duration = meta.duration
-                  await api.saveFile(file, { name: file.name, duration: meta.duration });
+                  try {
+                    const meta = await api.loadFile(file, (str) => (waveform += str, total = cleanText(waveform).length))
+                    duration = meta.duration
+                    await api.saveFile(file, { name: file.name, duration: meta.duration });
+                  } catch(err) {
+                    console.error('Failed to load file:', err)
+                    error = err.message || 'Failed to decode audio'
+                    waveform = ''
+                  }
                   loading = false
                 }" />
           <label for="file" title="Open file">
@@ -128,12 +135,14 @@
               <button class="file-button"
                 :onclick="async e => {
                   loading = 'Loading'
+                  error = null
                   try {
                     const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total = cleanText(waveform).length))
                     duration = meta.duration
                   } catch(err) {
                     console.error('Failed to load file:', err)
-                    alert('Failed to load file: ' + err.message)
+                    error = err.message || 'Failed to load file'
+                    waveform = ''
                   }
                   loading = false
                 }"
@@ -146,7 +155,10 @@
         </div>
       </div>
 
-      <div id="status" :if="!waveform.length" :text="loading || ''">
+      <div id="status" :if="!waveform.length && !error" :text="loading || ''">
+      </div>
+
+      <div id="error" :if="error" :text="error">
       </div>
 
     </div>
