@@ -31,12 +31,11 @@ body {
 
 .wavefont {
   display: block;
-  --wght: 25;
   font-family: wavefont;
-  /* letter-spacing: 1.5ch; */
   font-size: var(--wavefont-size, 50px);
   line-height: var(--wavefont-lh);
-  font-variation-settings: 'wght' var(--wght), 'ROND' 100, 'YALN' 0;
+  letter-spacing: var(--wavefont-spacing, 0px);
+  font-variation-settings: 'wght' var(--wavefont-wght, 25), 'ROND' var(--wavefont-rond, 100), 'YALN' var(--wavefont-yaln, 0);
   text-rendering: optimizeSpeed;
   font-smooth: grayscale;
   -webkit-font-smoothing: grayscale;
@@ -60,8 +59,11 @@ body {
   flex-direction: column;
   /* --wavefont-size: max(4rem, min(10.8vw, 6rem)); */
   --wavefont-size: 50px;
-  /* Value is special: it doesn't break in mobiles */
   --wavefont-lh: calc(var(--wavefont-size) * 1.4);
+  --wavefont-spacing: 0px;
+  --wavefont-wght: 25;
+  --wavefont-rond: 100;
+  --wavefont-yaln: 0;
   --secondary: rgb(0 0 0 / 33%);
   --primary: black;
 

@@ -40,17 +40,6 @@
           :fx.resize="() => { const ro = new ResizeObserver(measureWaveform); ro.observe(refs.editarea); return () => ro.disconnect(); }"
           :ondblclick.prevent
           :onbeforeinput.prevent
-          :onmousedown.prevent="e => {
-            refs.editarea.focus()
-            let rect = refs.editarea.getBoundingClientRect()
-            let lineH = parseFloat(getComputedStyle(refs.editarea).lineHeight)
-            let charW = rect.width / (cols || 1)
-            let row = Math.floor((e.clientY - rect.top) / lineH)
-            let col = Math.round((e.clientX - rect.left) / charW)
-            col = Math.max(0, Math.min(col, cols || 0))
-            let offset = Math.max(0, Math.min(row * (cols || 0) + col, total))
-            selection.set(offset)
-          }"
           :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
             let sel = selection.get()
             // skip unchanged

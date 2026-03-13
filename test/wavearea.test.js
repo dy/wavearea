@@ -84,6 +84,45 @@ test.describe('wavearea', () => {
     expect(inEditarea).toBe(true);
   });
 
+  test('drag to select text creates non-collapsed selection', async ({ page }) => {
+    // widen chars via letter-spacing so Playwright can drag-select
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+    });
+    await loadFile(page);
+
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    let editarea = page.locator('#editarea');
+    let box = await editarea.boundingBox();
+
+    // drag from ~20% to ~60% of the first line
+    let y = box.y + 15;
+    let startX = box.x + box.width * 0.2;
+    let endX = box.x + box.width * 0.6;
+
+    await page.mouse.move(startX, y);
+    await page.mouse.down();
+    await page.mouse.move(endX, y, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    let sel = await page.evaluate(() => {
+      let s = window.getSelection();
+      return {
+        collapsed: s.isCollapsed,
+        text: s.toString().length,
+        inEditarea: s.rangeCount > 0 && document.querySelector('#editarea').contains(s.anchorNode)
+      };
+    });
+
+    expect(errors).toEqual([]);
+    expect(sel.collapsed).toBe(false);
+    expect(sel.text).toBeGreaterThan(0);
+    expect(sel.inEditarea).toBe(true);
+  });
+
   test('clicking near start of waveform does not throw', async ({ page }) => {
     await loadFile(page);
 
