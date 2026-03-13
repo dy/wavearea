@@ -37,7 +37,7 @@
         <div id="editarea" class="wavefont" contenteditable inputmode="none"
           :ref="refs.editarea"
           :class="{'playing':playing}"
-          :fx.resize="() => { const ro = new ResizeObserver(measureWaveform); ro.observe(refs.editarea); return () => ro.disconnect(); }"
+          :fx.resize="() => { const ro = new ResizeObserver(() => { if (!loading) measureWaveform() }); ro.observe(refs.editarea); return () => ro.disconnect(); }"
           :ondblclick.prevent
           :onbeforeinput.prevent
           :onclick:onkeyup:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
@@ -76,10 +76,12 @@
           <a :each="_, i in lines" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
         </div>
 
-        <div id="floater" :ref="refs.floater" :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
+        <div id="floater" :ref="refs.floater"
+          :class="{'loaded': waveform && !loading}"
+          :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
           <button id="play"
             :ref="refs.playButton"
-            :class="{'loading':loading}" :hidden="!waveform.length"
+            :hidden="!waveform || loading"
             :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
             :onclick:onkeydown.document.space..onclick:onkeydown.document.space="() => play()"
             tabindex="-1">
@@ -108,15 +110,24 @@
                 :onchange="async e => {
                   loading = 'Decoding'
                   error = null
+                  waveform = ''
+                  total = 0
                   const file = e.target.files[0]
                   try {
-                    const meta = await api.loadFile(file, (str) => (waveform += str, total = cleanText(waveform).length))
+                    const meta = await api.loadFile(file, (str) => {
+                      waveform += str
+                      total += cleanText(str).length
+                    })
                     duration = meta.duration
+                    sampleRate = meta.sampleRate
+                    channels = meta.channels
+                    measureWaveform()
                     await api.saveFile(file, { name: file.name, duration: meta.duration });
                   } catch(err) {
                     console.error('Failed to load file:', err)
                     error = err.message || 'Failed to decode audio'
                     waveform = ''
+                    total = 0
                   }
                   loading = false
                 }" />
@@ -136,13 +147,19 @@
                 :onclick="async e => {
                   loading = 'Loading'
                   error = null
+                  waveform = ''
+                  total = 0
                   try {
-                    const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total = cleanText(waveform).length))
+                    const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total += cleanText(str).length))
                     duration = meta.duration
+                    sampleRate = meta.sampleRate
+                    channels = meta.channels
+                    measureWaveform()
                   } catch(err) {
                     console.error('Failed to load file:', err)
                     error = err.message || 'Failed to load file'
                     waveform = ''
+                    total = 0
                   }
                   loading = false
                 }"

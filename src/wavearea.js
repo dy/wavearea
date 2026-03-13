@@ -4,8 +4,14 @@
 import sprae from 'sprae';
 import { selection, cleanText } from './selection.js';
 import api from './api.js';
+import createPlayer from './player.js';
 
 history.scrollRestoration = 'manual'
+
+const BLOCK_SIZE = 1024
+
+// player instance — created after first file load
+let player = null
 
 
 // UI
@@ -28,7 +34,10 @@ export let state = sprae(wavearea, {
 
   // audio
   duration: 0, // duration (received from backend)
+  sampleRate: 44100,
+  channels: 1,
   volume: 1,
+  speed: 1,
 
   // total characters in waveform (excluding combining marks)
   total: 0,
@@ -38,6 +47,11 @@ export let state = sprae(wavearea, {
   loop: false,
   clipEnd: null,
 
+  // playback interpolation
+  _playStartBlock: 0,
+  _playStartTime: 0,
+  _rafId: null,
+
   // caret position
   caretOffscreen: 0, // +1 if caret is below, -1 above viewport
   caretOffset: 0, // current caret offset, characters
@@ -45,13 +59,82 @@ export let state = sprae(wavearea, {
   caretY: 0,
   caretX: 0, // caret row coordinate
 
-  // start playback — stub, replaced in Phase 1 with playback engine
-  // returns stop function (sprae sequence pattern: start..stop)
+  // start/stop playback — sprae sequence pattern: start..stop
   play() {
-    this.playing = true;
-    // TODO: Phase 1 — wire playback engine
+    if (!player) {
+      player = createPlayer(
+        (from, to) => api.getWindow(from, to),
+        { sampleRate: this.sampleRate, channels: this.channels }
+      )
+    }
+
+    let fromBlock = this.clipStart || this.caretOffset
+    let toBlock = this.clipEnd != null ? this.clipEnd : this.total
+    let looping = this.loop
+
+    player.setVolume(this.volume)
+    player.setSpeed(this.speed)
+
+    player.onstarted = ({ block, time }) => {
+      this._playStartBlock = block
+      this._playStartTime = time
+      this._startCaretAnimation()
+    }
+    player.onended = () => {
+      this.playing = false
+      this._stopCaretAnimation()
+    }
+
+    player.play(fromBlock, toBlock, looping)
+    this.playing = true
+
     return () => {
-      this.playing = false;
+      player.pause()
+      this.playing = false
+      this._stopCaretAnimation()
+    }
+  },
+
+  _startCaretAnimation() {
+    let animate = () => {
+      if (!this.playing || !player) return
+      let elapsed = player.currentTime - this._playStartTime
+      let blocksMoved = Math.floor(elapsed * this.sampleRate / BLOCK_SIZE * this.speed)
+      let block = this._playStartBlock + blocksMoved
+
+      // wrap caret on loop
+      if (player.loop && player.loopEnd) {
+        let loopLen = player.loopEnd - player.loopStart
+        if (loopLen > 0 && block >= player.loopEnd) {
+          block = player.loopStart + ((block - player.loopStart) % loopLen)
+          // reset interpolation base so elapsed stays correct
+          this._playStartBlock = player.loopStart
+          this._playStartTime = player.currentTime
+        }
+      }
+
+      if (block !== this.caretOffset && block >= 0 && block < this.total) {
+        this.caretOffset = block
+        let sel = this.selection.set(block)
+        if (sel?.range) {
+          let rects = sel.range.getClientRects()
+          let rect = rects[rects.length - 1]
+          if (rect) {
+            this.caretX = rect.right
+            this.caretY = rect.top
+            this.caretLine = Math.floor(block / (this.cols || 1))
+          }
+        }
+      }
+      this._rafId = requestAnimationFrame(animate)
+    }
+    this._rafId = requestAnimationFrame(animate)
+  },
+
+  _stopCaretAnimation() {
+    if (this._rafId) {
+      cancelAnimationFrame(this._rafId)
+      this._rafId = null
     }
   },
 

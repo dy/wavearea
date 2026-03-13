@@ -176,7 +176,12 @@ body {
     height: 0;
     display: flex;
     line-height: 0;
-    /* margin-top: calc(-1*var(--wavefont-lh)); */
+    opacity: 0;
+    transition: opacity .3s ease;
+
+    &.loaded {
+      opacity: 1;
+    }
 
     #play {
       background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%);

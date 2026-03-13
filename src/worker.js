@@ -54,6 +54,34 @@ function samplesToWaveform(samples, blockSize = BLOCK_SIZE) {
 
 
 Comlink.expose({
+  // return PCM window for playback: [Float32Array per channel]
+  // fromSample/toSample are absolute sample indices
+  getWindow(fromSample = 0, toSample) {
+    if (!chunks.length || !chunks[0].length) return null
+    let total = totalSamples
+    if (toSample == null || toSample > total) toSample = total
+    if (fromSample >= toSample) return null
+
+    let len = toSample - fromSample
+    let result = Array.from({ length: channelCount }, () => new Float32Array(len))
+
+    for (let ch = 0; ch < channelCount; ch++) {
+      let pos = 0
+      for (let chunk of chunks[ch]) {
+        let chunkEnd = pos + chunk.length
+        if (chunkEnd > fromSample && pos < toSample) {
+          let srcStart = Math.max(0, fromSample - pos)
+          let srcEnd = Math.min(chunk.length, toSample - pos)
+          let dstStart = Math.max(0, pos + srcStart - fromSample)
+          result[ch].set(chunk.subarray(srcStart, srcEnd), dstStart)
+        }
+        pos = chunkEnd
+      }
+    }
+
+    return Comlink.transfer(result, result.map(a => a.buffer))
+  },
+
   // decode file, send waveform strings progressively
   // cb.onWaveform(waveformStr) — called per chunk
   // cb.onError(e) — on decode error

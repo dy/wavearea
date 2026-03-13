@@ -27,6 +27,11 @@ const api = {
     return result;
   },
 
+  // get PCM window for playback [Float32Array per channel]
+  getWindow(fromSample, toSample) {
+    return worker.getWindow(fromSample, toSample)
+  },
+
   async saveFile(file, meta) {
     await store.addFile(file, meta);
   },

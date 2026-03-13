@@ -388,3 +388,295 @@ test.describe('wavearea', () => {
   });
 
 });
+
+
+// Web Audio spy — inject before page load to capture all AudioContext calls
+const WEB_AUDIO_SPY = () => {
+  window.__audioSpy = { calls: [], nodes: [], ctx: null };
+
+  const OrigAudioContext = window.AudioContext || window.webkitAudioContext;
+  window.AudioContext = function(...args) {
+    let ctx = new OrigAudioContext(...args);
+    window.__audioSpy.ctx = ctx;
+    window.__audioSpy.calls.push({ method: 'new AudioContext', args: args[0] || {} });
+
+    // spy on createBufferSource
+    let origCreateBufferSource = ctx.createBufferSource.bind(ctx);
+    ctx.createBufferSource = function() {
+      let source = origCreateBufferSource();
+      let node = { type: 'BufferSource', started: false, stopped: false, loop: false, playbackRate: 1, buffer: null };
+      window.__audioSpy.nodes.push(node);
+
+      let origStart = source.start.bind(source);
+      source.start = function(...a) {
+        node.started = true;
+        node.startArgs = a;
+        window.__audioSpy.calls.push({ method: 'source.start', args: a });
+        return origStart(...a);
+      };
+
+      let origStop = source.stop.bind(source);
+      source.stop = function(...a) {
+        node.stopped = true;
+        window.__audioSpy.calls.push({ method: 'source.stop', args: a });
+        return origStop(...a);
+      };
+
+      // track property changes
+      let origBuffer = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(source), 'buffer');
+      Object.defineProperty(source, 'buffer', {
+        get() { return origBuffer.get.call(this); },
+        set(v) {
+          node.buffer = { channels: v?.numberOfChannels, length: v?.length, sampleRate: v?.sampleRate };
+          window.__audioSpy.calls.push({ method: 'source.buffer=', buffer: node.buffer });
+          origBuffer.set.call(this, v);
+        }
+      });
+
+      let origLoop = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(source), 'loop');
+      Object.defineProperty(source, 'loop', {
+        get() { return origLoop.get.call(this); },
+        set(v) {
+          node.loop = v;
+          window.__audioSpy.calls.push({ method: 'source.loop=', value: v });
+          origLoop.set.call(this, v);
+        }
+      });
+
+      return source;
+    };
+
+    // spy on createGain
+    let origCreateGain = ctx.createGain.bind(ctx);
+    ctx.createGain = function() {
+      let gain = origCreateGain();
+      window.__audioSpy.calls.push({ method: 'createGain' });
+      return gain;
+    };
+
+    // spy on createBuffer
+    let origCreateBuffer = ctx.createBuffer.bind(ctx);
+    ctx.createBuffer = function(...a) {
+      window.__audioSpy.calls.push({ method: 'createBuffer', args: a });
+      return origCreateBuffer(...a);
+    };
+
+    return ctx;
+  };
+  if (window.webkitAudioContext) window.webkitAudioContext = window.AudioContext;
+};
+
+
+test.describe('bufferPlayer backend', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(WEB_AUDIO_SPY);
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+    await loadFile(page);
+  });
+
+  test('play creates AudioContext, GainNode, and starts source', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+
+    expect(errors).toEqual([]);
+    expect(spy.calls.some(c => c.method === 'new AudioContext')).toBe(true);
+    expect(spy.calls.some(c => c.method === 'createGain')).toBe(true);
+    expect(spy.calls.some(c => c.method === 'source.start')).toBe(true);
+
+    let bufferCall = spy.calls.find(c => c.method === 'source.buffer=');
+    expect(bufferCall).toBeTruthy();
+    expect(bufferCall.buffer.length).toBeGreaterThan(0);
+    expect(bufferCall.buffer.sampleRate).toBeGreaterThan(0);
+  });
+
+  test('pause stops the source node', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+
+    expect(errors).toEqual([]);
+    expect(spy.calls.some(c => c.method === 'source.stop')).toBe(true);
+    expect(spy.nodes[0]?.started).toBe(true);
+    expect(spy.nodes[0]?.stopped).toBe(true);
+  });
+
+  test('buffer duration matches fixture (~3s)', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+    let bufferCall = spy.calls.find(c => c.method === 'source.buffer=');
+
+    expect(errors).toEqual([]);
+    let durationSec = bufferCall.buffer.length / bufferCall.buffer.sampleRate;
+    expect(durationSec).toBeGreaterThan(2);
+    expect(durationSec).toBeLessThan(5);
+  });
+
+  test('caret advances during playback', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(100);
+
+    let startOffset = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(1500);
+
+    let endOffset = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    expect(errors).toEqual([]);
+    expect(endOffset).toBeGreaterThan(startOffset);
+
+    await page.keyboard.press('Space');
+  });
+
+  test('play → pause → play creates new source nodes', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+
+    expect(errors).toEqual([]);
+    let startCalls = spy.calls.filter(c => c.method === 'source.start');
+    expect(startCalls.length).toBeGreaterThanOrEqual(2);
+
+    await page.keyboard.press('Space');
+  });
+
+  test('play button triggers same engine', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#play').click();
+    await page.waitForTimeout(500);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+
+    expect(errors).toEqual([]);
+    expect(spy.calls.some(c => c.method === 'new AudioContext')).toBe(true);
+    expect(spy.calls.some(c => c.method === 'source.start')).toBe(true);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#editarea.playing')).toHaveCount(0);
+  });
+});
+
+
+// Force <audio> fallback by removing AudioContext before page load
+const FORCE_AUDIO_EL = () => {
+  delete window.AudioContext;
+  delete window.webkitAudioContext;
+
+  // spy on <audio> element
+  window.__audioElSpy = { plays: 0, pauses: 0, src: null, loop: false, volume: 1 };
+  let origPlay = HTMLAudioElement.prototype.play;
+  HTMLAudioElement.prototype.play = function() {
+    window.__audioElSpy.plays++;
+    window.__audioElSpy.src = this.src;
+    window.__audioElSpy.loop = this.loop;
+    window.__audioElSpy.volume = this.volume;
+    return origPlay.call(this);
+  };
+  let origPause = HTMLAudioElement.prototype.pause;
+  HTMLAudioElement.prototype.pause = function() {
+    window.__audioElSpy.pauses++;
+    return origPause.call(this);
+  };
+};
+
+test.describe('audioElPlayer backend', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(FORCE_AUDIO_EL);
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+    await loadFile(page);
+  });
+
+  test('play creates WAV blob and calls audio.play()', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(800);
+
+    let spy = await page.evaluate(() => window.__audioElSpy);
+
+    expect(errors).toEqual([]);
+    expect(spy.plays).toBeGreaterThanOrEqual(1);
+    // src should be a blob URL
+    expect(spy.src).toMatch(/^blob:/);
+  });
+
+  test('pause calls audio.pause()', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(800);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    let spy = await page.evaluate(() => window.__audioElSpy);
+
+    expect(errors).toEqual([]);
+    expect(spy.pauses).toBeGreaterThanOrEqual(1);
+  });
+
+  test('UI state toggles correctly', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(800);
+
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    await expect(page.locator('#editarea.playing')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+});
