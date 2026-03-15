@@ -1,0 +1,157 @@
+<div class="container"
+  :ref="refs.container"
+  :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
+  :style="{
+    '--cols': cols,
+    '--carety': (caretY - (refs.editarea?.getBoundingClientRect().top ?? 0)) + 'px',
+    '--caretx': (caretX - (refs.editarea?.getBoundingClientRect().left ?? 0)) + 'px'
+  }">
+  <div id="waveform"
+    :ref="refs.waveform"
+    :if="waveform">
+    <span id="caret-line"></span>
+
+    <div id="editarea" class="wavefont" :contenteditable="!loading" inputmode="none"
+      :ref="refs.editarea"
+      :class="{'playing':playing}"
+      :style="{'user-select': loading ? 'none' : null, 'pointer-events': loading ? 'none' : null}"
+      :resize.throttle-raf="() => measureWaveform()"
+      :ondblclick.prevent
+      :onbeforeinput.prevent
+      :onkeydown.space.prevent="false"
+      :onclick:onkeyup.arrow:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
+        let sel = selection.get()
+        if (!sel || (sel.start === caretOffset && sel.collapsed)) return
+
+        caretOffset = sel.start;
+        caretLine = Math.floor(sel.end / cols);
+
+        let rects = sel.range.getClientRects()
+        let rect = rects[rects.length - 1]
+        if (!rect) return
+        caretX = rect.right
+        caretY = rect.top
+
+        clipStart = caretOffset;
+        if (!playing) {
+          clipEnd = !sel.collapsed ? sel.end : total;
+          loop = !sel.collapsed;
+        }
+      "
+      :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
+      :ondrop.prevent="async e => {
+          let files = e.dataTransfer.files
+          let file = files[0]
+          if (!file.type.startsWith('audio')) return false;
+        }
+      "
+      :text.throttle-raf="waveform">
+    </div>
+
+    <div id="timecodes" :ref="refs.timecodes">
+      <a :each="_, i in lines" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+    </div>
+
+    <div id="floater" :ref="refs.floater"
+      :class="{'loaded': waveform && !loading}"
+      :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
+      <button id="play"
+        :ref="refs.playButton"
+        :hidden="!waveform || loading"
+        :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
+        :onclick:onkeydown.document.space.prevent..onclick:onkeydown.document.space.prevent="() => play()"
+        tabindex="-1">
+        <span class="clickarea"></span>
+        <svg :if="!playing" xmlns="http://www.w3.org/2000/svg"
+            height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+          <path d="M0 0h24v24H0V0z" fill="none" />
+          <path d="M8 5v14l11-7L8 5z" />
+        </svg>
+        <svg :else xmlns="http://www.w3.org/2000/svg"
+            height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+          <path d="M0 0h24v24H0V0z" fill="none" />
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="opener"
+    :if="!waveform && !loading"
+    :scope="{files: [], sortBy: 'date'}"
+    :fx="async () => {files = await api.getFiles({sortBy})}">
+    <nav>
+      <input id="file" type="file"
+            accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
+            :onchange="async e => {
+              loading = 'Decoding'
+              error = null
+              waveform = ''
+              total = 0
+              const file = e.target.files[0]
+              try {
+                const meta = await api.loadFile(file, (str) => {
+                  waveform += str
+                  total += cleanText(str).length
+                  duration = total * 1024 / sampleRate
+                })
+                duration = meta.duration
+                sampleRate = meta.sampleRate
+                channels = meta.channels
+                measureWaveform()
+                await api.saveFile(file, { name: file.name, duration: meta.duration });
+              } catch(err) {
+                console.error('Failed to load file:', err)
+                error = err.message || 'Failed to decode audio'
+                waveform = ''
+                total = 0
+              }
+              loading = false
+            }" />
+      <label for="file" title="Open file">
+        <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </label>
+      <label for="file" title="Open file">
+        <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </label>
+    </nav>
+
+    <div id="files" :if="files.length">
+      <ul>
+        <li :each="fileInfo in files">
+          <button class="file-button"
+            :onclick="async e => {
+              loading = 'Loading'
+              error = null
+              waveform = ''
+              total = 0
+              try {
+                const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total += cleanText(str).length, duration = total * 1024 / sampleRate))
+                duration = meta.duration
+                sampleRate = meta.sampleRate
+                channels = meta.channels
+                measureWaveform()
+              } catch(err) {
+                console.error('Failed to load file:', err)
+                error = err.message || 'Failed to load file'
+                waveform = ''
+                total = 0
+              }
+              loading = false
+            }"
+            :title="`${fileInfo.name} (${(fileInfo.size / 1024 / 1024).toFixed(2)} MB)`">
+            <span class="file-name" :text="fileInfo.name"></span>
+            <span class="file-date" :text="new Date(fileInfo.timestamp).toLocaleDateString()"></span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="status" :if="!waveform.length && !error" :text="loading || ''">
+  </div>
+
+  <div id="error" :if="error" :text="error">
+  </div>
+
+</div>

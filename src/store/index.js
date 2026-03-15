@@ -1,20 +1,19 @@
-// Store factory - creates storage adapter instances
-// Centralizes storage configuration and makes it easy to switch adapters
+// Store factory — creates storage adapter by type
+// Adapters: 'opfs' (default), 'idb', 'memory'
 
 import { OPFSAdapter } from './opfs.js';
+import { IDBAdapter } from './idb.js';
+import { MemoryAdapter } from './memory.js';
 
-/**
- * Create a storage adapter instance
- * @returns {StoreAdapter} Store adapter instance
- */
-export function createStore() {
-  // Currently uses OPFS adapter
-  // Future: could switch based on:
-  // - Feature detection (OPFS availability)
-  // - Configuration/environment
-  // - User preference
-  return new OPFSAdapter();
+const adapters = { opfs: OPFSAdapter, idb: IDBAdapter, memory: MemoryAdapter }
+
+export function createStore(type = 'opfs') {
+  let Adapter = adapters[type]
+  if (!Adapter) throw Error('Unknown store type: ' + type)
+  return new Adapter()
 }
 
-// Export singleton instance for convenience
-export default createStore();
+export { OPFSAdapter, IDBAdapter, MemoryAdapter }
+
+// default singleton
+export default createStore()

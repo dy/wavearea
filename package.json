@@ -4,8 +4,8 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=.",
-    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist",
+    "start": "esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --external:@audio/*",
+    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --external:@audio/*",
     "test": "npx playwright test"
   },
   "repository": {
@@ -28,9 +28,10 @@
   },
   "homepage": "https://github.com/audio-lab/wavearea#readme",
   "dependencies": {
-    "codec-parser": "^2.5.0",
+    "aac-decode": "^1.0.1",
+    "audio-decode": "^3.1.2",
     "comlink": "^4.4.2",
-    "sprae": "^12.4.15",
+    "sprae": "^13.0.1",
     "wavefont": "^3.5.0"
   },
   "devDependencies": {

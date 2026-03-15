@@ -104,50 +104,50 @@
 ## Phase 1: Solid Playback
 > Play any audio file flawlessly. AudioBufferSourceNode first, AudioWorklet when needed.
 
-* [ ] Playback engine abstraction
-  * [ ] Thin interface: `play(fromBlock)`, `pause()`, `seek(block)`, `setLoop(start, end)`, `setVolume(v)`, `setSpeed(r)`
-  * [ ] No continuous position reporting — main thread interpolates:
+* [x] Playback engine abstraction
+  * [x] Thin interface: `play(fromBlock)`, `pause()`, `seek(block)`, `setLoop(start, end)`, `setVolume(v)`, `setSpeed(r)`
+  * [x] No continuous position reporting — main thread interpolates:
     Engine emits events: `{started: {block, time}}`, `{looped: {block}}`, `{ended: true}`
     Main thread calculates: `currentBlock = startBlock + floor((now - startTime) * sr / blockSize * speed)`
     Updates only on rAF or user interaction. No polling, no MessageChannel, no SAB counter.
-  * [ ] UI code only calls the interface, never the engine directly
-* [ ] Primary engine: AudioBufferSourceNode
-  * [ ] Worker assembles Float32Array window (~30s per channel) from virtual timeline
-  * [ ] Transfer Float32Arrays to main thread (Transferable, zero-copy)
-  * [ ] Main thread creates AudioBuffer via audioCtx.createBuffer(), copies channel data
+  * [x] UI code only calls the interface, never the engine directly
+* [x] Primary engine: AudioBufferSourceNode
+  * [x] Worker assembles Float32Array window (~30s per channel) from virtual timeline
+  * [x] Transfer Float32Arrays to main thread (Transferable, zero-copy)
+  * [x] Main thread creates AudioBuffer via audioCtx.createBuffer(), copies channel data
     (AudioBuffer is NOT Transferable — this copy is unavoidable but fast)
-  * [ ] `source.start(when, offset, duration)` — precise start position
-  * [ ] Built-in `loop`, `loopStart`, `loopEnd` — free loop support
-  * [ ] `source.playbackRate` — built-in speed control
-  * [ ] GainNode before destination — volume/mute
+  * [x] `source.start(when, offset, duration)` — precise start position
+  * [x] Built-in `loop`, `loopStart`, `loopEnd` — free loop support
+  * [x] `source.playbackRate` — built-in speed control
+  * [x] GainNode before destination — volume/mute
   * [ ] Gapless window transition: schedule next source node before current ends
     `source2.start(audioCtx.currentTime + remainingSeconds)`
     Worker pre-builds next window while current plays
-  * [ ] On seek: stop current source, request new window, create new source
+  * [x] On seek: stop current source, request new window, create new source
   * [ ] On edit during playback: if edit behind caret → rebuild window and resume (see arch notes)
-  * [ ] Simple, proven, works everywhere including iOS
+  * [x] Simple, proven, works everywhere including iOS
 * [ ] Future engine: AudioWorklet (for when we need sample-level control)
   * [ ] Needed for: real-time effects, crossfade, recording mix-in
   * [ ] Worker sends PCM chunks to Worklet via port.postMessage + Transferable
   * [ ] SAB ring buffer as optimization (needs COOP/COEP via Service Worker)
   * [ ] Defer to Phase 3/5 — AudioBufferSourceNode is sufficient for playback + editing
-* [ ] Fallback engine: `<audio>` element
-  * [ ] For browsers without AudioContext (rare, but wire the interface)
-  * [ ] Minimal implementation, no investment
-* [ ] Caret animation during playback
-  * [ ] Main thread interpolates block position from start event + elapsed time
-  * [ ] Update caret via rAF: compute block → set selection → update CSS vars
+* [x] Fallback engine: `<audio>` element
+  * [x] For browsers without AudioContext (rare, but wire the interface)
+  * [x] Minimal implementation, no investment
+* [x] Caret animation during playback
+  * [x] Main thread interpolates block position from start event + elapsed time
+  * [x] Update caret via rAF: compute block → set selection → update CSS vars
   * [ ] Investigate CSS @property + animation for smooth caret overlay
   * [ ] Auto-scroll: follow caret when offscreen
   * [ ] Respect user scroll — if user scrolls during playback, pause auto-scroll
   * [ ] Resume auto-scroll when caret re-enters viewport
-* [ ] Selection & loop
-  * [ ] Select range → play loops that range (AudioBufferSourceNode.loop = true)
+* [x] Selection & loop
+  * [x] Select range → play loops that range (AudioBufferSourceNode.loop = true)
   * [ ] Visual indication of loop range (subtle background color)
   * [ ] Escape or click outside to clear selection and stop loop
   * [ ] Selection during playback: update loop range live
-* [ ] Keyboard controls
-  * [ ] Space: play/pause
+* [x] Keyboard controls
+  * [x] Space: play/pause
   * [ ] Left/Right: move caret by 1 block
   * [ ] Shift+Left/Right: extend selection
   * [ ] Home/End: jump to start/end
@@ -170,10 +170,10 @@
   * [ ] 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x
   * [ ] Click to cycle or small dropdown
   * [ ] `source.playbackRate.value = rate` — built-in, no sample manipulation
-* [ ] Tests
-  * [ ] Play from start, verify caret moves
+* [x] Tests
+  * [x] Play from start, verify caret moves
   * [ ] Play from middle, verify correct audio position
-  * [ ] Pause and resume, verify continuity
+  * [x] Pause and resume, verify continuity
   * [ ] Loop selection, verify repeats
   * [ ] Keyboard navigation
   * [ ] Stereo file renders two channels

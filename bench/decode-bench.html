@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Decode Benchmark</title>
+<style>
+* { box-sizing: border-box; margin: 0 }
+body { font: 14px/1.6 monospace; padding: 2em; background: #111; color: #ccc }
+h1 { font-size: 1.2em; margin-bottom: 1em; color: #fff }
+table { border-collapse: collapse; width: 100%; margin-top: 1em }
+th, td { text-align: left; padding: .4em .8em; border: 1px solid #333 }
+th { background: #222; color: #fff }
+td.num { text-align: right; font-variant-numeric: tabular-nums }
+tr.best td { background: #1a2e1a }
+tr.worst td { background: #2e1a1a }
+#log { margin-top: 1em; white-space: pre-wrap; font-size: 12px; color: #888; max-height: 300px; overflow: auto }
+button { background: #333; color: #fff; border: 1px solid #555; padding: .4em 1.2em; cursor: pointer; margin-right: .5em }
+button:hover { background: #444 }
+button:disabled { opacity: .4 }
+</style>
+</head>
+<body>
+<h1>Audio Decode Benchmark</h1>
+<p>Select MP3 file:</p>
+<input type="file" id="fileInput" accept="audio/*">
+<button id="runBtn" disabled>Run</button>
+<button id="runAllBtn" disabled>3x Average</button>
+<div id="fileInfo"></div>
+<table id="results" hidden>
+  <thead>
+    <tr><th>Decoder</th><th>Total (ms)</th><th>First chunk (ms)</th><th>Samples</th><th>Rate</th><th>Ch</th><th>Realtime x</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div id="log"></div>
+<script type="module" src="bench.js"></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: 'npx esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --serve=8777',
+    command: 'npx esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --serve=8777 --external:@audio/*',
     port: 8777,
     reuseExistingServer: false,
   },

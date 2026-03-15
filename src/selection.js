@@ -44,14 +44,18 @@ export const selection = {
       }
     }
 
-    // Safari doesn't support reusing range
-    s.removeAllRanges()
-    let range = new Range()
-    range.setStart(textNode, rawStart)
-    range.setEnd(textNode, rawEnd)
-    s.addRange(range)
+    if (start === end) {
+      // collapsed: use collapse() to avoid removeAllRanges flicker
+      s.collapse(textNode, rawStart)
+    } else {
+      s.removeAllRanges()
+      let range = new Range()
+      range.setStart(textNode, rawStart)
+      range.setEnd(textNode, rawEnd)
+      s.addRange(range)
+    }
 
-    return { start, end, collapsed: start === end, range: s.getRangeAt(0) }
+    return { start, end, collapsed: start === end, range: s.rangeCount ? s.getRangeAt(0) : null }
   }
 }
 

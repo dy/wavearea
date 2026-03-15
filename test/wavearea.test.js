@@ -385,6 +385,13 @@ test.describe('wavearea', () => {
     // first timecode should be 0:00
     let first = await timecodes.first().textContent();
     expect(first).toBe('0:00');
+
+    // no timecode should contain Infinity or NaN
+    let allText = await timecodes.allTextContents();
+    for (let t of allText) {
+      expect(t).not.toContain('Infinity');
+      expect(t).not.toContain('NaN');
+    }
   });
 
 });
@@ -557,6 +564,105 @@ test.describe('bufferPlayer backend', () => {
     await page.keyboard.press('Space');
   });
 
+  test('play → stop → play resumes from caret, not from original position', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // click near start
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(100);
+
+    let startOffset = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    // play for 1.5s to advance caret
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(1500);
+
+    // stop
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+
+    let stoppedOffset = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+    expect(stoppedOffset).toBeGreaterThan(startOffset);
+
+    // play again — should start from stopped position, not from original
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+
+    let resumedOffset = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    expect(errors).toEqual([]);
+    // caret should be past the stopped position, not back at startOffset
+    expect(resumedOffset).toBeGreaterThanOrEqual(stoppedOffset);
+
+    await page.keyboard.press('Space');
+  });
+
+  test('quick double-space does not select or loop', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(100);
+
+    // rapid space: play then stop within 100ms
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(50);
+    await page.keyboard.up('Space');
+    await page.waitForTimeout(50);
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(50);
+    await page.keyboard.up('Space');
+    await page.waitForTimeout(300);
+
+    // should not be playing (stopped by second space)
+    await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+    // selection should be collapsed (no character selected)
+    let sel = await page.evaluate(() => {
+      let s = window.getSelection();
+      return { collapsed: s.isCollapsed, text: s.toString().length };
+    });
+    expect(sel.collapsed).toBe(true);
+    expect(sel.text).toBe(0);
+
+    // internal loop state should be false
+    let loopState = await page.evaluate(() => {
+      // access sprae state through the element
+      let el = document.querySelector('#wavearea');
+      return { loop: el._s?.loop ?? null, clipEnd: el._s?.clipEnd ?? null };
+    });
+
+    // play again — should play normally from near start, not loop a fragment
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(800);
+
+    // verify caret is advancing (not stuck looping a single char)
+    let offset1 = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+    await page.waitForTimeout(500);
+    let offset2 = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    expect(errors).toEqual([]);
+    expect(offset2).toBeGreaterThan(offset1);
+
+    await page.keyboard.press('Space');
+  });
+
   test('play → pause → play creates new source nodes', async ({ page }) => {
     let errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -595,6 +701,72 @@ test.describe('bufferPlayer backend', () => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(300);
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
+  });
+});
+
+
+test.describe('saved file', () => {
+  test('opens saved file from OPFS and plays without errors', async ({ page }) => {
+    // addInitScript persists across reloads
+    await page.addInitScript(WEB_AUDIO_SPY);
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // 1. Load file via input — this saves to OPFS
+    await loadFile(page);
+    expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
+
+    // 2. Reload page — opener should show with saved file
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
+
+    // wait for files list to populate
+    let fileBtn = page.locator('#files .file-button').first();
+    await fileBtn.waitFor({ state: 'visible', timeout: 10000 });
+
+    // 3. Click saved file — should decode and render waveform
+    await fileBtn.click();
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#editarea');
+      return el && el.textContent.length > 10;
+    }, { timeout: 15000 });
+
+    expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
+
+    // 4. Timecodes must be valid (not Infinity:NaN)
+    let timecodes = page.locator('#timecodes a');
+    let tcCount = await timecodes.count();
+    expect(tcCount).toBeGreaterThan(0);
+    let allTc = await timecodes.allTextContents();
+    expect(allTc[0]).toBe('0:00');
+    for (let t of allTc) {
+      expect(t).not.toContain('Infinity');
+      expect(t).not.toContain('NaN');
+    }
+
+    // 5. Play — sampleRate must be valid, no errors
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    let spy = await page.evaluate(() => window.__audioSpy);
+    expect(spy.calls.some(c => c.method === 'source.start')).toBe(true);
+    let bufferCall = spy.calls.find(c => c.method === 'source.buffer=');
+    expect(bufferCall).toBeTruthy();
+    expect(bufferCall.buffer.length).toBeGreaterThan(0);
+    expect(bufferCall.buffer.sampleRate).toBeGreaterThanOrEqual(3000);
+
+    // stop playback
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+    await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+    expect(errors).toEqual([]);
   });
 });
 
@@ -680,3 +852,285 @@ test.describe('audioElPlayer backend', () => {
     expect(errors).toEqual([]);
   });
 });
+
+
+// --- Playback engine contract: both backends must satisfy the same interface ---
+
+function playbackContractTests(backendName, initScript) {
+  test.describe(`${backendName} — engine contract`, () => {
+    test.beforeEach(async ({ page }) => {
+      if (initScript) await page.addInitScript(initScript);
+      await page.goto('/');
+      await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+      await loadFile(page);
+    });
+
+    test('play → playing state → pause → not playing', async ({ page }) => {
+      let errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+
+      await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+      await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(500);
+      await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(300);
+      await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+      expect(errors).toEqual([]);
+    });
+
+    test('play → stop → play resumes from stopped position', async ({ page }) => {
+      let errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+
+      await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+      await page.waitForTimeout(100);
+
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(1000);
+
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(200);
+
+      let stoppedOffset = await page.evaluate(() => {
+        let s = window.getSelection();
+        return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+      });
+
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(500);
+
+      let resumedOffset = await page.evaluate(() => {
+        let s = window.getSelection();
+        return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+      });
+
+      expect(errors).toEqual([]);
+      expect(resumedOffset).toBeGreaterThanOrEqual(stoppedOffset);
+
+      await page.keyboard.press('Space');
+    });
+
+    test('play button works same as space', async ({ page }) => {
+      let errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+
+      await page.locator('#play').click();
+      await page.waitForTimeout(500);
+      await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+      await page.locator('#play').click();
+      await page.waitForTimeout(300);
+      await expect(page.locator('#editarea.playing')).toHaveCount(0);
+
+      expect(errors).toEqual([]);
+    });
+  });
+}
+
+// Force worklet backend via engine config
+const FORCE_WORKLET = () => {
+  window.__playerEngine = 'worklet';
+};
+
+playbackContractTests('bufferPlayer', WEB_AUDIO_SPY);
+playbackContractTests('audioElPlayer', FORCE_AUDIO_EL);
+playbackContractTests('workletPlayer', FORCE_WORKLET);
+
+
+// --- Decode layer: format detection and OPFS ---
+
+test.describe('decode layer', () => {
+  test('decodes MP3 from file input (MIME type path)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await loadFile(page);
+    expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
+    expect(errors).toEqual([]);
+  });
+
+  test('decodes saved file from OPFS (header detection, no MIME)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // save file to OPFS first
+    await loadFile(page);
+    let originalLen = (await page.locator('#editarea').textContent()).length;
+
+    // reload — OPFS file has empty MIME type, uses header detection
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
+
+    let fileBtn = page.locator('#files .file-button').first();
+    await fileBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await fileBtn.click();
+
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#editarea');
+      return el && el.textContent.length > 10;
+    }, { timeout: 15000 });
+
+    // should decode to same length as original
+    let opfsLen = (await page.locator('#editarea').textContent()).length;
+    expect(opfsLen).toBe(originalLen);
+    expect(errors).toEqual([]);
+  });
+
+  test('rejects invalid file with error', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+
+    const fileInput = page.locator('input#file');
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      fileInput.dispatchEvent('click')
+    ]);
+    await fileChooser.setFiles(BAD_FIXTURE);
+
+    await expect(page.locator('#error')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#editarea')).not.toBeVisible();
+  });
+});
+
+
+// --- Storage layer: OPFS adapter roundtrip ---
+
+test.describe('storage layer', () => {
+  test('save → list → open roundtrip preserves file', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+
+    await loadFile(page);
+
+    // wait for save to complete (loading becomes false after saveFile)
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#wavearea');
+      return el && !el.querySelector('#status');
+    }, { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
+
+    let fileBtn = page.locator('#files .file-button').first();
+    await fileBtn.waitFor({ state: 'visible', timeout: 10000 });
+
+    // verify metadata
+    let fileName = await fileBtn.locator('.file-name').textContent();
+    expect(fileName).toContain('sine-3s');
+
+    // open saved file
+    await fileBtn.click();
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#editarea');
+      return el && el.textContent.length > 10;
+    }, { timeout: 15000 });
+
+    expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
+  });
+});
+
+
+// --- Storage adapter contract: all adapters must satisfy the same interface ---
+// Uses native ES module imports from servedir (esbuild serves raw src/ files)
+
+function storageContractTests(adapterType) {
+  test.describe(`${adapterType} adapter — storage contract`, () => {
+    test('add → list → get → has → delete → clear', async ({ page }) => {
+      await page.goto('/');
+
+      let result = await page.evaluate(async (type) => {
+        let { createStore } = await import('/src/store/index.js');
+        let store = createStore(type);
+        await store.init();
+        await store.clearAll();
+
+        let blob = new File([new Uint8Array(1024)], 'test.mp3', { type: 'audio/mpeg' });
+
+        // add
+        let fileId = await store.addFile(blob, { name: 'test.mp3' });
+
+        // list
+        let files = await store.getFiles();
+
+        // get
+        let retrieved = await store.getFile(fileId);
+
+        // has
+        let has = await store.hasFile(fileId);
+
+        // delete
+        await store.deleteFile(fileId);
+        let afterDelete = await store.getFiles();
+        let hasAfterDelete = await store.hasFile(fileId);
+
+        // add again then clearAll
+        await store.addFile(blob, { name: 'test2.mp3' });
+        await store.clearAll();
+        let afterClear = await store.getFiles();
+
+        return {
+          fileId: typeof fileId === 'string',
+          listLen: files.length,
+          name: files[0]?.name,
+          size: retrieved.size,
+          has,
+          afterDeleteLen: afterDelete.length,
+          hasAfterDelete,
+          afterClearLen: afterClear.length
+        };
+      }, adapterType);
+
+      expect(result.fileId).toBe(true);
+      expect(result.listLen).toBe(1);
+      expect(result.name).toBe('test.mp3');
+      expect(result.size).toBe(1024);
+      expect(result.has).toBe(true);
+      expect(result.afterDeleteLen).toBe(0);
+      expect(result.hasAfterDelete).toBe(false);
+      expect(result.afterClearLen).toBe(0);
+    });
+
+    test('sorts files by name and date', async ({ page }) => {
+      await page.goto('/');
+
+      let result = await page.evaluate(async (type) => {
+        let { createStore } = await import('/src/store/index.js');
+        let store = createStore(type);
+        await store.init();
+        await store.clearAll();
+
+        await store.addFile(new File([new Uint8Array(10)], 'b.mp3', { type: 'audio/mpeg' }), { name: 'b.mp3' });
+        await new Promise(r => setTimeout(r, 10));
+        await store.addFile(new File([new Uint8Array(20)], 'a.mp3', { type: 'audio/mpeg' }), { name: 'a.mp3' });
+
+        let byDate = await store.getFiles({ sortBy: 'date', order: 'desc' });
+        let byName = await store.getFiles({ sortBy: 'name', order: 'asc' });
+
+        await store.clearAll();
+        return {
+          byDateFirst: byDate[0]?.name,
+          byNameFirst: byName[0]?.name
+        };
+      }, adapterType);
+
+      expect(result.byDateFirst).toBe('a.mp3');
+      expect(result.byNameFirst).toBe('a.mp3');
+    });
+  });
+}
+
+storageContractTests('opfs');
+storageContractTests('idb');
+storageContractTests('memory');
