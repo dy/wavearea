@@ -21,7 +21,8 @@
       :onkeydown.space.prevent="false"
       :onclick:onkeyup.arrow:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
         let sel = selection.get()
-        if (!sel || (sel.start === caretOffset && sel.collapsed)) return
+        if (!sel) return
+        if (!playing && sel.start === caretOffset && sel.collapsed) return
 
         caretOffset = sel.start;
         caretLine = Math.floor(sel.end / cols);
@@ -32,8 +33,17 @@
         caretX = rect.right
         caretY = rect.top
 
-        clipStart = caretOffset;
-        if (!playing) {
+        clipStart = sel.start;
+        if (playing) {
+          if (!sel.collapsed) {
+            clipEnd = sel.end
+            loop = true
+            seekTo(sel.start, sel.end, true)
+          } else {
+            loop = false
+            seekTo(caretOffset)
+          }
+        } else {
           clipEnd = !sel.collapsed ? sel.end : total;
           loop = !sel.collapsed;
         }
@@ -89,12 +99,14 @@
               waveform = ''
               total = 0
               const file = e.target.files[0]
+              let t0 = performance.now()
               try {
                 const meta = await api.loadFile(file, (str) => {
                   waveform += str
                   total += cleanText(str).length
                   duration = total * 1024 / sampleRate
                 })
+                console.log(`[render] total: ${(performance.now() - t0).toFixed(0)}ms (includes decode + render)`)
                 duration = meta.duration
                 sampleRate = meta.sampleRate
                 channels = meta.channels

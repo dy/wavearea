@@ -37,6 +37,8 @@ export default function wavearea(el, { store, engine } = {}) {
     scrolling: false,
     error: null,
 
+    isMouseDown: false,
+
     // audio
     duration: 0,
     sampleRate: 44100,
@@ -67,6 +69,23 @@ export default function wavearea(el, { store, engine } = {}) {
     measureWaveform() {
       this.cols = this.countCols(this.refs.editarea)
       this.lines = this.countLines(this.refs.editarea)
+    },
+
+    seekTo(block, toBlock, looping) {
+      if (!player || !this.playing) return
+      this._stopCaretAnimation()
+      if (toBlock == null) toBlock = this.total
+      if (looping == null) looping = false
+      player.onstarted = ({ block: b, time }) => {
+        this._playStartBlock = b
+        this._playStartTime = time
+        this._startCaretAnimation()
+      }
+      player.onended = () => {
+        this.playing = false
+        this._stopCaretAnimation()
+      }
+      player.play(block, toBlock, looping)
     },
 
     play() {
@@ -111,8 +130,15 @@ export default function wavearea(el, { store, engine } = {}) {
     },
 
     _startCaretAnimation() {
+      let mouseWait = 0
       let animate = () => {
         if (!this.playing || !player) return
+
+        // pause caret while mouse is down + 2 frames after release
+        // (lets throttled click handler read selection before animation overwrites it)
+        if (this.isMouseDown) { mouseWait = 2; this._rafId = requestAnimationFrame(animate); return }
+        if (mouseWait > 0) { mouseWait--; this._rafId = requestAnimationFrame(animate); return }
+
         let elapsed = player.currentTime - this._playStartTime
         let blocksMoved = Math.floor(elapsed * this.sampleRate / BLOCK_SIZE * this.speed)
         let block = this._playStartBlock + blocksMoved

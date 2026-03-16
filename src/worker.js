@@ -141,16 +141,21 @@ Comlink.expose({
 
     const acc = createAccumulator(cb)
     let inited = false
+    let t0 = performance.now()
 
     for await (let result of decodeStream(file.stream(), fmt)) {
       if (!inited) {
         acc.init(result.channelData.length, result.sampleRate)
         inited = true
+        console.log(`[decode] first chunk: ${(performance.now() - t0).toFixed(1)}ms`)
       }
       acc.push(result.channelData, result.channelData[0].length)
     }
 
     acc.flush()
-    return { duration: totalSamples / sampleRate, channels: channelCount, sampleRate }
+    let dt = performance.now() - t0
+    let dur = totalSamples / sampleRate
+    console.log(`[decode] done: ${dt.toFixed(0)}ms, ${dur.toFixed(1)}s audio, ${(dur / (dt / 1000)).toFixed(0)}x realtime`)
+    return { duration: dur, channels: channelCount, sampleRate }
   }
 });

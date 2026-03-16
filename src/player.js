@@ -49,8 +49,8 @@ function bufferPlayer(getWindow, sr, ch) {
     async play(fromBlock = 0, toBlock, loop = false) {
       if (ctx.state === 'suspended') await ctx.resume()
 
-      // stop previous
-      if (source) { try { source.stop() } catch {} }
+      // stop previous without triggering onended
+      if (source) { source.onended = null; try { source.stop() } catch {} }
 
       loopStartBlock = fromBlock
       loopEndBlock = toBlock

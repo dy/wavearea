@@ -607,6 +607,137 @@ test.describe('bufferPlayer backend', () => {
     await page.keyboard.press('Space');
   });
 
+  test('slow click during playback seeks to clicked position', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // play from start
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    // slow click (200ms hold) far ahead during playback
+    let box = await page.locator('#editarea').boundingBox();
+    let targetX = box.x + box.width * 0.8, targetY = box.y + 15;
+    await page.mouse.move(targetX, targetY);
+    await page.mouse.down();
+    await page.waitForTimeout(200); // hold for 200ms — animation runs during this
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    // should still be playing
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    // caret should be near the click target (80%), not dragged back by animation
+    let pos = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+    let textLen = await page.evaluate(() => document.querySelector('#editarea').textContent.length);
+    expect(pos).toBeGreaterThan(textLen * 0.5);
+
+    expect(errors).toEqual([]);
+    await page.keyboard.press('Space');
+  });
+
+  test('drag-selecting during playback loops the selection', async ({ page }) => {
+    // widen chars for reliable drag selection
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+    });
+
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // play from start
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    // drag-select a range in the middle during playback
+    let box = await page.locator('#editarea').boundingBox();
+    let y = box.y + 15;
+    await page.mouse.move(box.x + box.width * 0.3, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.7, y, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+
+    // should still be playing
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    let total = await page.evaluate(() =>
+      document.querySelector('#editarea').textContent.replace(/[\u0300\u0301]/g, '').length
+    );
+    let getCleanPos = () => page.evaluate(() => {
+      let s = window.getSelection(), r = s.rangeCount ? s.getRangeAt(0) : null;
+      if (!r) return 0;
+      return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301]/g, '').length;
+    });
+
+    // sample 3 times over 2s — all should stay within selection range
+    // (if looping, caret wraps around and stays in range)
+    let positions = [];
+    for (let i = 0; i < 3; i++) {
+      await page.waitForTimeout(600);
+      positions.push(await getCleanPos());
+    }
+
+    // all samples should stay within the loop range, not reach the end of the file
+    // the drag was ~30-70% so caret should never be in the last 10%
+    for (let pos of positions) {
+      expect(pos).toBeLessThan(total - 2); // not at the very end (total-1 or total)
+      expect(pos).toBeGreaterThanOrEqual(total * 0.2); // not at the very start
+    }
+
+    expect(errors).toEqual([]);
+    await page.keyboard.press('Space');
+  });
+
+  test('clicking during playback seeks to clicked position', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // click near start, play for 300ms (caret advances a few blocks)
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    // click far ahead (near end of waveform) during playback
+    let box = await page.locator('#editarea').boundingBox();
+    await page.mouse.click(box.x + box.width * 0.8, box.y + 15);
+
+    // immediately sample caret over a few frames — it should NOT jump back
+    // to the old play position; it should stay near the click target
+    await page.waitForTimeout(100);
+    let pos1 = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    await page.waitForTimeout(200);
+    let pos2 = await page.evaluate(() => {
+      let s = window.getSelection();
+      return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
+    });
+
+    // should still be playing
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+
+    // both positions should be in the latter part of the waveform (near 80%),
+    // NOT near the beginning where playback originally started
+    let textLen = await page.evaluate(() => document.querySelector('#editarea').textContent.length);
+    let threshold = textLen * 0.5; // at least past halfway
+    expect(pos1).toBeGreaterThan(threshold);
+    expect(pos2).toBeGreaterThanOrEqual(pos1);
+
+    expect(errors).toEqual([]);
+    await page.keyboard.press('Space');
+  });
+
   test('quick double-space does not select or loop', async ({ page }) => {
     let errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -967,6 +1098,10 @@ test.describe('decode layer', () => {
     // save file to OPFS first
     await loadFile(page);
     let originalLen = (await page.locator('#editarea').textContent()).length;
+
+    // wait for save to complete
+    await page.waitForFunction(() => !document.querySelector('#status'), { timeout: 10000 });
+    await page.waitForTimeout(300);
 
     // reload — OPFS file has empty MIME type, uses header detection
     await page.reload();
