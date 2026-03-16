@@ -397,6 +397,184 @@ test.describe('wavearea', () => {
 });
 
 
+// --- Visual layers ---
+
+test.describe('visual layers', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+    await loadFile(page);
+  });
+
+  test('smooth caret tracks native caret, advances during playback', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // click to place caret — smooth caret should be visible and tracking
+    await page.locator('#editarea').click({ position: { x: 50, y: 15 } });
+    await page.waitForTimeout(200);
+
+    let beforePlay = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      let cs = c ? getComputedStyle(c) : null;
+      return { opacity: cs?.opacity, transform: c?.style.transform };
+    });
+    expect(parseFloat(beforePlay.opacity)).toBeGreaterThan(0);
+    expect(beforePlay.transform).toContain('translate');
+
+    // play — should advance smoothly
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+
+    let t1 = await page.evaluate(() => document.querySelector('.smooth-caret')?.style.transform);
+    await page.waitForTimeout(300);
+    let t2 = await page.evaluate(() => document.querySelector('.smooth-caret')?.style.transform);
+    expect(t1).not.toBe(t2);
+
+    await page.keyboard.press('Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('smooth caret does not animate from old position on play start', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    // click at middle of waveform
+    let box = await page.locator('#editarea').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + 15);
+    await page.waitForTimeout(200);
+
+    // get smooth caret position BEFORE play
+    let beforePos = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      return c?.getBoundingClientRect().left ?? 0;
+    });
+
+    // start playback
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(100);
+
+    // get position immediately after play — should be near beforePos, not at origin
+    let afterPos = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      return c?.getBoundingClientRect().left ?? 0;
+    });
+
+    // should be within 20px of where we clicked (not at the start of the waveform)
+    expect(Math.abs(afterPos - beforePos)).toBeLessThan(20);
+
+    expect(errors).toEqual([]);
+    await page.keyboard.press('Space');
+  });
+
+  test('native caret is hidden when smooth caret is active', async ({ page }) => {
+    let caretColor = await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#editarea')).caretColor
+    );
+    expect(caretColor).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  test('smooth caret blinks when not playing', async ({ page }) => {
+    await page.locator('#editarea').click({ position: { x: 30, y: 15 } });
+    await page.waitForTimeout(200);
+
+    let animation = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      return c?.style.animation;
+    });
+    expect(animation).toContain('caret-blink');
+
+    // during playback, should not blink
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    let animPlaying = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      return c?.style.animation;
+    });
+    expect(animPlaying).toContain('none');
+
+    await page.keyboard.press('Space');
+  });
+
+  test('smooth caret follows drag selection endpoint', async ({ page }) => {
+    // widen for reliable drag
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+    });
+
+    let box = await page.locator('#editarea').boundingBox();
+    let y = box.y + 15;
+
+    // drag from 20% to 70%
+    let startX = box.x + box.width * 0.2
+    let endX = box.x + box.width * 0.7
+    await page.mouse.move(startX, y);
+    await page.mouse.down();
+    await page.waitForTimeout(50);
+
+    // move to middle — caret should follow
+    let midX = box.x + box.width * 0.45
+    await page.mouse.move(midX, y, { steps: 3 });
+    await page.waitForTimeout(100);
+
+    let midPos = await page.evaluate(() =>
+      document.querySelector('.smooth-caret')?.getBoundingClientRect().left ?? 0
+    );
+
+    // move to end of drag
+    await page.mouse.move(endX, y, { steps: 3 });
+    await page.waitForTimeout(100);
+
+    let endPos = await page.evaluate(() =>
+      document.querySelector('.smooth-caret')?.getBoundingClientRect().left ?? 0
+    );
+
+    await page.mouse.up();
+
+    // caret should have moved rightward during drag
+    expect(endPos).toBeGreaterThan(midPos);
+  });
+
+  test('smooth caret bounding rect matches native caret', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(800);
+
+    // compare bounding rects: smooth caret element vs native selection range
+    let result = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      if (!c) return null;
+      let cRect = c.getBoundingClientRect();
+
+      let s = window.getSelection();
+      if (!s.rangeCount) return null;
+      let rects = s.getRangeAt(0).getClientRects();
+      let nRect = rects[rects.length - 1];
+      if (!nRect) return null;
+
+      return {
+        caretLeft: cRect.left,
+        caretTop: cRect.top,
+        nativeRight: nRect.right, // native caret x = right edge of collapsed range
+        nativeTop: nRect.top,
+      };
+    });
+
+    expect(result).not.toBeNull();
+    // smooth caret left edge should be within a few px of native caret position
+    expect(Math.abs(result.caretLeft - result.nativeRight)).toBeLessThan(10);
+    expect(Math.abs(result.caretTop - result.nativeTop)).toBeLessThan(5);
+
+    expect(errors).toEqual([]);
+    await page.keyboard.press('Space');
+  });
+});
+
+
 // Web Audio spy — inject before page load to capture all AudioContext calls
 const WEB_AUDIO_SPY = () => {
   window.__audioSpy = { calls: [], nodes: [], ctx: null };

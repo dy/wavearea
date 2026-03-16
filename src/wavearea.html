@@ -1,6 +1,6 @@
 <div class="container"
   :ref="refs.container"
-  :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, e=> isMouseDown = false)"
+  :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, loop = false, clipEnd = null, e.target.closest?.('#editarea') && window.getSelection().removeAllRanges(), e=> isMouseDown = false)"
   :style="{
     '--cols': cols,
     '--carety': (caretY - (refs.editarea?.getBoundingClientRect().top ?? 0)) + 'px',

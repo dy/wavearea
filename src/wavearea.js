@@ -9,13 +9,14 @@ import createPlayer from './player.js';
 
 const BLOCK_SIZE = 1024
 
-export default function wavearea(el, { store, engine } = {}) {
+export default function wavearea(el, { store, engine, layers } = {}) {
   el.innerHTML = template
 
   let api = createApi({ store })
   let player = null
+  let _cleanups = []
 
-  return sprae(el, {
+  let state = sprae(el, {
     // deps
     selection,
     cleanText,
@@ -214,4 +215,12 @@ export default function wavearea(el, { store, engine } = {}) {
       return count
     }
   })
+
+  // initialize visual layers
+  if (layers) for (let layer of layers) {
+    let cleanup = layer(state, el)
+    if (cleanup) _cleanups.push(cleanup)
+  }
+
+  return state
 }
