@@ -32,10 +32,13 @@ export { bufferPlayer, audioElPlayer, workletPlayer }
 
 
 // Primary backend: AudioBufferSourceNode
+const FADE_TIME = 0.005 // 5ms crossfade to eliminate seek clicks
+
 function bufferPlayer(getWindow, sr, ch) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
   let gain = ctx.createGain()
   gain.connect(ctx.destination)
+  let vol = 1
 
   let source = null
   let speed = 1
@@ -49,8 +52,12 @@ function bufferPlayer(getWindow, sr, ch) {
     async play(fromBlock = 0, toBlock, loop = false) {
       if (ctx.state === 'suspended') await ctx.resume()
 
-      // stop previous without triggering onended
-      if (source) { source.onended = null; try { source.stop() } catch {} }
+      // fade out + stop previous without triggering onended
+      if (source) {
+        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
+        source.onended = null
+        source.stop(ctx.currentTime + FADE_TIME)
+      }
 
       loopStartBlock = fromBlock
       loopEndBlock = toBlock
@@ -85,13 +92,17 @@ function bufferPlayer(getWindow, sr, ch) {
       }
 
       source.start(0)
+      // fade in
+      gain.gain.setTargetAtTime(vol, ctx.currentTime, FADE_TIME / 3)
       player.state = 'playing'
       player.onstarted?.({ block: fromBlock, time: ctx.currentTime })
     },
 
     pause() {
       if (source && player.state === 'playing') {
-        source.stop()
+        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
+        source.onended = null
+        source.stop(ctx.currentTime + FADE_TIME)
         source = null
         player.state = 'paused'
       }
@@ -110,7 +121,8 @@ function bufferPlayer(getWindow, sr, ch) {
     },
 
     setVolume(v) {
-      gain.gain.value = v
+      vol = v
+      gain.gain.setTargetAtTime(v, ctx.currentTime, FADE_TIME / 3)
     },
 
     setSpeed(r) {
@@ -119,7 +131,7 @@ function bufferPlayer(getWindow, sr, ch) {
     },
 
     destroy() {
-      if (source) { try { source.stop() } catch {} }
+      if (source) { source.onended = null; try { source.stop() } catch {} }
       source = null
       ctx.close()
       player.state = 'stopped'
@@ -270,6 +282,7 @@ function workletPlayer(getWindow, sr, ch) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
   let gain = ctx.createGain()
   gain.connect(ctx.destination)
+  let vol = 1
 
   let node = null
   let speed = 1
@@ -319,7 +332,13 @@ function workletPlayer(getWindow, sr, ch) {
       await ready
       if (ctx.state === 'suspended') await ctx.resume()
 
-      if (node) { node.port.postMessage({ cmd: 'stop' }); node.disconnect(); node = null }
+      // fade out + stop previous
+      if (node) {
+        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
+        node.port.postMessage({ cmd: 'stop' })
+        setTimeout(() => { try { node?.disconnect() } catch {} }, FADE_TIME * 1000)
+        node = null
+      }
 
       loopStartBlock = fromBlock
       loopEndBlock = toBlock
@@ -337,6 +356,7 @@ function workletPlayer(getWindow, sr, ch) {
         outputChannelCount: [ch]
       })
       node.connect(gain)
+      gain.gain.setTargetAtTime(vol, ctx.currentTime, FADE_TIME / 3)
       node.port.onmessage = e => {
         if (e.data === 'ended') {
           player.state = 'stopped'
@@ -358,8 +378,9 @@ function workletPlayer(getWindow, sr, ch) {
 
     pause() {
       if (node && player.state === 'playing') {
+        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
         node.port.postMessage({ cmd: 'stop' })
-        node.disconnect()
+        let n = node; setTimeout(() => { try { n.disconnect() } catch {} }, FADE_TIME * 1000)
         node = null
         player.state = 'paused'
       }
@@ -376,7 +397,7 @@ function workletPlayer(getWindow, sr, ch) {
       loopEndBlock = end
     },
 
-    setVolume(v) { gain.gain.value = v },
+    setVolume(v) { vol = v; gain.gain.setTargetAtTime(v, ctx.currentTime, FADE_TIME / 3) },
 
     setSpeed(r) { speed = r },
 
