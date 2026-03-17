@@ -8,6 +8,8 @@ import createApi from './api.js';
 import createPlayer from './player.js';
 import { BLOCK_SIZE } from './constants.js';
 
+// FIXME: no need for layers external option - it can be just string with keywords or better a set of bools
+// FIXME: instead of performance.now use console.time and console.timeEnd
 export default function wavearea(el, { store, engine, layers } = {}) {
   el.innerHTML = template
 
@@ -23,6 +25,7 @@ export default function wavearea(el, { store, engine, layers } = {}) {
     api,
 
     // refs
+    // FIXME: better call parts
     refs: {},
 
     // layout
@@ -67,55 +70,109 @@ export default function wavearea(el, { store, engine, layers } = {}) {
     caretY: 0,
     caretX: 0,
 
+    // cached char metrics for math-based caret positioning (avoids getClientRects)
+    // FIXME: I bet that's not the issue
+    _charW: 0,
+    _lineH: 0,
+
+    // FIXME: what does this do? add a comment
     measureWaveform() {
       let ea = this.refs.editarea
       if (!ea) return
-      this.cols = this.countCols(ea)
-      this.lines = this.countLines(ea)
+      this._lineH = parseFloat(getComputedStyle(ea).lineHeight) || 20
+      // measure char width: width of first N clean chars / N
+      if (ea.firstChild) {
+        let text = ea.firstChild.textContent
+        let n = Math.min(10, cleanText(text).length)
+        if (n > 0) {
+          let rawEnd = 0, clean = 0
+          while (clean < n && rawEnd < text.length) {
+            if (text[rawEnd] < '\u0300') clean++
+            rawEnd++
+            while (rawEnd < text.length && text[rawEnd] >= '\u0300') rawEnd++
+          }
+          let r = new Range()
+          r.setStart(ea.firstChild, 0)
+          r.setEnd(ea.firstChild, rawEnd)
+          let rect = r.getClientRects()[0]
+          if (rect && n) this._charW = rect.width / n
+        }
+      }
+      // cache editarea rect for animation
+      this._eaRect = ea.getBoundingClientRect()
+      // compute cols from char width (reliable even during loading)
+      this.cols = this._charW ? Math.floor(this._eaRect.width / this._charW) || 1 : this.countCols(ea)
+      this.lines = this.total ? Math.ceil(this.total / this.cols) : this.countLines(ea)
     },
 
     async loadAudio(file, { save } = {}) {
+      console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
       this.waveform = ''
       this.total = 0
-      let t0 = performance.now()
+      console.time('[loadAudio] createPlayer')
+      // create player eagerly DURING user gesture (Safari requires this for AudioContext)
+      if (!player) player = createPlayer(
+        (from, to) => api.getWindow(from, to),
+        { sampleRate: this.sampleRate, channels: this.channels, engine }
+      )
+      console.timeEnd('[loadAudio] createPlayer')
+
+      console.time('[render] decode + render')
       try {
-        // buffer waveform chunks, flush to state once per rAF to avoid O(n²) string concat
+        // append to single text node, throttled adaptively
         let pending = '', pendingClean = 0, flushId = null
         let flushPending = () => {
+          flushId = null
           if (!pending) return
-          this.waveform += pending
+          let ea = this.refs.editarea
+          if (!ea) {
+            this.total += pendingClean; pendingClean = 0
+            this.duration = this.total * BLOCK_SIZE / this.sampleRate
+            flushId = setTimeout(flushPending, 16)
+            return
+          }
+          let node = ea.firstChild
+          if (node && node.nodeType === 3) node.appendData(pending)
+          else ea.textContent = pending
           this.total += pendingClean
           this.duration = this.total * BLOCK_SIZE / this.sampleRate
-          pending = ''; pendingClean = 0; flushId = null
+          pending = ''; pendingClean = 0
         }
         let meta = await api.loadFile(file, (str) => {
+          // pending += ' '.repeat(str.length)// str
           pending += str
           pendingClean += cleanText(str).length
           if (!flushId) flushId = requestAnimationFrame(flushPending)
         })
-        flushPending() // flush any remaining
-        console.log(`[render] ${(performance.now() - t0).toFixed(0)}ms (decode + render)`)
+        if (flushId) { cancelAnimationFrame(flushId); flushId = null }
+        flushPending()
+        console.timeEnd('[render] decode + render')
         this.duration = meta.duration
         this.sampleRate = meta.sampleRate
         this.channels = meta.channels
-        this.measureWaveform()
-        // create player eagerly so AudioContext warms up during user gesture
-        if (!player) player = createPlayer(
-          (from, to) => api.getWindow(from, to),
-          { sampleRate: meta.sampleRate, channels: meta.channels, engine }
-        )
-        if (save) await api.saveFile(file, { name: file.name, duration: meta.duration }).catch(e => console.warn('[store] save failed:', e.message))
+        // wait for font + layout, retry until char width is measurable
+        await document.fonts.ready
+        for (let i = 0; i < 10 && !this._charW; i++) {
+          await new Promise(r => requestAnimationFrame(r))
+          this.measureWaveform()
+        }
+        this.loading = false
+        // save in background — don't block UI
+        if (save) api.saveFile(file, { name: file.name, duration: meta.duration }).catch(e => console.warn('[store] save failed:', e.message))
       } catch (err) {
         console.error('Failed to load file:', err)
         this.error = err.message || 'Failed to load file'
-        this.waveform = ''
         this.total = 0
+        let ea = this.refs.editarea
+        if (ea) ea.textContent = ''
+        this.loading = false
       }
-      this.loading = false
+      console.timeEnd('[loadAudio] loadAudio')
     },
 
+    // caret moved
     seekTo(block, toBlock, looping) {
       if (!player || !this.playing) return
       this._stopCaretAnimation()
@@ -134,23 +191,28 @@ export default function wavearea(el, { store, engine, layers } = {}) {
     },
 
     play() {
+      let _t0 = performance.now()
       if (!player) {
         player = createPlayer(
           (from, to) => api.getWindow(from, to),
           { sampleRate: this.sampleRate, channels: this.channels, engine }
         )
+        console.log(`[play] createPlayer: ${(performance.now()-_t0).toFixed(0)}ms, ctx.state=${player.state}`)
       }
 
       let fromBlock = this.loop ? this.clipStart : this.caretOffset
       let toBlock = this.clipEnd != null ? this.clipEnd : this.total
       let looping = this.loop
+      console.log(`[play] from=${fromBlock} to=${toBlock} loop=${looping}`)
 
       this.selection.set(fromBlock)
+      console.log(`[play] selection.set: ${(performance.now()-_t0).toFixed(0)}ms`)
 
       player.setVolume(this.volume)
       player.setSpeed(this.speed)
 
       player.onstarted = ({ block, time }) => {
+        console.log(`[play] onstarted: ${(performance.now()-_t0).toFixed(0)}ms`)
         this._playStartBlock = block
         this._playStartTime = time
         this._startCaretAnimation()
@@ -160,11 +222,15 @@ export default function wavearea(el, { store, engine, layers } = {}) {
         this._stopCaretAnimation()
       }
 
+      console.log(`[play] calling player.play: ${(performance.now()-_t0).toFixed(0)}ms`)
       player.play(fromBlock, toBlock, looping)
       this.playing = true
+      console.log(`[play] playing=true: ${(performance.now()-_t0).toFixed(0)}ms`)
 
       return () => {
+        let _s0 = performance.now()
         player.pause()
+        console.log(`[stop] player.pause: ${(performance.now()-_s0).toFixed(0)}ms`)
         this.playing = false
         this._stopCaretAnimation()
         this.clipStart = this.caretOffset
@@ -199,6 +265,7 @@ export default function wavearea(el, { store, engine, layers } = {}) {
 
         if (block !== this.caretOffset && block >= 0 && block < this.total) {
           this.caretOffset = block
+          // use getClientRects for accurate position (safe: contenteditable off during playback)
           let sel = this.selection.set(block)
           if (sel?.range) {
             let rects = sel.range.getClientRects()
@@ -223,8 +290,9 @@ export default function wavearea(el, { store, engine, layers } = {}) {
     },
 
     timecode(block, ms = 0) {
-      let time = ((block / this?.total)) * this?.duration || 0
-      return `${Math.floor(time / 60).toFixed(0)}:${(Math.floor(time) % 60).toFixed(0).padStart(2, 0)}${ms ? `.${(time % 1).toFixed(ms).slice(2).padStart(ms)}` : ''}`
+      let time = block * BLOCK_SIZE / this.sampleRate || 0
+      let min = Math.floor(time / 60), sec = Math.floor(time) % 60
+      return `${min}:${String(sec).padStart(2, '0')}${ms ? `.${(time % 1).toFixed(ms).slice(2)}` : ''}`
     },
 
     countLines(el) {

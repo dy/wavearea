@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<title>Wavefont Text Rendering Benchmark</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .wavefont {
+    font-family: wavefont;
+    font-size: 50px;
+    line-height: 70px;
+    letter-spacing: 1px;
+    font-variation-settings: 'wght' 30, 'ROND' 0, 'YALN' 0;
+  }
+  #results { white-space: pre-wrap; font-family: monospace; margin-top: 1rem; }
+  .test-area { width: 80vw; overflow: hidden; visibility: hidden; position: absolute; }
+  .opt-speed { text-rendering: optimizeSpeed; }
+  .opt-smooth { -webkit-font-smoothing: antialiased; }
+  .opt-none { -webkit-font-smoothing: none; }
+  .no-ligatures { font-variant-ligatures: none; }
+  .will-change { will-change: contents; }
+  .contain { contain: content; }
+</style>
+<link rel="stylesheet" href="../node_modules/wavefont/wavefont.css">
+
+<h3>Wavefont Text Rendering Benchmark</h3>
+<button id="run">Run Benchmark</button>
+<div id="results"></div>
+
+<script type="module">
+// generate fake waveform string: base chars (U+0100-U+01FF) + combining marks
+function genWaveform(n) {
+  let str = ''
+  for (let i = 0; i < n; i++) {
+    str += String.fromCharCode(0x0100 + (i % 128))
+    str += (i % 3 === 0) ? '\u0301' : '\u0300'
+  }
+  return str
+}
+
+let log = s => { document.getElementById('results').textContent += s + '\n'; console.log(s) }
+
+async function bench(label, el, text, appendText) {
+  // force layout
+  el.offsetHeight
+
+  // 1. Set full text
+  let t0 = performance.now()
+  el.textContent = text
+  el.offsetHeight // force layout
+  let setTime = performance.now() - t0
+
+  // 2. Append chunk
+  let t1 = performance.now()
+  el.firstChild.appendData(appendText)
+  el.offsetHeight // force layout
+  let appendTime = performance.now() - t1
+
+  // 3. getClientRects on a range near middle
+  let mid = Math.floor(el.firstChild.textContent.length / 2)
+  let r = new Range()
+  r.setStart(el.firstChild, mid)
+  r.setEnd(el.firstChild, mid + 1)
+  let t2 = performance.now()
+  r.getClientRects()
+  let rectsTime = performance.now() - t2
+
+  // cleanup
+  el.textContent = ''
+  el.offsetHeight
+
+  log(`${label.padEnd(35)} set=${setTime.toFixed(0)}ms  append=${appendTime.toFixed(0)}ms  rects=${rectsTime.toFixed(0)}ms`)
+}
+
+document.getElementById('run').onclick = async () => {
+  log('Generating test data...')
+  let small = genWaveform(1000)   // ~2000 chars
+  let medium = genWaveform(5000)  // ~10000 chars
+  let large = genWaveform(15000)  // ~30000 chars
+  let chunk = genWaveform(200)    // ~400 chars append chunk
+
+  let configs = [
+    { label: 'baseline (wavefont)', classes: 'wavefont' },
+    { label: '+ optimizeSpeed', classes: 'wavefont opt-speed' },
+    { label: '+ antialiased', classes: 'wavefont opt-smooth' },
+    { label: '+ no smoothing', classes: 'wavefont opt-none' },
+    { label: '+ no ligatures', classes: 'wavefont no-ligatures' },
+    { label: '+ will-change:contents', classes: 'wavefont will-change' },
+    { label: '+ contain:content', classes: 'wavefont contain' },
+    { label: '+ all optimizations', classes: 'wavefont opt-speed opt-smooth no-ligatures contain' },
+    { label: 'monospace (no wavefont)', classes: '', style: 'font-family:monospace;font-size:14px;line-height:20px' },
+  ]
+
+  for (let size of [['1K blocks', small], ['5K blocks', medium], ['15K blocks', large]]) {
+    log(`\n=== ${size[0]} (${size[1].length} chars) ===`)
+    for (let cfg of configs) {
+      let el = document.createElement('div')
+      el.className = 'test-area ' + cfg.classes
+      if (cfg.style) el.style.cssText += cfg.style
+      document.body.appendChild(el)
+      await bench(cfg.label, el, size[1], chunk)
+      el.remove()
+    }
+  }
+
+  // contenteditable comparison
+  log('\n=== contenteditable vs plain div (5K blocks) ===')
+  for (let ce of [false, true]) {
+    let el = document.createElement('div')
+    el.className = 'test-area wavefont opt-speed contain'
+    if (ce) el.contentEditable = 'true'
+    document.body.appendChild(el)
+    await bench(ce ? 'contenteditable=true' : 'contenteditable=false', el, medium, chunk)
+    el.remove()
+  }
+
+  log('\nDone!')
+}
+</script>

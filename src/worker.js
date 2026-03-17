@@ -85,13 +85,18 @@ function createAccumulator(cb) {
 
   function flush() {
     if (count === 0) return
+    let pcmChunk = []
     for (let ch = 0; ch < channelCount; ch++) {
-      chunks[ch].push(count < CHUNK_SIZE ? channelBufs[ch].slice(0, count) : channelBufs[ch])
+      let data = count < CHUNK_SIZE ? channelBufs[ch].slice(0, count) : channelBufs[ch]
+      chunks[ch].push(data)
+      pcmChunk.push(data.slice()) // copy for transfer to main thread
     }
     totalSamples += count
     cb.onWaveform?.(samplesToWaveform(
       count < CHUNK_SIZE ? channelBufs[0].slice(0, count) : channelBufs[0]
     ))
+    // send PCM chunk to main thread for local playback (avoids slow postMessage on getWindow)
+    cb.onPCM?.(pcmChunk, count)
     count = 0
     channelBufs = Array.from({ length: channelCount }, () => new Float32Array(CHUNK_SIZE))
   }
@@ -107,6 +112,7 @@ Comlink.expose({
     if (toSample == null || toSample > total) toSample = total
     if (fromSample >= toSample) return null
 
+    let t0 = performance.now()
     let len = toSample - fromSample
     let result = Array.from({ length: channelCount }, () => new Float32Array(len))
 
@@ -123,6 +129,7 @@ Comlink.expose({
         pos = chunkEnd
       }
     }
+    console.log(`[worker] getWindow: copy ${len} frames in ${(performance.now()-t0).toFixed(0)}ms, transfer next`)
 
     return Comlink.transfer(result, result.map(a => a.buffer))
   },
@@ -144,6 +151,7 @@ Comlink.expose({
     let inited = false
     let t0 = performance.now()
 
+    let chunkCount = 0
     for await (let result of decodeStream(file.stream(), fmt)) {
       if (!inited) {
         acc.init(result.channelData.length, result.sampleRate)
@@ -151,6 +159,8 @@ Comlink.expose({
         console.log(`[decode] first chunk: ${(performance.now() - t0).toFixed(1)}ms`)
       }
       acc.push(result.channelData, result.channelData[0].length)
+      // yield every few chunks so main thread can paint
+      if (++chunkCount % 4 === 0) await new Promise(r => setTimeout(r, 0))
     }
 
     acc.flush()

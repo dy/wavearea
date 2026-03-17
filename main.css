@@ -41,9 +41,9 @@ body {
   letter-spacing: var(--wavefont-spacing, 0px);
   font-variation-settings: 'wght' var(--wavefont-wght, 25), 'ROND' var(--wavefont-rond, 100), 'YALN' var(--wavefont-yaln, 0);
   text-rendering: optimizeSpeed;
-  font-smooth: grayscale;
-  -webkit-font-smoothing: grayscale;
-  -moz-osx-font-smoothing: grayscale;
+  font-smooth: antialiased;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: antialiased;
 }
 
 .container {
@@ -118,8 +118,7 @@ body {
   }
 
 
-  #timecodes,
-  #status {
+  #timecodes {
     position: absolute;
     top: 0;
     left: -3rem;
@@ -133,6 +132,24 @@ body {
     line-height: var(--wavefont-lh);
   }
 
+  #status {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-family: sans-serif;
+    letter-spacing: 0;
+    font-size: .75rem;
+    margin: 0;
+    padding: .35rem .75rem;
+    white-space: pre;
+    color: var(--secondary);
+    background: var(--bg, #fff);
+    border-top: 1px solid var(--border, #eee);
+    z-index: 100;
+    text-align: center;
+  }
+
   #timecodes {
     display: flex;
     flex-direction: column;
@@ -142,10 +159,6 @@ body {
     margin: 0;
     text-decoration: none;
     color: var(--secondary);
-  }
-
-  #status {
-    left: -4rem;
   }
 
   #error {

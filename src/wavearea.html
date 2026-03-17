@@ -8,10 +8,10 @@
   }">
   <div id="waveform"
     :ref="refs.waveform"
-    :if="waveform">
+    :if="total">
     <span id="caret-line"></span>
 
-    <div id="editarea" class="wavefont" :contenteditable="!loading" inputmode="none"
+    <div id="editarea" class="wavefont" :contenteditable="!loading && !playing" inputmode="none"
       :ref="refs.editarea"
       :class="{'playing':playing}"
       :style="{'user-select': loading ? 'none' : null, 'pointer-events': loading ? 'none' : null}"
@@ -55,19 +55,18 @@
           if (!file.type.startsWith('audio')) return false;
         }
       "
-      :text.throttle-raf="waveform">
-    </div>
+      ></div>
 
     <div id="timecodes" :ref="refs.timecodes">
-      <a :each="_, i in lines" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
     </div>
 
     <div id="floater" :ref="refs.floater"
-      :class="{'loaded': waveform && !loading}"
+      :class="{'loaded': total && !loading}"
       :fx.delay="caretLine, lines; refs.timecodes?.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
       <button id="play"
         :ref="refs.playButton"
-        :hidden="!waveform || loading"
+        :hidden="!total || loading"
         :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
         :onclick:onkeydown.document.space.prevent..onclick:onkeydown.document.space.prevent="() => play()"
         tabindex="-1">
@@ -87,7 +86,7 @@
   </div>
 
   <div id="opener"
-    :if="!waveform && !loading"
+    :if="!total && !loading"
     :scope="{files: [], sortBy: 'date'}"
     :fx="async () => {files = await api.getFiles({sortBy}).catch(() => [])}">
     <nav>
@@ -116,8 +115,7 @@
     </div>
   </div>
 
-  <div id="status" :if="!waveform.length && !error" :text="loading || ''">
-  </div>
+  <div id="status" :if="loading" :text="`${loading}${total ? ' · ' + timecode(total) : ''}`"></div>
 
   <div id="error" :if="error" :text="error">
   </div>

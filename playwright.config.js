@@ -5,7 +5,7 @@ export default defineConfig({
   testIgnore: '**/unit/**',
   timeout: 30000,
   fullyParallel: true,
-  workers: 4,
+  workers: 2,
   use: {
     baseURL: 'http://127.0.0.1:8777',
     headless: true,

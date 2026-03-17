@@ -32,8 +32,8 @@ export { bufferPlayer, audioElPlayer, workletPlayer }
 
 
 // Primary backend: AudioBufferSourceNode
-const FADE_TIME = 0.005 // 5ms crossfade to eliminate seek clicks
-const MAX_BUFFER_SEC = 30 // cap AudioBuffer to avoid Safari lag on long files
+const FADE_TIME = 0.015 // 15ms fade in/out to eliminate clicks
+const MAX_BUFFER_SEC = 10 // cap AudioBuffer — Safari postMessage is slow for large transfers
 
 function bufferPlayer(getWindow, sr, ch) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
@@ -46,6 +46,7 @@ function bufferPlayer(getWindow, sr, ch) {
   let source = null
   let speed = 1
   let loopStartBlock = 0, loopEndBlock = 0, isLooping = false
+  let playAbort = false // flag to cancel pending async play
   let player = {
     state: 'stopped',
     onstarted: null,
@@ -53,13 +54,19 @@ function bufferPlayer(getWindow, sr, ch) {
     onended: null,
 
     async play(fromBlock = 0, toBlock, loop = false) {
-      if (ctx.state === 'suspended') await ctx.resume()
+      playAbort = false
+      let _t = performance.now(), _l = s => console.log(`[bufferPlayer] ${s}: ${(performance.now()-_t).toFixed(0)}ms`)
+      if (ctx.state === 'suspended') { await ctx.resume(); _l('resume (ctx.state=' + ctx.state + ')') }
+      if (playAbort) return
 
       // fade out + stop previous without triggering onended
       if (source) {
-        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
+        gain.gain.cancelScheduledValues(ctx.currentTime)
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + FADE_TIME)
         source.onended = null
         source.stop(ctx.currentTime + FADE_TIME)
+        _l('stopped prev')
       }
 
       loopStartBlock = fromBlock
@@ -74,12 +81,16 @@ function bufferPlayer(getWindow, sr, ch) {
       if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
       else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
 
+      _l('before getWindow')
       let pcm = await getWindow(fromSample, toSample)
+      _l('getWindow done, ' + (pcm?.[0]?.length ?? 0) + ' frames')
+      if (playAbort) return
       if (!pcm || !pcm[0]?.length) return
 
       let frames = pcm[0].length
       let buf = ctx.createBuffer(ch, frames, sr)
       for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
+      _l('buffer created')
 
       source = ctx.createBufferSource()
       source.buffer = buf
@@ -106,21 +117,30 @@ function bufferPlayer(getWindow, sr, ch) {
         }
       }
 
+      // fade in from silence
+      gain.gain.cancelScheduledValues(ctx.currentTime)
+      gain.gain.setValueAtTime(0, ctx.currentTime)
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + FADE_TIME)
       source.start(0)
-      // fade in
-      gain.gain.setTargetAtTime(vol, ctx.currentTime, FADE_TIME / 3)
+      _l('source.start')
       player.state = 'playing'
       player.onstarted?.({ block: fromBlock, time: ctx.currentTime })
     },
 
     pause() {
+      playAbort = true
       if (source && player.state === 'playing') {
-        gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_TIME / 3)
+        // fade out then disconnect (click-free stop)
+        gain.gain.cancelScheduledValues(ctx.currentTime)
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + FADE_TIME)
         source.onended = null
-        source.stop(ctx.currentTime + FADE_TIME)
+        let s = source
         source = null
-        player.state = 'paused'
+        // disconnect after fade completes
+        setTimeout(() => { try { s.stop(); s.disconnect() } catch {} }, FADE_TIME * 1000 + 5)
       }
+      player.state = 'paused'
     },
 
     seek(block) {
@@ -137,7 +157,9 @@ function bufferPlayer(getWindow, sr, ch) {
 
     setVolume(v) {
       vol = v
-      gain.gain.setTargetAtTime(v, ctx.currentTime, FADE_TIME / 3)
+      gain.gain.cancelScheduledValues(ctx.currentTime)
+      gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
+      gain.gain.linearRampToValueAtTime(v, ctx.currentTime + FADE_TIME)
     },
 
     setSpeed(r) {
