@@ -37,6 +37,8 @@ const MAX_BUFFER_SEC = 30 // cap AudioBuffer to avoid Safari lag on long files
 
 function bufferPlayer(getWindow, sr, ch) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
+  // warm up AudioContext immediately (Safari delays if not resumed in user gesture)
+  if (ctx.state === 'suspended') ctx.resume()
   let gain = ctx.createGain()
   gain.connect(ctx.destination)
   let vol = 1
@@ -51,8 +53,7 @@ function bufferPlayer(getWindow, sr, ch) {
     onended: null,
 
     async play(fromBlock = 0, toBlock, loop = false) {
-      let t0 = performance.now()
-      if (ctx.state === 'suspended') { await ctx.resume(); console.log(`[player] resume: ${(performance.now()-t0).toFixed(0)}ms`) }
+      if (ctx.state === 'suspended') await ctx.resume()
 
       // fade out + stop previous without triggering onended
       if (source) {
@@ -73,18 +74,13 @@ function bufferPlayer(getWindow, sr, ch) {
       if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
       else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
 
-      let t1 = performance.now()
       let pcm = await getWindow(fromSample, toSample)
       if (!pcm || !pcm[0]?.length) return
-      console.log(`[player] getWindow: ${(performance.now()-t1).toFixed(0)}ms, ${pcm[0].length} samples`)
 
-      let t2 = performance.now()
       let frames = pcm[0].length
       let buf = ctx.createBuffer(ch, frames, sr)
       for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
-      console.log(`[player] createBuffer+copy: ${(performance.now()-t2).toFixed(0)}ms`)
 
-      let t3 = performance.now()
       source = ctx.createBufferSource()
       source.buffer = buf
       source.playbackRate.value = speed

@@ -81,16 +81,31 @@ export default function wavearea(el, { store, engine, layers } = {}) {
       this.total = 0
       let t0 = performance.now()
       try {
-        let meta = await api.loadFile(file, (str) => {
-          this.waveform += str
-          this.total += cleanText(str).length
+        // buffer waveform chunks, flush to state once per rAF to avoid O(n²) string concat
+        let pending = '', pendingClean = 0, flushId = null
+        let flushPending = () => {
+          if (!pending) return
+          this.waveform += pending
+          this.total += pendingClean
           this.duration = this.total * BLOCK_SIZE / this.sampleRate
+          pending = ''; pendingClean = 0; flushId = null
+        }
+        let meta = await api.loadFile(file, (str) => {
+          pending += str
+          pendingClean += cleanText(str).length
+          if (!flushId) flushId = requestAnimationFrame(flushPending)
         })
+        flushPending() // flush any remaining
         console.log(`[render] ${(performance.now() - t0).toFixed(0)}ms (decode + render)`)
         this.duration = meta.duration
         this.sampleRate = meta.sampleRate
         this.channels = meta.channels
         this.measureWaveform()
+        // create player eagerly so AudioContext warms up during user gesture
+        if (!player) player = createPlayer(
+          (from, to) => api.getWindow(from, to),
+          { sampleRate: meta.sampleRate, channels: meta.channels, engine }
+        )
         if (save) await api.saveFile(file, { name: file.name, duration: meta.duration }).catch(e => console.warn('[store] save failed:', e.message))
       } catch (err) {
         console.error('Failed to load file:', err)

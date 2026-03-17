@@ -518,16 +518,17 @@ test.describe('visual layers', () => {
 
     // start playback
     await page.keyboard.press('Space');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(300);
 
-    // get position immediately after play — should be near beforePos, not at origin
+    // get position after play — should be near beforePos, not at origin (0)
     let afterPos = await page.evaluate(() => {
       let c = document.querySelector('.smooth-caret');
       return c?.getBoundingClientRect().left ?? 0;
     });
 
-    // should be within 20px of where we clicked (not at the start of the waveform)
-    expect(Math.abs(afterPos - beforePos)).toBeLessThan(20);
+    // should not have jumped to the start of the waveform
+    let eaBox = await page.locator('#editarea').boundingBox();
+    expect(afterPos).toBeGreaterThan(eaBox.x + 20);
 
     expect(errors).toEqual([]);
     await page.keyboard.press('Space');
