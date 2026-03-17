@@ -1,109 +1,73 @@
-// IndexedDB storage adapter for audio files
-// Broader compatibility than OPFS — works in all modern browsers + workers
+// IndexedDB storage adapter
 
-import { StoreAdapter, sortFiles, sanitizeFilename } from './adapter.js';
+import { sortFiles, sanitizeFilename, updateFileList, fileMeta } from './adapter.js';
 
-const DB_NAME = 'wavearea-store';
-const DB_VERSION = 1;
-const FILES_STORE = 'files';
-const META_STORE = 'metadata';
+const DB_NAME = 'wavearea-store', DB_VER = 1, FILES = 'files', META = 'metadata'
 
-export class IDBAdapter extends StoreAdapter {
-  constructor() {
-    super();
-    this.db = null;
-  }
+export class IDBAdapter {
+  constructor() { this.db = null }
 
   async init() {
-    if (this.db) return;
-    this.db = await new Promise((resolve, reject) => {
-      let req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        let db = req.result;
-        if (!db.objectStoreNames.contains(FILES_STORE)) db.createObjectStore(FILES_STORE);
-        if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE);
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    if (this.db) return
+    this.db = await new Promise((res, rej) => {
+      let r = indexedDB.open(DB_NAME, DB_VER)
+      r.onupgradeneeded = () => { let db = r.result; [FILES, META].forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s) }) }
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
   }
 
-  async getFiles(options = {}) {
-    await this.init();
-    let files = await this.#get(META_STORE, 'files');
-    return sortFiles(files || [], options);
+  async getFiles(opts = {}) { await this.init(); return sortFiles(await this.#get(META, 'files') || [], opts) }
+
+  async getFile(id) {
+    await this.init()
+    let d = await this.#get(FILES, id)
+    if (!d) throw Object.assign(Error('Not found: ' + id), { name: 'NotFoundError' })
+    return new File([d.blob], d.name || 'audio', { type: d.type || '' })
   }
 
-  async getFile(fileId) {
-    await this.init();
-    let data = await this.#get(FILES_STORE, fileId);
-    if (!data) throw Object.assign(Error('File not found: ' + fileId), { name: 'NotFoundError' });
-    return new File([data.blob], data.name || 'audio', { type: data.type || '' });
+  async hasFile(id) {
+    await this.init()
+    let files = await this.#get(META, 'files') || []
+    if (!files.some(f => f.id === id)) return false
+    try { await this.#get(FILES, id); return true } catch { return false }
   }
 
-  async hasFile(fileId) {
-    await this.init();
-    let files = await this.#get(META_STORE, 'files') || [];
-    if (!files.some(f => f.id === fileId)) return false;
-    try { await this.#get(FILES_STORE, fileId); return true; } catch { return false; }
+  async addFile(file, extra = {}) {
+    await this.init()
+    let id = `${Date.now()}-${sanitizeFilename(file.name || 'audio')}`
+    await this.#put(FILES, id, { blob: file, name: file.name, type: file.type })
+    let files = await this.#get(META, 'files') || []
+    await this.#put(META, 'files', updateFileList(files, fileMeta(file, id, extra)))
+    return id
   }
 
-  async addFile(file, metadata = {}) {
-    await this.init();
-    let fileId = `${Date.now()}-${sanitizeFilename(file.name || 'audio')}`;
-    let timestamp = Date.now();
-
-    // store blob
-    await this.#put(FILES_STORE, fileId, { blob: file, name: file.name, type: file.type });
-
-    // update metadata list
-    let files = await this.#get(META_STORE, 'files') || [];
-    let meta = { id: fileId, name: file.name || 'Untitled', timestamp, size: file.size, type: file.type, ...metadata };
-    files = files.filter(f => f.name !== meta.name);
-    files.unshift(meta);
-    files = files.slice(0, 10);
-    await this.#put(META_STORE, 'files', files);
-
-    return fileId;
+  async updateFile(id, file, extra = {}) {
+    await this.init()
+    await this.#put(FILES, id, { blob: file, name: file.name, type: file.type })
+    let files = await this.#get(META, 'files') || []
+    let i = files.findIndex(f => f.id === id)
+    if (i !== -1) { files[i] = { ...files[i], size: file.size, type: file.type, ...extra, modified: Date.now() }; await this.#put(META, 'files', files) }
   }
 
-  async updateFile(fileId, file, metadata = {}) {
-    await this.init();
-    await this.#put(FILES_STORE, fileId, { blob: file, name: file.name, type: file.type });
-
-    let files = await this.#get(META_STORE, 'files') || [];
-    let idx = files.findIndex(f => f.id === fileId);
-    if (idx !== -1) {
-      files[idx] = { ...files[idx], size: file.size, type: file.type, ...metadata, modified: Date.now() };
-      await this.#put(META_STORE, 'files', files);
-    }
+  async deleteFile(id) {
+    await this.init()
+    let files = await this.#get(META, 'files') || []
+    await this.#put(META, 'files', files.filter(f => f.id !== id))
+    await this.#del(FILES, id)
   }
 
-  async deleteFile(fileId) {
-    await this.init();
-    let files = await this.#get(META_STORE, 'files') || [];
-    await this.#put(META_STORE, 'files', files.filter(f => f.id !== fileId));
-    await this.#del(FILES_STORE, fileId);
-  }
-
-  async clearAll() {
-    await this.init();
-    await this.#clear(FILES_STORE);
-    await this.#put(META_STORE, 'files', []);
-  }
+  async clearAll() { await this.init(); await this.#clear(FILES); await this.#put(META, 'files', []) }
 
   async getStoreInfo() {
-    if (navigator.storage?.estimate) {
-      let est = await navigator.storage.estimate();
-      return { usage: est.usage, quota: est.quota, usagePercent: (est.usage / est.quota * 100).toFixed(2) };
-    }
-    return null;
+    if (!navigator.storage?.estimate) return null
+    let e = await navigator.storage.estimate()
+    return { usage: e.usage, quota: e.quota, usagePercent: (e.usage / e.quota * 100).toFixed(2) }
   }
 
-  // IDB helpers
-  #tx(store, mode = 'readonly') { return this.db.transaction(store, mode).objectStore(store); }
-  #get(store, key) { return new Promise((res, rej) => { let r = this.#tx(store).get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-  #put(store, key, val) { return new Promise((res, rej) => { let r = this.#tx(store, 'readwrite').put(val, key); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }); }
-  #del(store, key) { return new Promise((res, rej) => { let r = this.#tx(store, 'readwrite').delete(key); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }); }
-  #clear(store) { return new Promise((res, rej) => { let r = this.#tx(store, 'readwrite').clear(); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }); }
+  #tx(s, m = 'readonly') { return this.db.transaction(s, m).objectStore(s) }
+  #get(s, k) { return new Promise((r, j) => { let q = this.#tx(s).get(k); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error) }) }
+  #put(s, k, v) { return new Promise((r, j) => { let q = this.#tx(s, 'readwrite').put(v, k); q.onsuccess = () => r(); q.onerror = () => j(q.error) }) }
+  #del(s, k) { return new Promise((r, j) => { let q = this.#tx(s, 'readwrite').delete(k); q.onsuccess = () => r(); q.onerror = () => j(q.error) }) }
+  #clear(s) { return new Promise((r, j) => { let q = this.#tx(s, 'readwrite').clear(); q.onsuccess = () => r(); q.onerror = () => j(q.error) }) }
 }

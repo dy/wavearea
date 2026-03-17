@@ -4,9 +4,11 @@
   "description": "Edit audio in textarea",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --external:@audio/*",
-    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --external:@audio/*",
-    "test": "npx playwright test"
+    "start": "esbuild ./src/wavearea.js ./src/worker.js ./src/layers/layers.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --external:@audio/aiff-decode --external:@audio/caf-decode --external:@audio/webm-decode --external:@audio/amr-decode --external:@audio/wma-decode --out-extension:.js=.js --entry-names=[name]",
+    "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/worker.js ./src/layers/layers.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --external:@audio/aiff-decode --external:@audio/caf-decode --external:@audio/webm-decode --external:@audio/amr-decode --external:@audio/wma-decode --entry-names=[name]",
+    "test": "node test/unit/selection.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js && npx playwright test",
+    "test:unit": "node test/unit/selection.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js",
+    "test:e2e": "npx playwright test"
   },
   "repository": {
     "type": "git",
@@ -28,14 +30,15 @@
   },
   "homepage": "https://github.com/audio-lab/wavearea#readme",
   "dependencies": {
-    "aac-decode": "^1.0.1",
-    "audio-decode": "^3.1.2",
+    "@audio/aac-decode": "^1.0.1",
+    "audio-decode": "^3.1.3",
     "comlink": "^4.4.2",
-    "sprae": "^13.0.1",
+    "sprae": "^13.1.1",
     "wavefont": "^3.5.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "esbuild": "^0.16.12"
+    "esbuild": "^0.16.12",
+    "tst": "^9.2.2"
   }
 }

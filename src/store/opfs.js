@@ -1,254 +1,87 @@
-// OPFS storage adapter for audio files
-// Implements StoreAdapter interface using Origin Private File System
+// OPFS storage adapter
 
-import { StoreAdapter, sortFiles, sanitizeFilename } from './adapter.js';
+import { sortFiles, sanitizeFilename, updateFileList, fileMeta } from './adapter.js';
 
-const FILES_LIMIT = 10;
-const METADATA_FILE = 'files-metadata.json';
-const FILES_DIR = 'audio-files';
+const METADATA_FILE = 'files-metadata.json', FILES_DIR = 'audio-files'
 
-export class OPFSAdapter extends StoreAdapter {
-  constructor() {
-    super();
-    this.root = null;
-    this.filesDir = null;
-    this.initialized = false;
-  }
+export class OPFSAdapter {
+  constructor() { this.root = null; this.filesDir = null }
 
   async init() {
-    if (this.initialized) return;
-
-    try {
-      // Get OPFS root directory
-      this.root = await navigator.storage.getDirectory();
-
-      // Create or get files directory
-      this.filesDir = await this.root.getDirectoryHandle(FILES_DIR, { create: true });
-
-      this.initialized = true;
-      console.log('OPFS storage initialized');
-    } catch (error) {
-      console.error('Failed to initialize OPFS:', error);
-      throw error;
-    }
+    if (this.root) return
+    this.root = await navigator.storage.getDirectory()
+    this.filesDir = await this.root.getDirectoryHandle(FILES_DIR, { create: true })
   }
 
-  async getFiles(options = {}) {
-    await this.init();
-
+  async getFiles(opts = {}) {
+    await this.init()
     try {
-      const metadataHandle = await this.root.getFileHandle(METADATA_FILE);
-      const file = await metadataHandle.getFile();
-      const text = await file.text();
-      const files = JSON.parse(text);
-
-      // Use shared sorting helper
-      return sortFiles(files, options);
-    } catch (error) {
-      // File doesn't exist yet
-      if (error.name === 'NotFoundError') {
-        return [];
-      }
-      console.error('Failed to get files:', error);
-      return [];
-    }
+      let f = await this.root.getFileHandle(METADATA_FILE)
+      return sortFiles(JSON.parse(await (await f.getFile()).text()), opts)
+    } catch (e) { return e.name === 'NotFoundError' ? [] : [] }
   }
 
-  async hasFile(fileId) {
-    await this.init();
-
-    try {
-      // Check if file exists in metadata
-      const files = await this.getFiles();
-      const hasMetadata = files.some(f => f.id === fileId);
-
-      // Check if file exists in OPFS
-      if (hasMetadata) {
-        try {
-          await this.filesDir.getFileHandle(fileId);
-          return true;
-        } catch {
-          return false;
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Failed to check file existence:', error);
-      return false;
-    }
+  async getFile(id) {
+    await this.init()
+    return (await this.filesDir.getFileHandle(id)).getFile()
   }
 
-  async getFile(fileId) {
-    await this.init();
-
-    try {
-      const fileHandle = await this.filesDir.getFileHandle(fileId);
-      const file = await fileHandle.getFile();
-      return file;
-    } catch (error) {
-      console.error('Failed to get file:', error);
-      throw error;
-    }
+  async hasFile(id) {
+    await this.init()
+    let files = await this.getFiles()
+    if (!files.some(f => f.id === id)) return false
+    try { await this.filesDir.getFileHandle(id); return true } catch { return false }
   }
 
-  async addFile(file, metadata = {}) {
-    await this.init();
+  async addFile(file, extra = {}) {
+    await this.init()
+    let id = `${Date.now()}-${sanitizeFilename(file.name || 'audio')}`
 
-    const fileId = `${Date.now()}-${sanitizeFilename(file.name || 'audio')}`;
-    const timestamp = Date.now();
+    let fh = await this.filesDir.getFileHandle(id, { create: true })
+    let w = await fh.createWritable(); await w.write(file); await w.close()
 
-    try {
-      // Save the audio file
-      const fileHandle = await this.filesDir.getFileHandle(fileId, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(file);
-      await writable.close();
-
-      // Update files list
-      const files = await this.getFiles();
-
-      // Add new file metadata
-      const fileMetadata = {
-        id: fileId,
-        name: file.name || 'Untitled',
-        timestamp,
-        size: file.size,
-        type: file.type,
-        ...metadata
-      };
-
-      // Remove duplicate if exists (same name)
-      const filteredFiles = files.filter(f => f.name !== fileMetadata.name);
-
-      // Add to beginning and limit
-      filteredFiles.unshift(fileMetadata);
-      const limitedFiles = filteredFiles.slice(0, FILES_LIMIT);
-
-      // Clean up old files that are no longer in list
-      await this.#cleanupOldFiles(limitedFiles);
-
-      // Save updated metadata
-      await this.#saveMetadata(limitedFiles);
-
-      console.log('Added file:', fileMetadata);
-      return fileId;
-    } catch (error) {
-      console.error('Failed to add file:', error);
-      throw error;
-    }
+    let files = updateFileList(await this.getFiles(), fileMeta(file, id, extra))
+    await this.#cleanupOld(files)
+    await this.#saveMeta(files)
+    return id
   }
 
-  async updateFile(fileId, file, metadata = {}) {
-    await this.init();
+  async updateFile(id, file, extra = {}) {
+    await this.init()
+    let fh = await this.filesDir.getFileHandle(id)
+    let w = await fh.createWritable(); await w.write(file); await w.close()
 
-    try {
-      // Update the file content
-      const fileHandle = await this.filesDir.getFileHandle(fileId);
-      const writable = await fileHandle.createWritable();
-      await writable.write(file);
-      await writable.close();
-
-      // Update metadata
-      const files = await this.getFiles();
-      const fileIndex = files.findIndex(f => f.id === fileId);
-
-      if (fileIndex !== -1) {
-        files[fileIndex] = {
-          ...files[fileIndex],
-          size: file.size,
-          type: file.type,
-          ...metadata,
-          // Keep original timestamp, update modified time
-          modified: Date.now()
-        };
-        await this.#saveMetadata(files);
-      }
-
-      console.log('Updated file:', fileId);
-    } catch (error) {
-      console.error('Failed to update file:', error);
-      throw error;
-    }
+    let files = await this.getFiles()
+    let i = files.findIndex(f => f.id === id)
+    if (i !== -1) { files[i] = { ...files[i], size: file.size, type: file.type, ...extra, modified: Date.now() }; await this.#saveMeta(files) }
   }
 
-  async deleteFile(fileId) {
-    await this.init();
-
-    try {
-      // Remove from files list
-      const files = await this.getFiles();
-      const filteredFiles = files.filter(f => f.id !== fileId);
-      await this.#saveMetadata(filteredFiles);
-
-      // Delete the actual file
-      await this.filesDir.removeEntry(fileId);
-
-      console.log('Deleted file:', fileId);
-    } catch (error) {
-      console.error('Failed to delete file:', error);
-      throw error;
-    }
+  async deleteFile(id) {
+    await this.init()
+    let files = await this.getFiles()
+    await this.#saveMeta(files.filter(f => f.id !== id))
+    await this.filesDir.removeEntry(id)
   }
 
   async clearAll() {
-    await this.init();
-
-    try {
-      // Delete all audio files
-      for await (const entry of this.filesDir.values()) {
-        await this.filesDir.removeEntry(entry.name);
-      }
-
-      // Clear metadata
-      await this.#saveMetadata([]);
-
-      console.log('Cleared all files');
-    } catch (error) {
-      console.error('Failed to clear all files:', error);
-      throw error;
-    }
+    await this.init()
+    for await (let e of this.filesDir.values()) await this.filesDir.removeEntry(e.name)
+    await this.#saveMeta([])
   }
 
   async getStoreInfo() {
-    if (navigator.storage && navigator.storage.estimate) {
-      const estimate = await navigator.storage.estimate();
-      return {
-        usage: estimate.usage,
-        quota: estimate.quota,
-        usagePercent: (estimate.usage / estimate.quota * 100).toFixed(2)
-      };
-    }
-    return null;
+    if (!navigator.storage?.estimate) return null
+    let e = await navigator.storage.estimate()
+    return { usage: e.usage, quota: e.quota, usagePercent: (e.usage / e.quota * 100).toFixed(2) }
   }
 
-  // Private methods
-
-  async #saveMetadata(files) {
-    try {
-      const metadataHandle = await this.root.getFileHandle(METADATA_FILE, { create: true });
-      const writable = await metadataHandle.createWritable();
-      await writable.write(JSON.stringify(files, null, 2));
-      await writable.close();
-    } catch (error) {
-      console.error('Failed to save metadata:', error);
-      throw error;
-    }
+  async #saveMeta(files) {
+    let fh = await this.root.getFileHandle(METADATA_FILE, { create: true })
+    let w = await fh.createWritable(); await w.write(JSON.stringify(files)); await w.close()
   }
 
-  async #cleanupOldFiles(currentFiles) {
-    try {
-      const currentIds = new Set(currentFiles.map(f => f.id));
-
-      // Iterate through all files in storage
-      for await (const entry of this.filesDir.values()) {
-        if (!currentIds.has(entry.name)) {
-          await this.filesDir.removeEntry(entry.name);
-          console.log('Cleaned up old file:', entry.name);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to cleanup old files:', error);
-    }
+  async #cleanupOld(current) {
+    let ids = new Set(current.map(f => f.id))
+    for await (let e of this.filesDir.values()) if (!ids.has(e.name)) await this.filesDir.removeEntry(e.name)
   }
 }

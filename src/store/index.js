@@ -1,19 +1,24 @@
-// Store factory — creates storage adapter by type
-// Adapters: 'opfs' (default), 'idb', 'memory'
-
 import { OPFSAdapter } from './opfs.js';
 import { IDBAdapter } from './idb.js';
 import { MemoryAdapter } from './memory.js';
 
 const adapters = { opfs: OPFSAdapter, idb: IDBAdapter, memory: MemoryAdapter }
 
-export function createStore(type = 'opfs') {
-  let Adapter = adapters[type]
-  if (!Adapter) throw Error('Unknown store type: ' + type)
-  return new Adapter()
+function detectAdapter() {
+  // OPFS with createWritable (Chrome, Firefox — not Safari)
+  if (typeof navigator !== 'undefined' && navigator.storage?.getDirectory) {
+    try { if (FileSystemFileHandle.prototype.createWritable) return 'opfs' } catch {}
+  }
+  // IndexedDB fallback (Safari, older browsers)
+  if (typeof indexedDB !== 'undefined') return 'idb'
+  return 'memory'
+}
+
+export function createStore(type) {
+  if (!type) type = detectAdapter()
+  if (!adapters[type]) throw Error('Unknown store: ' + type)
+  return new adapters[type]()
 }
 
 export { OPFSAdapter, IDBAdapter, MemoryAdapter }
-
-// default singleton
 export default createStore()

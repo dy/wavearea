@@ -375,6 +375,27 @@ test.describe('wavearea', () => {
     await expect(page.locator('#editarea')).toBeVisible();
   });
 
+  test('play button starts at first timecode after loading', async ({ page }) => {
+    await loadFile(page);
+    await page.locator('#play').waitFor({ state: 'visible', timeout: 10000 });
+
+    // floater should be positioned before the first timecode (line 0)
+    let pos = await page.evaluate(() => {
+      let floater = document.querySelector('#floater');
+      let firstTc = document.querySelector('#timecodes [data-id="0"]');
+      if (!floater || !firstTc) return null;
+      // floater should be a previous sibling of the first timecode
+      return {
+        floaterTop: floater.getBoundingClientRect().top,
+        firstTcTop: firstTc.getBoundingClientRect().top,
+        prevSibId: firstTc.previousElementSibling?.id,
+      };
+    });
+    expect(pos).not.toBeNull();
+    // floater should be before line 0's timecode (or at the same Y)
+    expect(Math.abs(pos.floaterTop - pos.firstTcTop)).toBeLessThan(5);
+  });
+
   test('timecodes render after loading', async ({ page }) => {
     await loadFile(page);
 
@@ -404,6 +425,51 @@ test.describe('visual layers', () => {
     await page.goto('/');
     await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
     await loadFile(page);
+  });
+
+  test('smooth caret element exists in DOM after load', async ({ page }) => {
+    let info = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      return {
+        exists: !!c,
+        inBody: document.body.contains(c),
+        width: c?.style.width,
+        position: c?.style.position,
+      };
+    });
+    expect(info.exists).toBe(true);
+    expect(info.inBody).toBe(true);
+    expect(info.width).toBe('1px');
+    expect(info.position).toBe('fixed');
+  });
+
+  test('smooth caret visible after click, not stuck at origin', async ({ page }) => {
+    // click in the middle of waveform
+    let box = await page.locator('#editarea').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + 15);
+    await page.waitForTimeout(300);
+
+    let info = await page.evaluate(() => {
+      let c = document.querySelector('.smooth-caret');
+      if (!c) return null;
+      let rect = c.getBoundingClientRect();
+      return {
+        opacity: getComputedStyle(c).opacity,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        transform: c.style.transform,
+      };
+    });
+
+    expect(info).not.toBeNull();
+    expect(parseFloat(info.opacity)).toBe(1);
+    expect(info.height).toBeGreaterThan(10);
+    // must NOT be stuck at origin (0,0)
+    expect(info.left).toBeGreaterThan(10);
+    expect(info.transform).not.toBe('translate(0px, 0px)');
+    expect(info.transform).toContain('translate');
   });
 
   test('smooth caret tracks native caret, advances during playback', async ({ page }) => {

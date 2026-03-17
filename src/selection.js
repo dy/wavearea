@@ -1,90 +1,76 @@
 
-export const selection = {
-  // get normalized selection within editarea
-  get() {
-    let s = window.getSelection()
-    if (!s.rangeCount) return
+export function createSelection(getEl) {
+  return {
+    get() {
+      let s = window.getSelection()
+      if (!s.rangeCount) return
 
-    let editarea = document.querySelector('#editarea')
-    let node = s.anchorNode
+      let el = getEl()
+      if (!el) return
+      let node = s.anchorNode
+      if (!node || !el.contains(node)) return
 
-    // selection must be inside editarea
-    if (!node || !editarea.contains(node)) return
+      let range = s.getRangeAt(0)
+      let start = cleanOffset(range.startContainer, range.startOffset, el)
+      let end = cleanOffset(range.endContainer, range.endOffset, el)
+      if (start > end) [start, end] = [end, start]
 
-    let range = s.getRangeAt(0)
-    let start = cleanOffset(range.startContainer, range.startOffset, editarea)
-    let end = cleanOffset(range.endContainer, range.endOffset, editarea)
+      return { start, end, collapsed: s.isCollapsed, range }
+    },
 
-    // swap if backwards
-    if (start > end) [start, end] = [end, start]
+    set(start, end) {
+      let s = window.getSelection()
+      start = Math.max(0, start)
+      if (end == null) end = start
 
-    return { start, end, collapsed: s.isCollapsed, range }
-  },
+      let el = getEl()
+      let textNode = el?.firstChild
+      if (!textNode) return { start, end, collapsed: start === end, range: null }
 
-  // set selection by clean offsets (excluding combining marks)
-  set(start, end) {
-    let s = window.getSelection()
+      let rawStart = cleanToRaw(textNode.textContent, start)
+      let rawEnd = cleanToRaw(textNode.textContent, end)
 
-    start = Math.max(0, start)
-    if (end == null) end = start
-
-    let editarea = document.querySelector('#editarea')
-    let textNode = editarea.firstChild
-    if (!textNode) return { start, end, collapsed: start === end, range: null }
-
-    let rawStart = cleanToRaw(textNode.textContent, start)
-    let rawEnd = cleanToRaw(textNode.textContent, end)
-
-    // skip if already at correct position
-    if (s.rangeCount) {
-      let cur = s.getRangeAt(0)
-      if (cur.startContainer === textNode && cur.startOffset === rawStart &&
-          cur.endContainer === textNode && cur.endOffset === rawEnd) {
-        return { start, end, collapsed: start === end, range: cur }
+      if (s.rangeCount) {
+        let cur = s.getRangeAt(0)
+        if (cur.startContainer === textNode && cur.startOffset === rawStart &&
+            cur.endContainer === textNode && cur.endOffset === rawEnd) {
+          return { start, end, collapsed: start === end, range: cur }
+        }
       }
-    }
 
-    if (start === end) {
-      // collapsed: use collapse() to avoid removeAllRanges flicker
-      s.collapse(textNode, rawStart)
-    } else {
-      s.removeAllRanges()
-      let range = new Range()
-      range.setStart(textNode, rawStart)
-      range.setEnd(textNode, rawEnd)
-      s.addRange(range)
-    }
+      if (start === end) {
+        s.collapse(textNode, rawStart)
+      } else {
+        s.removeAllRanges()
+        let range = new Range()
+        range.setStart(textNode, rawStart)
+        range.setEnd(textNode, rawEnd)
+        s.addRange(range)
+      }
 
-    return { start, end, collapsed: start === end, range: s.rangeCount ? s.getRangeAt(0) : null }
+      return { start, end, collapsed: start === end, range: s.rangeCount ? s.getRangeAt(0) : null }
+    }
   }
 }
 
-// convert raw (node, offset) to clean offset (excluding combining marks)
-function cleanOffset(node, rawOffset, editarea) {
-  // if node is the editarea element itself, rawOffset is child index (not char offset)
-  if (node === editarea) {
-    // child index 0 = before first child = position 0
-    // child index >= childNodes.length = after last child = end of text
-    if (rawOffset === 0) return 0
-    let textNode = editarea.firstChild
-    return textNode ? cleanText(textNode.textContent).length : 0
-  }
+// backward compat: singleton that looks up #editarea
+export const selection = createSelection(() => document.querySelector('#editarea'))
+
+function cleanOffset(node, rawOffset, el) {
+  if (node === el) return rawOffset === 0 ? 0 : cleanText(el.firstChild?.textContent ?? '').length
   return cleanText(node.textContent.slice(0, rawOffset)).length
 }
 
-// convert clean offset to raw offset (including combining marks)
-function cleanToRaw(content, cleanPos) {
+export function cleanToRaw(content, cleanPos) {
   let clean = 0, raw = 0
   while (clean < cleanPos && raw < content.length) {
     if (content[raw] < '\u0300') clean++
     raw++
-    // skip combining marks after this character
     while (raw < content.length && content[raw] >= '\u0300') raw++
   }
   return raw
 }
 
-// return text with combining marks removed
 export function cleanText(str) {
   return str.replace(/[\u0300\u0301]/g, '')
 }

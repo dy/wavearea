@@ -64,7 +64,7 @@
 
     <div id="floater" :ref="refs.floater"
       :class="{'loaded': waveform && !loading}"
-      :fx.delay="loading; refs.timecodes.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
+      :fx.delay="caretLine, lines; refs.timecodes?.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
       <button id="play"
         :ref="refs.playButton"
         :hidden="!waveform || loading"
@@ -89,37 +89,11 @@
   <div id="opener"
     :if="!waveform && !loading"
     :scope="{files: [], sortBy: 'date'}"
-    :fx="async () => {files = await api.getFiles({sortBy})}">
+    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => [])}">
     <nav>
       <input id="file" type="file"
             accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
-            :onchange="async e => {
-              loading = 'Decoding'
-              error = null
-              waveform = ''
-              total = 0
-              const file = e.target.files[0]
-              let t0 = performance.now()
-              try {
-                const meta = await api.loadFile(file, (str) => {
-                  waveform += str
-                  total += cleanText(str).length
-                  duration = total * 1024 / sampleRate
-                })
-                console.log(`[render] total: ${(performance.now() - t0).toFixed(0)}ms (includes decode + render)`)
-                duration = meta.duration
-                sampleRate = meta.sampleRate
-                channels = meta.channels
-                measureWaveform()
-                await api.saveFile(file, { name: file.name, duration: meta.duration });
-              } catch(err) {
-                console.error('Failed to load file:', err)
-                error = err.message || 'Failed to decode audio'
-                waveform = ''
-                total = 0
-              }
-              loading = false
-            }" />
+            :onchange="e => loadAudio(e.target.files[0], { save: true })" />
       <label for="file" title="Open file">
         <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       </label>
@@ -128,29 +102,11 @@
       </label>
     </nav>
 
-    <div id="files" :if="files.length">
+    <div id="files" :if="files?.length">
       <ul>
         <li :each="fileInfo in files">
           <button class="file-button"
-            :onclick="async e => {
-              loading = 'Loading'
-              error = null
-              waveform = ''
-              total = 0
-              try {
-                const meta = await api.loadFile(fileInfo.id, (str) => (waveform += str, total += cleanText(str).length, duration = total * 1024 / sampleRate))
-                duration = meta.duration
-                sampleRate = meta.sampleRate
-                channels = meta.channels
-                measureWaveform()
-              } catch(err) {
-                console.error('Failed to load file:', err)
-                error = err.message || 'Failed to load file'
-                waveform = ''
-                total = 0
-              }
-              loading = false
-            }"
+            :onclick="() => loadAudio(fileInfo.id)"
             :title="`${fileInfo.name} (${(fileInfo.size / 1024 / 1024).toFixed(2)} MB)`">
             <span class="file-name" :text="fileInfo.name"></span>
             <span class="file-date" :text="new Date(fileInfo.timestamp).toLocaleDateString()"></span>

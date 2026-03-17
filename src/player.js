@@ -3,7 +3,7 @@
 // Fallback: <audio> element (no AudioContext — encodes WAV blob)
 // Future: AudioWorklet (Phase 3 — effects, crossfade, recording)
 
-const BLOCK_SIZE = 1024
+import { BLOCK_SIZE } from './constants.js'
 
 // engine interface:
 //   play(fromBlock, toBlock, loop) → void
@@ -33,6 +33,7 @@ export { bufferPlayer, audioElPlayer, workletPlayer }
 
 // Primary backend: AudioBufferSourceNode
 const FADE_TIME = 0.005 // 5ms crossfade to eliminate seek clicks
+const MAX_BUFFER_SEC = 30 // cap AudioBuffer to avoid Safari lag on long files
 
 function bufferPlayer(getWindow, sr, ch) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
@@ -50,7 +51,8 @@ function bufferPlayer(getWindow, sr, ch) {
     onended: null,
 
     async play(fromBlock = 0, toBlock, loop = false) {
-      if (ctx.state === 'suspended') await ctx.resume()
+      let t0 = performance.now()
+      if (ctx.state === 'suspended') { await ctx.resume(); console.log(`[player] resume: ${(performance.now()-t0).toFixed(0)}ms`) }
 
       // fade out + stop previous without triggering onended
       if (source) {
@@ -66,13 +68,23 @@ function bufferPlayer(getWindow, sr, ch) {
       let fromSample = fromBlock * BLOCK_SIZE
       let toSample = toBlock != null ? toBlock * BLOCK_SIZE : undefined
 
+      // cap buffer size for responsiveness (especially Safari)
+      let maxSamples = loop ? undefined : MAX_BUFFER_SEC * sr
+      if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
+      else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
+
+      let t1 = performance.now()
       let pcm = await getWindow(fromSample, toSample)
       if (!pcm || !pcm[0]?.length) return
+      console.log(`[player] getWindow: ${(performance.now()-t1).toFixed(0)}ms, ${pcm[0].length} samples`)
 
+      let t2 = performance.now()
       let frames = pcm[0].length
       let buf = ctx.createBuffer(ch, frames, sr)
       for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
+      console.log(`[player] createBuffer+copy: ${(performance.now()-t2).toFixed(0)}ms`)
 
+      let t3 = performance.now()
       source = ctx.createBufferSource()
       source.buffer = buf
       source.playbackRate.value = speed
@@ -83,8 +95,15 @@ function bufferPlayer(getWindow, sr, ch) {
       }
       source.connect(gain)
 
+      let cappedEnd = toSample != null ? Math.ceil(toSample / BLOCK_SIZE) : toBlock
       source.onended = () => {
-        if (player.state === 'playing' && !loop) {
+        if (player.state === 'playing') {
+          if (loop) return
+          // if we capped the buffer, auto-continue from where we left off
+          if (cappedEnd && loopEndBlock && cappedEnd < loopEndBlock) {
+            player.play(cappedEnd, loopEndBlock, false)
+            return
+          }
           player.state = 'stopped'
           source = null
           player.onended?.()
@@ -191,8 +210,7 @@ function audioElPlayer(getWindow, sr, ch) {
   let el = document.createElement('audio')
   let blobUrl = null
   let speed = 1
-  let loopStartBlock = 0, loopEndBlock = 0, isLooping = false
-  let startBlock = 0
+  let startBlock = 0, isLooping = false
 
   let player = {
     state: 'stopped',
@@ -201,12 +219,9 @@ function audioElPlayer(getWindow, sr, ch) {
     onended: null,
 
     async play(fromBlock = 0, toBlock, loop = false) {
-      // revoke previous blob
       if (blobUrl) URL.revokeObjectURL(blobUrl)
 
       startBlock = fromBlock
-      loopStartBlock = fromBlock
-      loopEndBlock = toBlock
       isLooping = loop
 
       let fromSample = fromBlock * BLOCK_SIZE
@@ -237,11 +252,7 @@ function audioElPlayer(getWindow, sr, ch) {
       if (wasPlaying) player.play(block)
     },
 
-    setLoop(s, e) {
-      loopStartBlock = s
-      loopEndBlock = e
-      el.loop = true
-    },
+    setLoop() { el.loop = true },
     setVolume(v) { el.volume = v },
     setSpeed(r) {
       speed = r
@@ -256,8 +267,8 @@ function audioElPlayer(getWindow, sr, ch) {
 
     get currentTime() { return (performance.now() / 1000) },
     get sampleRate() { return sr },
-    get loopStart() { return loopStartBlock },
-    get loopEnd() { return loopEndBlock },
+    get loopStart() { return startBlock },
+    get loopEnd() { return 0 },
     get loop() { return isLooping }
   }
 

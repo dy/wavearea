@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 import { decodeStream } from 'audio-decode';
 
-const BLOCK_SIZE = 1024;
+import { BLOCK_SIZE } from './constants.js';
 const CHUNK_SIZE = 184320;
 
 // MIME → decoder format
@@ -19,13 +19,14 @@ const FORMATS = {
 
 // detect format from file header bytes
 function detectFormat(h) {
+  if (h.length < 4) return null
   if (h[0] === 0xFF && (h[1] & 0xE0) === 0xE0) return 'mp3'
   if (h[0] === 0x49 && h[1] === 0x44 && h[2] === 0x33) return 'mp3'
-  if (h.length > 7 && h[4] === 0x66 && h[5] === 0x74 && h[6] === 0x79 && h[7] === 0x70) return 'm4a'
   if (h[0] === 0x52 && h[1] === 0x49 && h[2] === 0x46 && h[3] === 0x46) return 'wav'
   if (h[0] === 0x66 && h[1] === 0x4C && h[2] === 0x61 && h[3] === 0x43) return 'flac'
   if (h[0] === 0x4F && h[1] === 0x67 && h[2] === 0x67 && h[3] === 0x53) return 'oga'
   if (h[0] === 0x71 && h[1] === 0x6F && h[2] === 0x61 && h[3] === 0x66) return 'qoa'
+  if (h.length > 7 && h[4] === 0x66 && h[5] === 0x74 && h[6] === 0x79 && h[7] === 0x70) return 'm4a'
   return null
 }
 
@@ -153,6 +154,7 @@ Comlink.expose({
     }
 
     acc.flush()
+    if (!totalSamples) { cb.onError?.(Error('No audio data decoded')); return }
     let dt = performance.now() - t0
     let dur = totalSamples / sampleRate
     console.log(`[decode] done: ${dt.toFixed(0)}ms, ${dur.toFixed(1)}s audio, ${(dur / (dt / 1000)).toFixed(0)}x realtime`)

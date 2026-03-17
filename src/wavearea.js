@@ -3,18 +3,18 @@
 
 import sprae from 'sprae';
 import template from './wavearea.html';
-import { selection, cleanText } from './selection.js';
+import { createSelection, cleanText } from './selection.js';
 import createApi from './api.js';
 import createPlayer from './player.js';
-
-const BLOCK_SIZE = 1024
+import { BLOCK_SIZE } from './constants.js';
 
 export default function wavearea(el, { store, engine, layers } = {}) {
   el.innerHTML = template
 
   let api = createApi({ store })
   let player = null
-  let _cleanups = []
+  // selection reads editarea lazily from sprae state (refs is reactive)
+  let selection = createSelection(() => el.querySelector('#editarea'))
 
   let state = sprae(el, {
     // deps
@@ -68,8 +68,37 @@ export default function wavearea(el, { store, engine, layers } = {}) {
     caretX: 0,
 
     measureWaveform() {
-      this.cols = this.countCols(this.refs.editarea)
-      this.lines = this.countLines(this.refs.editarea)
+      let ea = this.refs.editarea
+      if (!ea) return
+      this.cols = this.countCols(ea)
+      this.lines = this.countLines(ea)
+    },
+
+    async loadAudio(file, { save } = {}) {
+      this.loading = save ? 'Decoding' : 'Loading'
+      this.error = null
+      this.waveform = ''
+      this.total = 0
+      let t0 = performance.now()
+      try {
+        let meta = await api.loadFile(file, (str) => {
+          this.waveform += str
+          this.total += cleanText(str).length
+          this.duration = this.total * BLOCK_SIZE / this.sampleRate
+        })
+        console.log(`[render] ${(performance.now() - t0).toFixed(0)}ms (decode + render)`)
+        this.duration = meta.duration
+        this.sampleRate = meta.sampleRate
+        this.channels = meta.channels
+        this.measureWaveform()
+        if (save) await api.saveFile(file, { name: file.name, duration: meta.duration }).catch(e => console.warn('[store] save failed:', e.message))
+      } catch (err) {
+        console.error('Failed to load file:', err)
+        this.error = err.message || 'Failed to load file'
+        this.waveform = ''
+        this.total = 0
+      }
+      this.loading = false
     },
 
     seekTo(block, toBlock, looping) {
@@ -217,10 +246,13 @@ export default function wavearea(el, { store, engine, layers } = {}) {
   })
 
   // initialize visual layers
+  let cleanups = []
   if (layers) for (let layer of layers) {
     let cleanup = layer(state, el)
-    if (cleanup) _cleanups.push(cleanup)
+    if (cleanup) cleanups.push(cleanup)
   }
+
+  state[Symbol.dispose] = () => cleanups.forEach(fn => fn())
 
   return state
 }
