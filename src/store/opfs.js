@@ -18,7 +18,7 @@ export class OPFSAdapter {
     try {
       let f = await this.root.getFileHandle(METADATA_FILE)
       return sortFiles(JSON.parse(await (await f.getFile()).text()), opts)
-    } catch (e) { return e.name === 'NotFoundError' ? [] : [] }
+    } catch { return [] }
   }
 
   async getFile(id) {

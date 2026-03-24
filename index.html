@@ -10,12 +10,9 @@
 
   <script type="module">
     import wavearea from './dist/wavearea.js'
-    import { smoothCaret, loopHighlight } from './dist/layers.js'
-
     wavearea(document.getElementById('wavearea'), {
       engine: window.__playerEngine || undefined,
       store: window.__store || undefined,
-      layers: [smoothCaret(), loopHighlight()],
     })
   </script>
 </body>

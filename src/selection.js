@@ -53,9 +53,6 @@ export function createSelection(getEl) {
   }
 }
 
-// backward compat: singleton that looks up #editarea
-export const selection = createSelection(() => document.querySelector('#editarea'))
-
 function cleanOffset(node, rawOffset, el) {
   if (node === el) return rawOffset === 0 ? 0 : cleanText(el.firstChild?.textContent ?? '').length
   return cleanText(node.textContent.slice(0, rawOffset)).length

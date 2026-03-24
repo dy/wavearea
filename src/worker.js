@@ -2,6 +2,7 @@ import * as Comlink from 'comlink';
 import { decodeStream } from 'audio-decode';
 
 import { BLOCK_SIZE } from './constants.js';
+import { extractWindow } from './pcm.js';
 const CHUNK_SIZE = 184320;
 
 // MIME → decoder format
@@ -107,30 +108,8 @@ function createAccumulator(cb) {
 
 Comlink.expose({
   getWindow(fromSample = 0, toSample) {
-    if (!chunks.length || !chunks[0].length) return null
-    let total = totalSamples
-    if (toSample == null || toSample > total) toSample = total
-    if (fromSample >= toSample) return null
-
-    let t0 = performance.now()
-    let len = toSample - fromSample
-    let result = Array.from({ length: channelCount }, () => new Float32Array(len))
-
-    for (let ch = 0; ch < channelCount; ch++) {
-      let pos = 0
-      for (let chunk of chunks[ch]) {
-        let chunkEnd = pos + chunk.length
-        if (chunkEnd > fromSample && pos < toSample) {
-          let srcStart = Math.max(0, fromSample - pos)
-          let srcEnd = Math.min(chunk.length, toSample - pos)
-          let dstStart = Math.max(0, pos + srcStart - fromSample)
-          result[ch].set(chunk.subarray(srcStart, srcEnd), dstStart)
-        }
-        pos = chunkEnd
-      }
-    }
-    console.log(`[worker] getWindow: copy ${len} frames in ${(performance.now()-t0).toFixed(0)}ms, transfer next`)
-
+    let result = extractWindow(chunks, totalSamples, channelCount, fromSample, toSample)
+    if (!result) return null
     return Comlink.transfer(result, result.map(a => a.buffer))
   },
 

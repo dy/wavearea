@@ -21,4 +21,3 @@ export function createStore(type) {
 }
 
 export { OPFSAdapter, IDBAdapter, MemoryAdapter }
-export default createStore()

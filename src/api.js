@@ -3,6 +3,7 @@
 
 import * as Comlink from 'comlink';
 import { createStore } from './store/index.js';
+import { extractWindow } from './pcm.js';
 
 const worker = Comlink.wrap(new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }));
 
@@ -46,28 +47,7 @@ export default function createApi({ store } = {}) {
 
     // getWindow from main-thread PCM — instant, no Worker postMessage
     getWindow(fromSample, toSample) {
-      if (!pcmChunks.length || !pcmChunks[0].length) return null
-      if (toSample == null || toSample > pcmTotal) toSample = pcmTotal
-      if (fromSample >= toSample) return null
-
-      let len = toSample - fromSample
-      let result = Array.from({ length: channelCount }, () => new Float32Array(len))
-
-      for (let ch = 0; ch < channelCount; ch++) {
-        let pos = 0
-        for (let chunk of pcmChunks[ch]) {
-          let chunkEnd = pos + chunk.length
-          if (chunkEnd > fromSample && pos < toSample) {
-            let srcStart = Math.max(0, fromSample - pos)
-            let srcEnd = Math.min(chunk.length, toSample - pos)
-            let dstStart = Math.max(0, pos + srcStart - fromSample)
-            result[ch].set(chunk.subarray(srcStart, srcEnd), dstStart)
-          }
-          pos = chunkEnd
-        }
-      }
-
-      return result
+      return extractWindow(pcmChunks, pcmTotal, channelCount, fromSample, toSample)
     },
 
     async saveFile(file, meta) {

@@ -36,12 +36,23 @@ const FADE_TIME = 0.015 // 15ms fade in/out to eliminate clicks
 const MAX_BUFFER_SEC = 10 // cap AudioBuffer — Safari postMessage is slow for large transfers
 
 function bufferPlayer(getWindow, sr, ch) {
-  let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
-  // warm up AudioContext immediately (Safari delays if not resumed in user gesture)
+  let ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive', ...(sr ? { sampleRate: sr } : {}) })
+  // warm up AudioContext + audio pipeline (Safari has cold-start latency)
   if (ctx.state === 'suspended') ctx.resume()
+  // play silent buffer to prime the audio output path
+  let warmup = ctx.createBufferSource()
+  warmup.buffer = ctx.createBuffer(1, 1, sr)
+  warmup.connect(ctx.destination)
+  warmup.start(0)
   let gain = ctx.createGain()
   gain.connect(ctx.destination)
   let vol = 1
+
+  let fadeTo = (v) => {
+    gain.gain.cancelScheduledValues(ctx.currentTime)
+    gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(v, ctx.currentTime + FADE_TIME)
+  }
 
   let source = null
   let speed = 1
@@ -55,18 +66,15 @@ function bufferPlayer(getWindow, sr, ch) {
 
     async play(fromBlock = 0, toBlock, loop = false) {
       playAbort = false
-      let _t = performance.now(), _l = s => console.log(`[bufferPlayer] ${s}: ${(performance.now()-_t).toFixed(0)}ms`)
-      if (ctx.state === 'suspended') { await ctx.resume(); _l('resume (ctx.state=' + ctx.state + ')') }
+      console.time('[bufferPlayer.play]')
+      if (ctx.state === 'suspended') await ctx.resume()
       if (playAbort) return
 
       // fade out + stop previous without triggering onended
       if (source) {
-        gain.gain.cancelScheduledValues(ctx.currentTime)
-        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + FADE_TIME)
+        fadeTo(0)
         source.onended = null
         source.stop(ctx.currentTime + FADE_TIME)
-        _l('stopped prev')
       }
 
       loopStartBlock = fromBlock
@@ -76,21 +84,19 @@ function bufferPlayer(getWindow, sr, ch) {
       let fromSample = fromBlock * BLOCK_SIZE
       let toSample = toBlock != null ? toBlock * BLOCK_SIZE : undefined
 
-      // cap buffer size for responsiveness (especially Safari)
+      // cap buffer size for responsiveness
       let maxSamples = loop ? undefined : MAX_BUFFER_SEC * sr
       if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
       else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
 
-      _l('before getWindow')
-      let pcm = await getWindow(fromSample, toSample)
-      _l('getWindow done, ' + (pcm?.[0]?.length ?? 0) + ' frames')
+      let pcm = getWindow(fromSample, toSample)
+      if (pcm?.then) pcm = await pcm
       if (playAbort) return
       if (!pcm || !pcm[0]?.length) return
 
       let frames = pcm[0].length
       let buf = ctx.createBuffer(ch, frames, sr)
       for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
-      _l('buffer created')
 
       source = ctx.createBufferSource()
       source.buffer = buf
@@ -118,11 +124,10 @@ function bufferPlayer(getWindow, sr, ch) {
       }
 
       // fade in from silence
-      gain.gain.cancelScheduledValues(ctx.currentTime)
       gain.gain.setValueAtTime(0, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + FADE_TIME)
+      fadeTo(vol)
       source.start(0)
-      _l('source.start')
+      console.timeEnd('[bufferPlayer.play]')
       player.state = 'playing'
       player.onstarted?.({ block: fromBlock, time: ctx.currentTime })
     },
@@ -131,9 +136,7 @@ function bufferPlayer(getWindow, sr, ch) {
       playAbort = true
       if (source && player.state === 'playing') {
         // fade out then disconnect (click-free stop)
-        gain.gain.cancelScheduledValues(ctx.currentTime)
-        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + FADE_TIME)
+        fadeTo(0)
         source.onended = null
         let s = source
         source = null
@@ -157,9 +160,7 @@ function bufferPlayer(getWindow, sr, ch) {
 
     setVolume(v) {
       vol = v
-      gain.gain.cancelScheduledValues(ctx.currentTime)
-      gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(v, ctx.currentTime + FADE_TIME)
+      fadeTo(v)
     },
 
     setSpeed(r) {
@@ -270,7 +271,7 @@ function audioElPlayer(getWindow, sr, ch) {
       if (wasPlaying) player.play(block)
     },
 
-    setLoop() { el.loop = true },
+    setLoop(start, end) { startBlock = start; el.loop = true },
     setVolume(v) { el.volume = v },
     setSpeed(r) {
       speed = r

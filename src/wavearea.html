@@ -11,14 +11,10 @@
     :if="total">
     <span id="caret-line"></span>
 
-    <div id="editarea" class="wavefont" :contenteditable="!loading && !playing" inputmode="none"
+    <div id="editarea" class="wavefont" inputmode="none"
       :ref="refs.editarea"
       :class="{'playing':playing}"
-      :style="{'user-select': loading ? 'none' : null, 'pointer-events': loading ? 'none' : null}"
       :resize.throttle-raf="() => measureWaveform()"
-      :ondblclick.prevent
-      :onbeforeinput.prevent
-      :onkeydown.space.prevent="false"
       :onclick:onkeyup.arrow:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
         let sel = selection.get()
         if (!sel) return
