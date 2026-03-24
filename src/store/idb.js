@@ -36,7 +36,9 @@ export class IDBAdapter {
   async addFile(file, extra = {}) {
     await this.init()
     let id = `${Date.now()}-${sanitizeFilename(file.name || 'audio')}`
-    await this.#put(FILES, id, { blob: file, name: file.name, type: file.type })
+    // Materialize to ArrayBuffer — WebKit IDB can't structured-clone File/Blob objects
+    let buf = await file.arrayBuffer()
+    await this.#put(FILES, id, { blob: buf, name: file.name, type: file.type })
     let files = await this.#get(META, 'files') || []
     await this.#put(META, 'files', updateFileList(files, fileMeta(file, id, extra)))
     return id
@@ -44,7 +46,8 @@ export class IDBAdapter {
 
   async updateFile(id, file, extra = {}) {
     await this.init()
-    await this.#put(FILES, id, { blob: file, name: file.name, type: file.type })
+    let buf = await file.arrayBuffer()
+    await this.#put(FILES, id, { blob: buf, name: file.name, type: file.type })
     let files = await this.#get(META, 'files') || []
     let i = files.findIndex(f => f.id === id)
     if (i !== -1) { files[i] = { ...files[i], size: file.size, type: file.type, ...extra, modified: Date.now() }; await this.#put(META, 'files', files) }

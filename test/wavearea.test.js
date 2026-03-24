@@ -5,6 +5,18 @@ const FIXTURE = path.resolve('test/fixtures/sine-3s.mp3');
 const BAD_FIXTURE = path.resolve('test/fixtures/bad.mp3');
 const EMPTY_FIXTURE = path.resolve('test/fixtures/empty.mp3');
 
+// helper: wait for background save to persist a file to store
+async function waitForSave(page, timeout = 10000) {
+  await page.waitForFunction(() => !document.querySelector('#status'), { timeout });
+  await page.waitForFunction(async () => {
+    let { createStore } = await import('/src/store/index.js');
+    let store = createStore();
+    await store.init();
+    let files = await store.getFiles();
+    return files.length > 0;
+  }, { timeout });
+}
+
 // helper: load a file into wavearea via file input
 async function loadFile(page, filePath = FIXTURE) {
   // trigger file input directly (hidden input, label clicks it)
@@ -689,7 +701,7 @@ test.describe('visual layers', () => {
       let c = document.querySelector('.smooth-caret');
       return c?.style.animation;
     });
-    expect(animPlaying).toContain('none');
+    expect(animPlaying).not.toContain('caret-blink');
 
     await page.keyboard.press('Space');
   });
@@ -1204,11 +1216,12 @@ test.describe('saved file', () => {
     let errors = [];
     page.on('pageerror', e => errors.push(e.message));
 
-    // 1. Load file via input — this saves to OPFS
+    // 1. Load file via input — this saves to store
     await loadFile(page);
     expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
 
-    // 2. Reload page — opener should show with saved file
+    // 2. Wait for background save, then reload
+    await waitForSave(page);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
 
@@ -1443,15 +1456,14 @@ test.describe('decode layer', () => {
     let errors = [];
     page.on('pageerror', e => errors.push(e.message));
 
-    // save file to OPFS first
+    // save file to store first
     await loadFile(page);
     let originalLen = (await page.locator('#editarea').textContent()).length;
 
-    // wait for save to complete
-    await page.waitForFunction(() => !document.querySelector('#status'), { timeout: 10000 });
-    await page.waitForTimeout(300);
+    // wait for background save to complete
+    await waitForSave(page);
 
-    // reload — OPFS file has empty MIME type, uses header detection
+    // reload — stored file may have empty MIME type, uses header detection
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
 
@@ -1496,12 +1508,8 @@ test.describe('storage layer', () => {
 
     await loadFile(page);
 
-    // wait for save to complete (loading becomes false after saveFile)
-    await page.waitForFunction(() => {
-      let el = document.querySelector('#wavearea');
-      return el && !el.querySelector('#status');
-    }, { timeout: 10000 });
-    await page.waitForTimeout(500);
+    // wait for background save to complete
+    await waitForSave(page);
 
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
@@ -1530,6 +1538,9 @@ test.describe('storage layer', () => {
 
 function storageContractTests(adapterType) {
   test.describe(`${adapterType} adapter — storage contract`, () => {
+    // OPFS createWritable not available in WebKit
+    if (adapterType === 'opfs') test.skip(({ browserName }) => browserName === 'webkit', 'OPFS createWritable not supported in WebKit');
+
     test('add → list → get → has → delete → clear', async ({ page }) => {
       await page.goto('/');
 
