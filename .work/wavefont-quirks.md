@@ -1,7 +1,7 @@
 # Wavefont Browser Quirks
 
 ## Character Width
-- Waveform chars: U+0100–U+0180 (128 levels), generated in `src/worker.js`
+- Waveform chars: U+0100–U+0180 (128 levels), generated in `src/waveform.js` from per-block min/max stats
 - Extremely narrow at default settings (~1.3px at 50px font-size)
 - `1ch` CSS unit does NOT match actual wavefont char width — `main.css` max-width uses `1ch` with a `0.5ch` rounding fix
 - Configurable via `--wavefont-size`, `--wavefont-spacing` CSS custom properties on `#wavearea`

@@ -412,13 +412,21 @@
 
 ## Architecture Notes
 
+> **Engine = `audio` library (audiojs/audio) since 2026-07.** The worker side is the whole
+> `audio` engine (`audio/worker-host` in `src/engine-worker.js`); main thread talks to it
+> through the `audio/worker` facade. Decode, PCM pages, per-block stats, edits list, virtual
+> timeline (plan), encode all live worker-side. Main thread receives only stat deltas
+> (`data` events → wavefont string via `src/waveform.js`) and transferred playback windows
+> (`a.read({at, duration})` → existing player.js engines). The op model, undo, URL
+> serialization (`a.edits` / `a.toJSON()`) come from the engine — Phase 2 builds on them
+> instead of the bespoke Worker API sketched below.
+
 ### Thread responsibilities
 ```
-Main thread (UI):        ops list, waveform string, caret/selection, sprae state. NO raw PCM.
-                         Creates AudioBufferSourceNode from received Float32Arrays.
-Web Worker (engine):     original PCM chunks, ops list copy, virtual timeline resolver,
-                         waveform string generator, playback buffer assembler.
-                         Exposes clean API — see Worker API below.
+Main thread (UI):        waveform string, caret/selection, sprae state, audio/worker facade
+                         (mirrors edits list + duration/sampleRate/channels). NO raw PCM.
+                         Creates AudioBufferSourceNode from transferred Float32Arrays.
+Web Worker (engine):     the audio library — PCM pages, stats, edits/plan resolver, encode.
 AudioWorklet (future):   for effects/crossfade/recording. Not used in Phase 1.
 ```
 
