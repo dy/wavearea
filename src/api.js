@@ -10,7 +10,15 @@ import { BLOCK_SIZE } from './constants.js'
 export default function createApi({ store } = {}) {
   if (!store) store = createStore()
 
-  let a = null, worker = null
+  let a = null, worker = null, redoStack = []
+
+  // re-render full waveform + meta from engine state (edits applied)
+  async function refresh() {
+    let total = Math.ceil(a.length / BLOCK_SIZE)
+    if (!total) return { waveform: '', total: 0, duration: 0 }
+    let [mins, maxs] = await a.stat(['min', 'max'], { bins: total, channel: 0 })
+    return { waveform: statsToWavefont(mins, maxs), total, duration: a.duration }
+  }
 
   return {
     async loadFile(file, onWaveform) {
@@ -21,6 +29,7 @@ export default function createApi({ store } = {}) {
       // fresh engine per file — frees all decoded PCM of the previous one
       a?.dispose()
       worker?.terminate()
+      redoStack = []
       worker = new Worker(new URL('./engine-worker.js', import.meta.url), { type: 'module' })
       // f stays bound to this load — a concurrent loadFile reassigns `a`
       let f = a = audioWorker(file, { worker })
@@ -55,6 +64,27 @@ export default function createApi({ store } = {}) {
       if (!a) return null
       let sr = a.sampleRate
       return a.read({ at: fromSample / sr, duration: toSample != null ? (toSample - fromSample) / sr : undefined })
+    },
+
+    // edit ops — offsets in blocks, engine takes samples; new edit clears redo
+    async removeRange(fromBlock, toBlock) {
+      await a.run(['remove', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      redoStack = []
+      return refresh()
+    },
+
+    async undo() {
+      let edit = await a.undo()
+      if (!edit) return null
+      redoStack.push(edit)
+      return refresh()
+    },
+
+    async redo() {
+      let edit = redoStack.pop()
+      if (!edit) return null
+      await a.run(edit)
+      return refresh()
     },
 
     async saveFile(file, meta) {

@@ -1287,6 +1287,165 @@ const FORCE_AUDIO_EL = () => {
   };
 };
 
+// --- Editing: delete, undo/redo ---
+
+const cleanLen = (page) => page.evaluate(() =>
+  document.querySelector('#editarea').textContent.replace(/[\u0300\u0301]/g, '').length);
+
+const caretPos = (page) => page.evaluate(() => {
+  let s = window.getSelection(), r = s.rangeCount ? s.getRangeAt(0) : null;
+  if (!r) return null;
+  return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301]/g, '').length;
+});
+
+const setCaret = (page, block) => page.evaluate((b) => {
+  let node = document.querySelector('#editarea').firstChild;
+  let str = node.textContent, clean = 0, raw = 0;
+  while (clean < b && raw < str.length) {
+    if (str[raw] < '\u0300') clean++;
+    raw++;
+    while (raw < str.length && str[raw] >= '\u0300') raw++;
+  }
+  window.getSelection().collapse(node, raw);
+}, block);
+
+// wait until edit queue settles and length matches expectation
+const waitLen = (page, len) => page.waitForFunction((l) =>
+  document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length === l,
+  len, { timeout: 5000 });
+
+test.describe('editing', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  test('backspace deletes one block before caret, caret shifts left', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 1);
+    expect(await caretPos(page)).toBe(9);
+    expect(errors).toEqual([]);
+  });
+
+  test('backspace at start is a no-op', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 0);
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(400);
+    expect(await cleanLen(page)).toBe(total);
+    expect(errors).toEqual([]);
+  });
+
+  test('delete key removes block after caret, caret stays', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Delete');
+    await waitLen(page, total - 1);
+    expect(await caretPos(page)).toBe(10);
+    expect(errors).toEqual([]);
+  });
+
+  test('delete at end is a no-op', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, total);
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(400);
+    expect(await cleanLen(page)).toBe(total);
+    expect(errors).toEqual([]);
+  });
+
+  test('repeated backspace deletes one block each (queued edits)', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 20);
+    for (let i = 0; i < 5; i++) await page.keyboard.press('Backspace', { delay: 30 });
+    await waitLen(page, total - 5);
+    expect(await caretPos(page)).toBe(15);
+    expect(errors).toEqual([]);
+  });
+
+  test('drag-selection + backspace deletes the selected range', async ({ page }) => {
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+    });
+    let total = await cleanLen(page);
+
+    let box = await page.locator('#editarea').boundingBox();
+    let y = box.y + 15;
+    await page.mouse.move(box.x + box.width * 0.3, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.7, y, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    let [selStart, selLen] = await page.evaluate(() => {
+      let s = window.getSelection(), r = s.getRangeAt(0);
+      let clean = (str) => str.replace(/[\u0300\u0301]/g, '');
+      let start = clean(r.startContainer.textContent.slice(0, r.startOffset)).length;
+      let len = clean(r.toString()).length;
+      return [start, len];
+    });
+    expect(selLen).toBeGreaterThan(0);
+
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - selLen);
+    expect(await caretPos(page)).toBe(selStart);
+    expect(errors).toEqual([]);
+  });
+
+  test('undo restores, redo re-applies, new edit clears redo', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 1);
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 2);
+
+    // undo twice → original
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total - 1);
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+
+    // extra undo with empty history is a no-op
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(300);
+    expect(await cleanLen(page)).toBe(total);
+
+    // redo re-applies
+    await page.keyboard.press('Control+Shift+z');
+    await waitLen(page, total - 1);
+
+    // new edit clears redo
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 2);
+    await page.keyboard.press('Control+Shift+z');
+    await page.waitForTimeout(300);
+    expect(await cleanLen(page)).toBe(total - 2);
+    expect(errors).toEqual([]);
+  });
+
+  test('playback works after delete (engine timeline in sync)', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 5);
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace', { delay: 30 });
+    await waitLen(page, total - 3);
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(400);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+    await page.keyboard.press('Space');
+    expect(errors).toEqual([]);
+  });
+
+});
+
 test.describe('audioElPlayer backend', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(FORCE_AUDIO_EL);

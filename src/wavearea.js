@@ -225,17 +225,82 @@ export default function wavearea(el, {
       player.play(fromBlock, toBlock, looping)
       this.playing = true
 
-      return () => {
-        console.time('[stop]')
-        player.pause()
-        this.playing = false
-        this._stopCaretAnimation()
-        this.clipStart = this.caretOffset
-        this.clipEnd = this.total
-        this.loop = false
-        this.selection.set(this.caretOffset)
-        console.timeEnd('[stop]')
+      return () => this.stop()
+    },
+
+    stop() {
+      if (!player || !this.playing) return
+      console.time('[stop]')
+      player.pause()
+      this.playing = false
+      this._stopCaretAnimation()
+      this.clipStart = this.caretOffset
+      this.clipEnd = this.total
+      this.loop = false
+      this.selection.set(this.caretOffset)
+      console.timeEnd('[stop]')
+    },
+
+    // edits run through a queue — hold-repeat keys must see each other's result
+    _editQ: null,
+    _edit(fn) {
+      if (this.loading) return
+      return this._editQ = (this._editQ || Promise.resolve()).then(fn).catch(e => {
+        console.error(e)
+        this.error = e.message || 'Edit failed'
+      })
+    },
+
+    // dir: -1 = backspace (before caret), +1 = delete (after caret)
+    del(dir) {
+      if (!this.total) return
+      return this._edit(async () => {
+        let sel = this.selection.get()
+        let from, to
+        if (sel && !sel.collapsed) [from, to] = [sel.start, sel.end]
+        else {
+          let at = sel ? sel.start : this.caretOffset
+          if (dir < 0) { if (at <= 0) return; from = at - 1; to = at }
+          else { if (at >= this.total) return; from = at; to = at + 1 }
+        }
+        this.stop()
+        this._applyEdit(await api.removeRange(from, to), from)
+      })
+    },
+
+    undo() {
+      return this._edit(async () => {
+        let r = await api.undo()
+        if (r) { this.stop(); this._applyEdit(r, this.caretOffset) }
+      })
+    },
+
+    redo() {
+      return this._edit(async () => {
+        let r = await api.redo()
+        if (r) { this.stop(); this._applyEdit(r, this.caretOffset) }
+      })
+    },
+
+    _applyEdit({ waveform, total, duration }, at) {
+      let ea = this.refs.editarea
+      if (ea) {
+        if (ea.firstChild?.nodeType === 3) ea.firstChild.data = waveform
+        else ea.textContent = waveform
       }
+      this.total = total
+      this.duration = duration
+      this.measureWaveform()
+      let caret = Math.max(0, Math.min(at, total))
+      this.caretOffset = caret
+      this.caretLine = Math.floor(caret / (this.cols || 1))
+      this.clipStart = caret
+      this.clipEnd = total
+      this.loop = false
+      let sel = this.selection.set(caret)
+      let rect = sel?.range?.getClientRects()
+      rect = rect?.[rect.length - 1]
+      if (rect) { this.caretX = rect.right; this.caretY = rect.top }
     },
 
     _startCaretAnimation() {
