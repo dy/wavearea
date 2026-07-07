@@ -1222,16 +1222,20 @@ test.describe('saved file', () => {
     await loadFile(page);
     expect((await page.locator('#editarea').textContent()).length).toBeGreaterThan(10);
 
-    // 2. Wait for background save, then reload
+    // 2. Save reflects the store id in the URL (?src=) — reload restores the file
+    // straight from OPFS (URL is the state), no opener shown
     await waitForSave(page);
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
+    await page.waitForFunction(() => {
+      let el = document.querySelector('#editarea');
+      return el && el.textContent.length > 10;
+    }, { timeout: 15000 });
 
-    // wait for files list to populate
+    // 3. A fresh visit without ?src shows the opener with the saved file listed
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
     let fileBtn = page.locator('#files .file-button').first();
     await fileBtn.waitFor({ state: 'visible', timeout: 10000 });
-
-    // 3. Click saved file — should decode and render waveform
     await fileBtn.click();
     await page.waitForFunction(() => {
       let el = document.querySelector('#editarea');
@@ -1444,6 +1448,64 @@ test.describe('editing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('edits serialize to URL, undo removes them', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 1);
+    expect(page.url()).toContain('del=9-10');
+
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 2);
+    expect(page.url()).toContain('del=9-10..8-9');
+
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total - 1);
+    expect(page.url()).toContain('del=9-10');
+    expect(page.url()).not.toContain('..');
+
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(page.url()).not.toContain('del=');
+    expect(errors).toEqual([]);
+  });
+
+  test('held key (repeat) merges the burst into one op, one undo step', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    let key = (repeat) => page.evaluate((rep) =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true, repeat: rep })), repeat);
+    await key(false);
+    await waitLen(page, total - 1);
+    await key(true);
+    await waitLen(page, total - 2);
+    await key(true);
+    await waitLen(page, total - 3);
+    expect(page.url()).toContain('del=7-10');
+    expect(page.url()).not.toContain('..');
+
+    // one undo reverts the whole burst
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(errors).toEqual([]);
+  });
+
+  test('reload reconstructs the edit chain from URL', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 2);
+    // background save sets ?src=<store id>
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await waitLen(page, total - 2);
+    expect(page.url()).toContain('del=');
+    expect(errors).toEqual([]);
+  });
+
 });
 
 test.describe('audioElPlayer backend', () => {
@@ -1625,8 +1687,9 @@ test.describe('decode layer', () => {
     // wait for background save to complete
     await waitForSave(page);
 
-    // reload — stored file may have empty MIME type, uses header detection
-    await page.reload();
+    // fresh visit without ?src (reload would auto-restore the session) —
+    // stored file may have empty MIME type, uses header detection
+    await page.goto('/');
     await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
 
     let fileBtn = page.locator('#files .file-button').first();
@@ -1674,7 +1737,8 @@ test.describe('storage layer', () => {
     // wait for background save to complete
     await waitForSave(page);
 
-    await page.reload();
+    // fresh visit without ?src (reload would auto-restore the session)
+    await page.goto('/');
     await page.waitForFunction(() => document.querySelector('#opener'), { timeout: 5000 });
 
     let fileBtn = page.locator('#files .file-button').first();

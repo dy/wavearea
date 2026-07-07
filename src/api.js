@@ -10,7 +10,7 @@ import { BLOCK_SIZE } from './constants.js'
 export default function createApi({ store } = {}) {
   if (!store) store = createStore()
 
-  let a = null, worker = null, redoStack = []
+  let a = null, worker = null
 
   // re-render full waveform + meta from engine state (edits applied)
   async function refresh() {
@@ -22,14 +22,15 @@ export default function createApi({ store } = {}) {
 
   return {
     async loadFile(file, onWaveform) {
-      if (typeof file === 'string') {
+      // string source: remote URL goes straight to the engine (fetched in worker),
+      // anything else is a store id
+      if (typeof file === 'string' && !/^(https?|data|blob):/.test(file)) {
         file = await store.getFile(file)
       }
 
       // fresh engine per file — frees all decoded PCM of the previous one
       a?.dispose()
       worker?.terminate()
-      redoStack = []
       worker = new Worker(new URL('./engine-worker.js', import.meta.url), { type: 'module' })
       // f stays bound to this load — a concurrent loadFile reassigns `a`
       let f = a = audioWorker(file, { worker })
@@ -66,29 +67,28 @@ export default function createApi({ store } = {}) {
       return a.read({ at: fromSample / sr, duration: toSample != null ? (toSample - fromSample) / sr : undefined })
     },
 
-    // edit ops — offsets in blocks, engine takes samples; new edit clears redo
-    async removeRange(fromBlock, toBlock) {
+    // edit ops — offsets in blocks, engine takes samples;
+    // op history/redo lives in UI state (URL ops), engine just executes
+    async removeRange(fromBlock, toBlock, { replace } = {}) {
+      if (replace) await a.undo()
       await a.run(['remove', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
-      redoStack = []
       return refresh()
     },
 
-    async undo() {
+    // apply a batch (URL reconstruction) — sequential ops, single re-render
+    async removeRanges(ranges) {
+      for (let [from, to] of ranges)
+        await a.run(['remove', { offset: from * BLOCK_SIZE, length: (to - from) * BLOCK_SIZE }])
+      return refresh()
+    },
+
+    async undoEdit() {
       let edit = await a.undo()
-      if (!edit) return null
-      redoStack.push(edit)
-      return refresh()
-    },
-
-    async redo() {
-      let edit = redoStack.pop()
-      if (!edit) return null
-      await a.run(edit)
-      return refresh()
+      return edit ? refresh() : null
     },
 
     async saveFile(file, meta) {
-      await store.addFile(file, meta);
+      return store.addFile(file, meta);
     },
 
     async getFiles(options) {

@@ -118,12 +118,16 @@ export default function wavearea(el, {
       this.lines = this.total ? Math.ceil(this.total / this.cols) : this.countLines(ea)
     },
 
-    async loadAudio(file, { save } = {}) {
+    async loadAudio(file, { save, ops } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
       this.waveform = ''
       this.total = 0
+      this._ops = []
+      this._redoOps = []
+      // clear stale edit chain from URL — unless we're about to reconstruct it
+      if (!ops?.length) this._syncURL()
       // create player eagerly DURING user gesture (Safari requires this for AudioContext)
       ensurePlayer()
 
@@ -165,10 +169,19 @@ export default function wavearea(el, {
           await new Promise(r => requestAnimationFrame(r))
           this.measureWaveform()
         }
+        // reconstruct edit chain from URL ops
+        if (ops?.length) {
+          this._ops = ops
+          this._applyEdit(await api.removeRanges(ops), 0)
+        }
         this.loading = false
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
+        // reopened stored file / remote URL — reflect source in URL
+        if (typeof file === 'string') this._syncURL(file)
         // save in background — don't block UI
-        if (save) api.saveFile(file, { name: file.name, duration: meta.duration }).catch(e => console.warn('[store] save failed:', e.message))
+        if (save) api.saveFile(file, { name: file.name, duration: meta.duration })
+          .then(id => this._syncURL(id))
+          .catch(e => console.warn('[store] save failed:', e.message))
       } catch (err) {
         console.error('Failed to load file:', err)
         this.error = err.message || 'Failed to load file'
@@ -251,35 +264,67 @@ export default function wavearea(el, {
       })
     },
 
+    // applied ops (URL-serialized state) + redo history — raw, not reactive
+    _ops: [],
+    _redoOps: [],
+
     // dir: -1 = backspace (before caret), +1 = delete (after caret)
-    del(dir) {
+    // repeat: key held (KeyboardEvent.repeat) — merge the burst into one undo step
+    del(dir, repeat) {
       if (!this.total) return
       return this._edit(async () => {
         let sel = this.selection.get()
-        let from, to
+        let from, to, merge = false
+        let last = this._ops[this._ops.length - 1]
         if (sel && !sel.collapsed) [from, to] = [sel.start, sel.end]
         else {
           let at = sel ? sel.start : this.caretOffset
           if (dir < 0) { if (at <= 0) return; from = at - 1; to = at }
           else { if (at >= this.total) return; from = at; to = at + 1 }
+          // merge a held-key burst into the last op — one undo step
+          if (last && repeat) {
+            if (dir < 0 && to === last[0]) { merge = true; last[0] = from }
+            else if (dir > 0 && from === last[0]) { merge = true; last[1] += to - from }
+          }
         }
         this.stop()
-        this._applyEdit(await api.removeRange(from, to), from)
+        if (!merge) this._ops.push(last = [from, to])
+        this._redoOps.length = 0
+        this._applyEdit(await api.removeRange(last[0], last[1], { replace: merge }), from)
+        this._syncURL()
       })
     },
 
     undo() {
       return this._edit(async () => {
-        let r = await api.undo()
-        if (r) { this.stop(); this._applyEdit(r, this.caretOffset) }
+        if (!this._ops.length) return
+        let r = await api.undoEdit()
+        if (!r) return
+        this._redoOps.push(this._ops.pop())
+        this.stop()
+        this._applyEdit(r, this.caretOffset)
+        this._syncURL()
       })
     },
 
     redo() {
       return this._edit(async () => {
-        let r = await api.redo()
-        if (r) { this.stop(); this._applyEdit(r, this.caretOffset) }
+        let op = this._redoOps.pop()
+        if (!op) return
+        this._ops.push(op)
+        this.stop()
+        this._applyEdit(await api.removeRange(op[0], op[1]), op[0])
+        this._syncURL()
       })
+    },
+
+    // URL is the state: ?src=<store id | remote url>&del=f-t..f-t
+    _syncURL(src) {
+      let url = new URL(location.href)
+      if (src != null) url.searchParams.set('src', src)
+      if (this._ops.length) url.searchParams.set('del', this._ops.map(([f, t]) => `${f}-${t}`).join('..'))
+      else url.searchParams.delete('del')
+      history.replaceState(null, '', url)
     },
 
     _applyEdit({ waveform, total, duration }, at) {
@@ -404,8 +449,15 @@ export default function wavearea(el, {
 
   state[Symbol.dispose] = () => cleanups.forEach(fn => fn())
 
-  // auto-load src if provided
-  if (src) state.loadAudio(src)
+  // auto-load src from option or URL; ?del= reconstructs the edit chain
+  let params = new URLSearchParams(location.search)
+  src ??= params.get('src')
+  if (src) {
+    let ops = (params.get('del') || '').split('..')
+      .map(r => r.split('-').map(Number))
+      .filter(([f, t]) => f >= 0 && t > f)
+    state.loadAudio(src, { ops })
+  }
 
   return state
 }

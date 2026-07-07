@@ -1,7 +1,7 @@
 <div class="container"
   :ref="refs.container"
   :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, loop = false, clipEnd = null, e.target.closest?.('#editarea') && window.getSelection().removeAllRanges(), e=> isMouseDown = false)"
-  :onkeydown.document.delete.prevent="e => del(e.key === 'Backspace' ? -1 : 1)"
+  :onkeydown.document.delete.prevent="e => del(e.key === 'Backspace' ? -1 : 1, e.repeat)"
   :onkeydown.document.ctrl-z.prevent:onkeydown.document.meta-z.prevent="e => e.shiftKey ? redo() : undo()"
   :style="{
     '--cols': cols,
