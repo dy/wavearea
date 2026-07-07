@@ -1595,6 +1595,51 @@ test.describe('editing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('trim keeps only the selection', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setSelection(page, 20, 50);
+    await page.locator('#trim').click();
+    await waitLen(page, 30);
+    expect(page.url()).toContain('clip=20-50');
+    expect(await caretPos(page)).toBe(0);
+
+    // undo restores, redo re-trims
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(page.url()).not.toContain('clip=');
+    await page.keyboard.press('Control+Shift+z');
+    await waitLen(page, 30);
+
+    // playback still works on the trimmed timeline
+    await page.keyboard.press('Control+Space');
+    await page.waitForTimeout(400);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('trim without selection is a no-op', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.locator('#trim').click();
+    await page.waitForTimeout(300);
+    expect(await cleanLen(page)).toBe(total);
+    expect(errors).toEqual([]);
+  });
+
+  test('reload reconstructs trim from URL (clip replay)', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await setSelection(page, 20, 50);
+    await page.locator('#trim').click();
+    await waitLen(page, 30);
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await waitLen(page, 30);
+    expect(page.url()).toContain('clip=20-50');
+    expect(errors).toEqual([]);
+  });
+
   test('reload reconstructs paste from URL (cp replay)', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     let total = await cleanLen(page);

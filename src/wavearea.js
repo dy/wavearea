@@ -348,6 +348,22 @@ export default function wavearea(el, {
       })
     },
 
+    // trim to selection — keep only the selected range
+    trim() {
+      let sel = this.selection.get()
+      let from, to
+      if (sel && !sel.collapsed) ({ start: from, end: to } = sel)
+      else if (this.loop && this.clipEnd != null && this.clipEnd > this.clipStart) [from, to] = [this.clipStart, this.clipEnd]
+      else return
+      return this._edit(async () => {
+        this.stop()
+        this._ops.push(['clip', from, to])
+        this._redoOps.length = 0
+        this._applyEdit(await api.cropRange(from, to), 0)
+        this._syncURL()
+      })
+    },
+
     undo() {
       return this._edit(async () => {
         if (!this._ops.length) return
@@ -370,8 +386,9 @@ export default function wavearea(el, {
         this.stop()
         let r = op[0] === 'del' ? await api.removeRange(op[1], op[2])
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
+          : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : await api.pasteClip(op.clip, op[4])
-        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[4])
+        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[4])
         this._syncURL()
       })
     },
@@ -381,7 +398,7 @@ export default function wavearea(el, {
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
-      for (let k of ['del', 'sil', 'cp']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp']) url.searchParams.delete(k)
       for (let op of this._ops) url.searchParams.append(op[0], op.slice(1).join('-'))
       history.replaceState(null, '', url)
     },
@@ -512,7 +529,7 @@ export default function wavearea(el, {
   let params = new URLSearchParams(location.search)
   src ??= params.get('src')
   if (src) {
-    const ARITY = { del: 2, sil: 2, cp: 4 }
+    const ARITY = { del: 2, sil: 2, clip: 2, cp: 4 }
     let ops = []
     for (let [k, v] of params) {
       if (!ARITY[k]) continue

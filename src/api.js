@@ -81,6 +81,12 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
+    // trim to selection — keep only the range
+    async cropRange(fromBlock, toBlock) {
+      await a.run(['crop', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      return refresh()
+    },
+
     // clipboard — clone+crop snapshots the current timeline range, sample-precise
     // (clip() takes seconds and can drift ±1 sample → a stray partial block)
     async copyRange(fromBlock, toBlock) {
@@ -120,6 +126,7 @@ export default function createApi({ store } = {}) {
         let [type, ...args] = ops[k]
         if (type === 'del') await a.run(['remove', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
         else if (type === 'sil') await a.run(['insert', { source: args[1] * BLOCK_SIZE / sr, offset: args[0] * BLOCK_SIZE }])
+        else if (type === 'clip') await a.run(['crop', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
         else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * BLOCK_SIZE }])
       }
       return refresh()
