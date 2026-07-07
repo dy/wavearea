@@ -248,23 +248,21 @@
 ## Phase 3: Audio Processing
 > Audacity's essential transforms, nothing more.
 
-* [ ] Normalize loudness
-  * [ ] Peak normalization: scale to target peak (default -1dBFS)
-  * [ ] RMS normalization: scale to target RMS
-  * [ ] LUFS normalization: broadcast-standard loudness
-  * [ ] Apply to selection or entire file
-  * [ ] Non-destructive: `norm(from-to-target)` op
+* [~] Normalize loudness
+  * [x] Peak normalization (engine default target), toolbar button, URL `norm=`
+  * [ ] RMS / LUFS targets (engine supports presets — needs target UI)
+  * [ ] Apply to selection (engine resolves gain from whole-file stats — needs range stats)
+  * [x] Non-destructive engine op, undo/redo/replay
 * [ ] Trim silence
   * [ ] Detect silence below threshold (configurable, default -40dB)
   * [ ] Trim leading/trailing silence
   * [ ] Option: trim all internal silences longer than N seconds
   * [ ] Keep configurable padding (default 100ms) around speech
   * [ ] Preview before applying
-* [ ] Fade in / Fade out
-  * [ ] Apply to selection start/end
-  * [ ] Linear or logarithmic curve
-  * [ ] Default duration: 50ms (click removal) or selection length
-  * [ ] Visual: waveform amplitude tapers
+* [~] Fade in / Fade out
+  * [x] Apply over selection (floater buttons, URL `fadein=f-t` / `fadeout=f-t`)
+  * [ ] Curve choice (engine has linear/exp/log/cos — needs UI)
+  * [x] Visual: waveform amplitude tapers (stats re-render)
 * [ ] Equalization
   * [ ] 3-band EQ: low (<300Hz), mid (300-3kHz), high (>3kHz)
   * [ ] Simple gain per band: -12dB to +12dB
@@ -340,12 +338,12 @@
   * [ ] Theme selection
   * [ ] Keyboard shortcut reference
   * [ ] About / credits / license (Krishnized)
-* [ ] Export / Download
-  * [ ] WAV export (straightforward: write header + samples)
-  * [ ] MP3 export (via lame.js or similar wasm encoder)
-  * [ ] Export selection only
-  * [ ] Filename: `{original}-edited.{ext}`
-  * [ ] Progress indicator for encoding
+* [~] Export / Download
+  * [x] WAV export (engine-encoded in worker, transferred; segments → cue/adtl chunks)
+  * [ ] MP3 export (engine has @audio/encode-mp3 — needs format picker UI)
+  * [ ] Export selection only (engine encode supports {at, duration})
+  * [x] Filename: `{original}-edited.wav`
+  * [~] "Encoding" status shown (engine emits progress events for a real bar later)
 * [ ] Recording
   * [ ] Microphone input via MediaStream
   * [ ] Record at caret position (insert recording into waveform)
