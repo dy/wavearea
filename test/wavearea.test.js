@@ -1956,6 +1956,131 @@ test.describe('processing & export', () => {
 
 });
 
+// --- Opener actions, zoom, export formats ---
+
+test.describe('opener & zoom', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('input#file'), { timeout: 5000 });
+  });
+
+  test('silence action opens a blank 3s document', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await page.locator('#silence').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > 100, { timeout: 15000 });
+    // 3s @ 44.1kHz / 1024 ≈ 130 blocks of silence
+    expect(await cleanLen(page)).toBe(Math.ceil(3 * 44100 / 1024));
+    await page.waitForFunction(() => location.search.includes('silence.wav'), { timeout: 10000 });
+
+    // typing into it works — space inserts a silence block
+    await setCaret(page, 10);
+    await page.keyboard.press('Space');
+    await waitLen(page, Math.ceil(3 * 44100 / 1024) + 1);
+    expect(errors).toEqual([]);
+  });
+
+  test('sample action streams the bundled demo', async ({ page }) => {
+    await page.locator('#sample').click();
+    // 11min sample — just verify progressive render starts and URL points at it
+    await page.waitForFunction(() =>
+      document.querySelector('#editarea')?.textContent.length > 500, { timeout: 20000 });
+    // URL src syncs when the full decode completes
+    await page.waitForFunction(() => location.search.includes('birds-forest.mp3'), { timeout: 30000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('zoom out halves blocks, rescales coords, survives reload', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+    let total = await cleanLen(page);
+
+    await page.locator('#zoomout').dispatchEvent('mousedown');
+    await waitLen(page, Math.ceil(total / 2));
+    expect(page.url()).toContain('bs=2048');
+
+    // edit at zoomed level
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await waitLen(page, Math.ceil(total / 2) - 1);
+    expect(page.url()).toContain('del=9-10');
+
+    // zoom back in — coords double
+    await page.locator('#zoomin').dispatchEvent('mousedown');
+    await page.waitForFunction(() => !location.search.includes('bs='), { timeout: 5000 });
+    expect(page.url()).toContain('del=18-20');
+
+    // zoom out again and reload — bs + ops replay
+    await page.locator('#zoomout').dispatchEvent('mousedown');
+    await waitLen(page, Math.ceil((total - 2) / 2));
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await waitLen(page, Math.ceil((total - 2) / 2));
+    expect(page.url()).toContain('bs=2048');
+    expect(errors).toEqual([]);
+  });
+
+  test('zoom-in is disabled at base level', async ({ page }) => {
+    await loadFile(page);
+    expect(await page.locator('#zoomin').isDisabled()).toBe(true);
+    expect(await page.locator('#zoomout').isDisabled()).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('mp3 export downloads an encoded file', async ({ page }) => {
+    await loadFile(page);
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download-mp3').dispatchEvent('mousedown'),
+    ]);
+    expect(download.suggestedFilename()).toBe('sine-3s-edited.mp3');
+    let chunks = [];
+    for await (let c of await download.createReadStream()) chunks.push(c);
+    let buf = Buffer.concat(chunks);
+    expect(buf.length).toBeGreaterThan(1000);
+    // MP3 starts with ID3 tag or a frame sync
+    let sync = buf[0] === 0xFF && (buf[1] & 0xE0) === 0xE0;
+    let id3 = buf.subarray(0, 3).toString('ascii') === 'ID3';
+    expect(sync || id3).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('selection export downloads only the range', async ({ page }) => {
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+
+    // whole-file export size as baseline
+    const [full] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    let fullChunks = [];
+    for await (let c of await full.createReadStream()) fullChunks.push(c);
+    let fullSize = Buffer.concat(fullChunks).length;
+
+    await setSelection(page, 20, 50);
+    const [part] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    let partChunks = [];
+    for await (let c of await part.createReadStream()) partChunks.push(c);
+    let partSize = Buffer.concat(partChunks).length;
+
+    // 30 of ~130 blocks ≈ 23% of the samples
+    expect(partSize).toBeLessThan(fullSize / 3);
+    expect(partSize).toBeGreaterThan(30 * 1024 * 2 - 4096);
+    expect(errors).toEqual([]);
+  });
+
+});
+
+
 test.describe('audioElPlayer backend', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(FORCE_AUDIO_EL);

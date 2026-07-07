@@ -124,13 +124,22 @@
       <input id="file" type="file"
             accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
             :onchange="e => loadAudio(e.target.files[0], { save: true })" />
-      <label for="file" title="Open file">
+      <label for="file" class="open-action" title="Open audio file">
         <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span>open</span>
       </label>
-      <label for="file" title="Open file">
-        <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-      </label>
+      <button id="sample" class="open-action" title="Load demo sample (forest sounds)"
+        :onclick="() => openSample()">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="none"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" stroke="#000000" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+        <span>sample</span>
+      </button>
+      <button id="silence" class="open-action" title="New blank document (3s silence)"
+        :onclick="() => openSilence()">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="none"><path d="M3 12h4l2-5 3 10 2-5h7" stroke="#000000" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".25"/><path d="M3 12h18" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>silence</span>
+      </button>
     </nav>
+    <p id="drop-hint">or drop an audio file anywhere</p>
 
     <div id="files" :if="files?.length">
       <ul>
@@ -147,6 +156,26 @@
   </div>
 
   <div id="toolbar" :if="total && !loading">
+    <button id="zoomin" class="op"
+      :disabled="blockSize <= 1024"
+      title="Zoom in"
+      :onmousedown.stop.prevent="() => zoom(1)"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm2.5-4h-2v2H9v-2H7V9h2V7h1v2h2v1z" />
+      </svg>
+    </button>
+    <button id="zoomout" class="op"
+      :disabled="blockSize >= 8192"
+      title="Zoom out"
+      :onmousedown.stop.prevent="() => zoom(-1)"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z" />
+      </svg>
+    </button>
     <button id="normalize" class="op"
       title="Normalize loudness"
       :onmousedown.stop.prevent="() => normalize()"
@@ -157,13 +186,24 @@
       </svg>
     </button>
     <button id="download" class="op"
-      title="Download WAV"
-      :onmousedown.stop.prevent="() => download()"
+      title="Download WAV (selection if active)"
+      :onmousedown.stop.prevent="() => download('wav')"
       tabindex="-1">
       <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
         <path d="M0 0h24v24H0z" fill="none" />
         <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
       </svg>
+      <span class="fmt">wav</span>
+    </button>
+    <button id="download-mp3" class="op"
+      title="Download MP3 (selection if active)"
+      :onmousedown.stop.prevent="() => download('mp3')"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+      </svg>
+      <span class="fmt">mp3</span>
     </button>
   </div>
 

@@ -20,12 +20,13 @@ import { BLOCK_SIZE } from './constants.js'
 
 const engines = { buffer: bufferPlayer, audio: audioElPlayer, worklet: workletPlayer }
 
-export default function createPlayer(getWindow, { sampleRate = 44100, channels = 1, engine } = {}) {
-  if (engine) return engines[engine](getWindow, sampleRate, channels)
+export default function createPlayer(getWindow, { sampleRate = 44100, channels = 1, engine, blockSize } = {}) {
+  let gbs = blockSize ?? (() => BLOCK_SIZE)  // live accessor — zoom changes block size
+  if (engine) return engines[engine](getWindow, sampleRate, channels, gbs)
   if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-    return bufferPlayer(getWindow, sampleRate, channels)
+    return bufferPlayer(getWindow, sampleRate, channels, gbs)
   }
-  return audioElPlayer(getWindow, sampleRate, channels)
+  return audioElPlayer(getWindow, sampleRate, channels, gbs)
 }
 
 export { bufferPlayer, audioElPlayer, workletPlayer }
@@ -35,7 +36,7 @@ export { bufferPlayer, audioElPlayer, workletPlayer }
 const FADE_TIME = 0.015 // 15ms fade in/out to eliminate clicks
 const MAX_BUFFER_SEC = 10 // cap AudioBuffer — Safari postMessage is slow for large transfers
 
-function bufferPlayer(getWindow, sr, ch) {
+function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive', ...(sr ? { sampleRate: sr } : {}) })
   // warm up AudioContext + audio pipeline (Safari has cold-start latency)
   if (ctx.state === 'suspended') ctx.resume()
@@ -81,8 +82,8 @@ function bufferPlayer(getWindow, sr, ch) {
       loopEndBlock = toBlock
       isLooping = loop
 
-      let fromSample = fromBlock * BLOCK_SIZE
-      let toSample = toBlock != null ? toBlock * BLOCK_SIZE : undefined
+      let fromSample = fromBlock * gbs()
+      let toSample = toBlock != null ? toBlock * gbs() : undefined
 
       // cap buffer size for responsiveness
       let maxSamples = loop ? undefined : MAX_BUFFER_SEC * sr
@@ -108,7 +109,7 @@ function bufferPlayer(getWindow, sr, ch) {
       }
       source.connect(gain)
 
-      let cappedEnd = toSample != null ? Math.ceil(toSample / BLOCK_SIZE) : toBlock
+      let cappedEnd = toSample != null ? Math.ceil(toSample / gbs()) : toBlock
       source.onended = () => {
         if (player.state === 'playing') {
           if (loop) return
@@ -225,7 +226,7 @@ function encodeWAV(pcm, sr, ch) {
 
 
 // Fallback backend: <audio> element with WAV blob
-function audioElPlayer(getWindow, sr, ch) {
+function audioElPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
   let el = document.createElement('audio')
   let blobUrl = null
   let speed = 1
@@ -243,8 +244,8 @@ function audioElPlayer(getWindow, sr, ch) {
       startBlock = fromBlock
       isLooping = loop
 
-      let fromSample = fromBlock * BLOCK_SIZE
-      let toSample = toBlock != null ? toBlock * BLOCK_SIZE : undefined
+      let fromSample = fromBlock * gbs()
+      let toSample = toBlock != null ? toBlock * gbs() : undefined
 
       let pcm = await getWindow(fromSample, toSample)
       if (!pcm || !pcm[0]?.length) return
@@ -308,7 +309,7 @@ function audioElPlayer(getWindow, sr, ch) {
 
 
 // AudioWorklet backend: streams PCM via worklet processor
-function workletPlayer(getWindow, sr, ch) {
+function workletPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
   let ctx = new (window.AudioContext || window.webkitAudioContext)(sr ? { sampleRate: sr } : undefined)
   let gain = ctx.createGain()
   gain.connect(ctx.destination)
@@ -374,8 +375,8 @@ function workletPlayer(getWindow, sr, ch) {
       loopEndBlock = toBlock
       isLooping = loop
 
-      let fromSample = fromBlock * BLOCK_SIZE
-      let toSample = toBlock != null ? toBlock * BLOCK_SIZE : undefined
+      let fromSample = fromBlock * gbs()
+      let toSample = toBlock != null ? toBlock * gbs() : undefined
 
       let pcm = await getWindow(fromSample, toSample)
       if (!pcm || !pcm[0]?.length) return

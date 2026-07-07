@@ -10,6 +10,17 @@ import { BLOCK_SIZE } from './constants.js';
 import _smoothCaret from './layers/smooth-caret.js';
 import _loopHighlight from './layers/loop-highlight.js';
 
+// minimal mono 16-bit WAV of silence — a blank document to type/paste/record into
+function silentFile(sec = 3, sr = 44100) {
+  let n = sec * sr, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
+  let w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  w(36, 'data'); v.setUint32(40, n * 2, true)
+  return new File([buf], 'silence.wav', { type: 'audio/wav' })
+}
+
 export default function wavearea(el, {
   src,
   readonly = true,
@@ -30,7 +41,7 @@ export default function wavearea(el, {
   let selection = createSelection(() => el.querySelector('#editarea'))
   let ensurePlayer = () => player ??= createPlayer(
     (from, to) => api.getWindow(from, to),
-    { sampleRate: state.sampleRate, channels: state.channels, engine: _engine }
+    { sampleRate: state.sampleRate, channels: state.channels, engine: _engine, blockSize: () => state.blockSize }
   )
 
   let state = sprae(el, {
@@ -62,6 +73,8 @@ export default function wavearea(el, {
     sampleRate: 44100,
     channels: 1,
     filename: '',
+    // display block size (samples per char) — zoom level; all block coords use it
+    blockSize: BLOCK_SIZE,
     volume: initVolume,
     speed: initSpeed,
 
@@ -149,7 +162,17 @@ export default function wavearea(el, {
       return i
     },
 
-    async loadAudio(file, { save, ops, brs } = {}) {
+    // blank silence document — type (space), paste or drop into it
+    openSilence(sec = 3) {
+      return this.loadAudio(silentFile(sec), { save: true })
+    },
+
+    // bundled demo sample (forest sounds)
+    openSample() {
+      return this.loadAudio(new URL('birds-forest.mp3', location.href).href)
+    },
+
+    async loadAudio(file, { save, ops, brs, bs } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
@@ -159,6 +182,8 @@ export default function wavearea(el, {
       this._redoOps = []
       this._brs = []
       this._clip = null
+      this.blockSize = bs || BLOCK_SIZE
+      api.setBlockSize(this.blockSize)
       // store ids are `${timestamp}-${name}`, URLs keep their last path segment
       this.filename = file?.name ?? (typeof file === 'string' ? file.split('/').pop().replace(/^\d+-/, '') : 'audio')
       // clear stale edit chain from URL — unless we're about to reconstruct it
@@ -208,6 +233,9 @@ export default function wavearea(el, {
         if (ops?.length) {
           this._ops = ops
           this._applyEdit(await api.applyOps(ops), 0)
+        } else if (this.blockSize !== BLOCK_SIZE) {
+          // progressive render ran at engine granularity — re-render at zoom level
+          this._applyEdit(await api.rerender(), 0)
         }
         // restore segment breaks (current-timeline coords, applied after ops)
         if (brs?.length) {
@@ -487,18 +515,25 @@ export default function wavearea(el, {
       return null
     },
 
-    // export current timeline as WAV; segment breaks become cue points
-    async download() {
+    // export as WAV/MP3 — selection if active, else whole timeline;
+    // segment breaks become WAV cue points (whole-file export only)
+    async download(fmt = 'wav') {
       if (!this.total || this.loading) return
       this.loading = 'Encoding'
       try {
-        let sr = this.sampleRate
-        let markers = this._brs.map((b, i) => ({ time: b * BLOCK_SIZE / sr, label: String(i + 1) }))
-        let bytes = await api.encode('wav', markers.length ? { markers } : {})
-        let blob = new Blob([bytes], { type: 'audio/wav' })
+        let sr = this.sampleRate, opts = {}
+        let range = this._selRange()
+        if (range) {
+          opts.at = range[0] * this.blockSize / sr
+          opts.duration = (range[1] - range[0]) * this.blockSize / sr
+        } else if (this._brs.length) {
+          opts.markers = this._brs.map((b, i) => ({ time: b * this.blockSize / sr, label: String(i + 1) }))
+        }
+        let bytes = await api.encode(fmt, opts)
+        let blob = new Blob([bytes], { type: fmt === 'mp3' ? 'audio/mpeg' : 'audio/wav' })
         let link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `${(this.filename || 'audio').replace(/\.[^.]+$/, '')}-edited.wav`
+        link.download = `${(this.filename || 'audio').replace(/\.[^.]+$/, '')}-edited.${fmt}`
         link.click()
         URL.revokeObjectURL(link.href)
       } catch (e) {
@@ -506,6 +541,36 @@ export default function wavearea(el, {
         this.error = e.message || 'Export failed'
       }
       this.loading = false
+    },
+
+    // zoom: change display block size (samples per char); coords rescale.
+    // levels start at engine stats granularity (1024) — finer needs raw PCM stats
+    zoom(dir) {
+      if (!this.total || this.loading) return
+      const LEVELS = [1024, 2048, 4096, 8192]
+      let i = LEVELS.indexOf(this.blockSize)
+      let ni = Math.max(0, Math.min(LEVELS.length - 1, i - dir))
+      if (ni === i || i < 0) return
+      return this._edit(async () => {
+        this.stop()
+        let ratio = this.blockSize / LEVELS[ni]
+        this.blockSize = LEVELS[ni]
+        api.setBlockSize(this.blockSize)
+        let scale = x => Math.round(x * ratio)
+        for (let op of [...this._ops, ...this._redoOps]) this._scaleOp(op, scale)
+        this._brs = [...new Set(this._brs.map(scale))].filter(x => x > 0).sort((a, b) => a - b)
+        if (this._clip) this._clip = { ...this._clip, from: scale(this._clip.from), to: scale(this._clip.to) }
+        this._applyEdit(await api.rerender(), scale(this.caretOffset))
+        this._syncURL()
+      })
+    },
+
+    // rescale an op's block coords in place (cp keeps its chain index v, br its direction)
+    _scaleOp(op, s) {
+      if (op[0] === 'cp') { op[1] = s(op[1]); op[2] = s(op[2]); op[4] = s(op[4]) }
+      else if (op[0] === 'ins') { op[1] = s(op[1]); if (op.len) op.len = s(op.len) }
+      else if (typeof op[1] === 'number') { op[1] = s(op[1]); if (typeof op[2] === 'number' && op[0] !== 'br') op[2] = s(op[2]) }
+      if (op.brs) op.brs = op.brs.map(s)
     },
 
     undo() {
@@ -567,6 +632,8 @@ export default function wavearea(el, {
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
+      if (this.blockSize !== BLOCK_SIZE) url.searchParams.set('bs', this.blockSize)
+      else url.searchParams.delete('bs')
       for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'fadein', 'fadeout', 'br']) url.searchParams.delete(k)
       for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
@@ -630,7 +697,7 @@ export default function wavearea(el, {
         if (mouseWait > 0) { mouseWait--; this._rafId = requestAnimationFrame(animate); return }
 
         let elapsed = player.currentTime - this._playStartTime
-        let blocksMoved = Math.floor(elapsed * this.sampleRate / BLOCK_SIZE * this.speed)
+        let blocksMoved = Math.floor(elapsed * this.sampleRate / this.blockSize * this.speed)
         let block = this._playStartBlock + blocksMoved
 
         if (player.loop && player.loopEnd) {
@@ -669,7 +736,7 @@ export default function wavearea(el, {
     },
 
     timecode(block, ms = 0) {
-      let time = block * BLOCK_SIZE / this.sampleRate || 0
+      let time = block * this.blockSize / this.sampleRate || 0
       let min = Math.floor(time / 60), sec = Math.floor(time) % 60
       return `${min}:${String(sec).padStart(2, '0')}${ms ? `.${(time % 1).toFixed(ms).slice(2)}` : ''}`
     },
@@ -743,7 +810,8 @@ export default function wavearea(el, {
     // a cp op may only reference the chain prefix before its own position
     ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     let brs = (params.get('br') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n > 0)
-    state.loadAudio(src, { ops, brs })
+    let bs = [1024, 2048, 4096, 8192].includes(+params.get('bs')) ? +params.get('bs') : undefined
+    state.loadAudio(src, { ops, brs, bs })
   }
 
   return state

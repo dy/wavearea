@@ -11,10 +11,12 @@ export default function createApi({ store } = {}) {
   if (!store) store = createStore()
 
   let a = null, worker = null
+  // display block size — zoom level; ops/caret/URL coords are in bs units
+  let bs = BLOCK_SIZE
 
   // re-render full waveform + meta from engine state (edits applied)
   async function refresh() {
-    let total = Math.ceil(a.length / BLOCK_SIZE)
+    let total = Math.ceil(a.length / bs)
     if (!total) return { waveform: '', total: 0, duration: 0 }
     let [mins, maxs] = await a.stat(['min', 'max'], { bins: total, channel: 0 })
     return { waveform: statsToWavefont(mins, maxs), total, duration: a.duration }
@@ -71,19 +73,19 @@ export default function createApi({ store } = {}) {
     // op history/redo lives in UI state (URL ops), engine executes 1 edit per op
     async removeRange(fromBlock, toBlock, { replace } = {}) {
       if (replace) await a.undo()
-      await a.run(['remove', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      await a.run(['remove', { offset: fromBlock * bs, length: (toBlock - fromBlock) * bs }])
       return refresh()
     },
 
     async insertSilence(atBlock, nBlocks, { replace } = {}) {
       if (replace) await a.undo()
-      await a.run(['insert', { source: nBlocks * BLOCK_SIZE / a.sampleRate, offset: atBlock * BLOCK_SIZE }])
+      await a.run(['insert', { source: nBlocks * bs / a.sampleRate, offset: atBlock * bs }])
       return refresh()
     },
 
     // trim to selection — keep only the range
     async cropRange(fromBlock, toBlock) {
-      await a.run(['crop', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      await a.run(['crop', { offset: fromBlock * bs, length: (toBlock - fromBlock) * bs }])
       return refresh()
     },
 
@@ -95,7 +97,7 @@ export default function createApi({ store } = {}) {
 
     // fade over a range — dir: 1 = in, -1 = out
     async fadeRange(fromBlock, toBlock, dir) {
-      await a.run(['fade', { in: dir * (toBlock - fromBlock) * BLOCK_SIZE / a.sampleRate, offset: fromBlock * BLOCK_SIZE }])
+      await a.run(['fade', { in: dir * (toBlock - fromBlock) * bs / a.sampleRate, offset: fromBlock * bs }])
       return refresh()
     },
 
@@ -108,12 +110,12 @@ export default function createApi({ store } = {}) {
     // (clip() takes seconds and can drift ±1 sample → a stray partial block)
     async copyRange(fromBlock, toBlock) {
       let c = await a.clone()
-      await c.run(['crop', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      await c.run(['crop', { offset: fromBlock * bs, length: (toBlock - fromBlock) * bs }])
       return c
     },
 
     async pasteClip(clip, atBlock) {
-      await a.run(['insert', { source: clip, offset: atBlock * BLOCK_SIZE }])
+      await a.run(['insert', { source: clip, offset: atBlock * bs }])
       return refresh()
     },
 
@@ -122,11 +124,16 @@ export default function createApi({ store } = {}) {
     async insertFile(atBlock, id) {
       let b = audioWorker(await store.getFile(id), { worker })
       await b.ready
-      await a.run(['insert', { source: b, offset: atBlock * BLOCK_SIZE }])
+      await a.run(['insert', { source: b, offset: atBlock * bs }])
       let r = await refresh()
       r.src = b
       return r
     },
+
+    setBlockSize(v) { bs = v },
+
+    // full re-render at the current block size (zoom change, post-load)
+    rerender() { return refresh() },
 
     async undoEdit() {
       let edit = await a.undo()
@@ -147,24 +154,24 @@ export default function createApi({ store } = {}) {
       for (let k = 0; k <= ops.length; k++) {
         for (let cp of clipAt.get(k) || []) {
           let c = await a.clone()
-          await c.run(['crop', { offset: cp[1] * BLOCK_SIZE, length: (cp[2] - cp[1]) * BLOCK_SIZE }])
+          await c.run(['crop', { offset: cp[1] * bs, length: (cp[2] - cp[1]) * bs }])
           clips.set(cp, c)
         }
         if (k === ops.length) break
         let [type, ...args] = ops[k]
-        if (type === 'del') await a.run(['remove', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
-        else if (type === 'sil') await a.run(['insert', { source: args[1] * BLOCK_SIZE / sr, offset: args[0] * BLOCK_SIZE }])
-        else if (type === 'clip') await a.run(['crop', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
-        else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * BLOCK_SIZE }])
+        if (type === 'del') await a.run(['remove', { offset: args[0] * bs, length: (args[1] - args[0]) * bs }])
+        else if (type === 'sil') await a.run(['insert', { source: args[1] * bs / sr, offset: args[0] * bs }])
+        else if (type === 'clip') await a.run(['crop', { offset: args[0] * bs, length: (args[1] - args[0]) * bs }])
+        else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * bs }])
         else if (type === 'ins') {
           let b = audioWorker(await store.getFile(args[1]), { worker })
           await b.ready
-          await a.run(['insert', { source: b, offset: args[0] * BLOCK_SIZE }])
+          await a.run(['insert', { source: b, offset: args[0] * bs }])
         }
         else if (type === 'norm') await a.run(['normalize', {}])
         else if (type === 'fadein' || type === 'fadeout') {
-          let d = (type === 'fadein' ? 1 : -1) * (args[1] - args[0]) * BLOCK_SIZE / sr
-          await a.run(['fade', { in: d, offset: args[0] * BLOCK_SIZE }])
+          let d = (type === 'fadein' ? 1 : -1) * (args[1] - args[0]) * bs / sr
+          await a.run(['fade', { in: d, offset: args[0] * bs }])
         }
       }
       return refresh()

@@ -1,0 +1,12 @@
+{
+  "name": "Wavearea",
+  "short_name": "Wavearea",
+  "description": "Edit audio in a textarea — open, see, edit, save",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "wavearea.png", "sizes": "any", "type": "image/png" }
+  ]
+}

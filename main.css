@@ -221,6 +221,15 @@ body {
     .op {
       height: auto;
       padding: .35rem;
+      flex-direction: column;
+      gap: .1rem;
+
+      .fmt {
+        font-family: sans-serif;
+        font-size: .5rem;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+      }
     }
   }
 
@@ -257,7 +266,8 @@ body {
     nav {
       display: flex;
       flex-direction: row;
-      gap: 1rem;
+      gap: 1.5rem;
+      justify-content: center;
     }
 
     #file {
@@ -269,14 +279,34 @@ body {
       z-index: -1;
     }
 
-    #file+label {
+    .open-action {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      font-size: 1rem;
+      gap: .35rem;
+      font-family: sans-serif;
+      font-size: .75rem;
+      color: #666;
       cursor: pointer;
       user-select: none;
+      appearance: none;
+      border: none;
+      background: none;
+      padding: .5rem;
+      -webkit-tap-highlight-color: transparent;
+
+      &:hover {
+        color: #000;
+      }
     }
 
+    #drop-hint {
+      font-family: sans-serif;
+      font-size: .75rem;
+      color: #aaa;
+      text-align: center;
+      margin: 1rem 0 0;
+    }
   }
 
   /* Files list */
