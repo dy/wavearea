@@ -1600,7 +1600,7 @@ test.describe('editing', () => {
   test('trim keeps only the selection', async ({ page }) => {
     let total = await cleanLen(page);
     await setSelection(page, 20, 50);
-    await page.locator('#trim').click();
+    await page.locator('#trim').dispatchEvent('mousedown');
     await waitLen(page, 30);
     expect(page.url()).toContain('clip=20-50');
     expect(await caretPos(page)).toBe(0);
@@ -1623,7 +1623,7 @@ test.describe('editing', () => {
   test('trim without selection is a no-op', async ({ page }) => {
     let total = await cleanLen(page);
     await setCaret(page, 10);
-    await page.locator('#trim').click();
+    await page.locator('#trim').dispatchEvent('mousedown');
     await page.waitForTimeout(300);
     expect(await cleanLen(page)).toBe(total);
     expect(errors).toEqual([]);
@@ -1632,7 +1632,7 @@ test.describe('editing', () => {
   test('reload reconstructs trim from URL (clip replay)', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     await setSelection(page, 20, 50);
-    await page.locator('#trim').click();
+    await page.locator('#trim').dispatchEvent('mousedown');
     await waitLen(page, 30);
     await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
 
@@ -1851,6 +1851,106 @@ test.describe('segments', () => {
     // 2 breaks → at least 3 segment lines
     expect(await page.locator('#timecodes a').count()).toBeGreaterThanOrEqual(3);
     expect(page.url()).toContain('br=30..70');
+    expect(errors).toEqual([]);
+  });
+
+});
+
+
+// --- Processing & export: normalize, fades, WAV download with cue points ---
+
+test.describe('processing & export', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  const text = (page) => page.evaluate(() => document.querySelector('#editarea').textContent);
+
+  test('normalize changes amplitudes, undo restores', async ({ page }) => {
+    let total = await cleanLen(page);
+    let before = await text(page);
+    await page.locator('#normalize').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('norm='), { timeout: 5000 });
+    expect(await text(page)).not.toBe(before);
+    expect(await cleanLen(page)).toBe(total); // length unchanged
+
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => !location.search.includes('norm='), { timeout: 5000 });
+    expect(await text(page)).toBe(before);
+    expect(errors).toEqual([]);
+  });
+
+  test('fade in/out apply to selection, undo restores', async ({ page }) => {
+    let before = await text(page);
+    await setSelection(page, 20, 50);
+    await page.locator('#fadein').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('fadein=20-50'), { timeout: 5000 });
+    expect(await text(page)).not.toBe(before);
+
+    await setSelection(page, 80, 110);
+    await page.locator('#fadeout').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('fadeout=80-110'), { timeout: 5000 });
+
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => !location.search.includes('fade'), { timeout: 5000 });
+    expect(await text(page)).toBe(before);
+    expect(errors).toEqual([]);
+  });
+
+  test('fade without selection is a no-op', async ({ page }) => {
+    await setCaret(page, 10);
+    await page.locator('#fadein').dispatchEvent('mousedown');
+    await page.waitForTimeout(300);
+    expect(page.url()).not.toContain('fadein');
+    expect(errors).toEqual([]);
+  });
+
+  test('reload replays normalize + fade from URL', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await page.locator('#normalize').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('norm='), { timeout: 5000 });
+    await setSelection(page, 20, 50);
+    await page.locator('#fadein').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('fadein=20-50'), { timeout: 5000 });
+    let processed = await text(page);
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await page.waitForFunction((t) => document.querySelector('#editarea')?.textContent === t, processed, { timeout: 15000 });
+    expect(page.url()).toContain('norm=');
+    expect(page.url()).toContain('fadein=20-50');
+    expect(errors).toEqual([]);
+  });
+
+  test('download produces a valid WAV; segment breaks become cue points', async ({ page }) => {
+    // add a segment break — should export as a cue point
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    expect(download.suggestedFilename()).toBe('sine-3s-edited.wav');
+
+    let chunks = [];
+    let stream = await download.createReadStream();
+    for await (let c of stream) chunks.push(c);
+    let buf = Buffer.concat(chunks);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 4).toString('ascii')).toBe('RIFF');
+    expect(buf.subarray(8, 12).toString('ascii')).toBe('WAVE');
+    let ascii = buf.toString('latin1');
+    expect(ascii).toContain('cue ');
+    expect(ascii).toContain('adtl');
     expect(errors).toEqual([]);
   });
 

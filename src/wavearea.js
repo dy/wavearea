@@ -61,6 +61,7 @@ export default function wavearea(el, {
     duration: 0,
     sampleRate: 44100,
     channels: 1,
+    filename: '',
     volume: initVolume,
     speed: initSpeed,
 
@@ -158,6 +159,8 @@ export default function wavearea(el, {
       this._redoOps = []
       this._brs = []
       this._clip = null
+      // store ids are `${timestamp}-${name}`, URLs keep their last path segment
+      this.filename = file?.name ?? (typeof file === 'string' ? file.split('/').pop().replace(/^\d+-/, '') : 'audio')
       // clear stale edit chain from URL — unless we're about to reconstruct it
       if (!ops?.length && !brs?.length) this._syncURL()
       // create player eagerly DURING user gesture (Safari requires this for AudioContext)
@@ -448,15 +451,61 @@ export default function wavearea(el, {
 
     // trim to selection — keep only the selected range
     trim() {
-      let sel = this.selection.get()
-      let from, to
-      if (sel && !sel.collapsed) ({ start: from, end: to } = sel)
-      else if (this.loop && this.clipEnd != null && this.clipEnd > this.clipStart) [from, to] = [this.clipStart, this.clipEnd]
-      else return
+      let range = this._selRange()
+      if (!range) return
       return this._edit(async () => {
         this.stop()
-        this._commit(['clip', from, to], await api.cropRange(from, to), 0)
+        this._commit(['clip', range[0], range[1]], await api.cropRange(range[0], range[1]), 0)
       })
+    },
+
+    // peak-normalize the whole file
+    normalize() {
+      if (!this.total) return
+      return this._edit(async () => {
+        this.stop()
+        this._commit(['norm'], await api.normalize(), this.caretOffset)
+      })
+    },
+
+    // fade the selection — dir: 1 = in, -1 = out
+    fade(dir) {
+      let range = this._selRange()
+      if (!range) return
+      return this._edit(async () => {
+        this.stop()
+        let [from, to] = range
+        this._commit([dir > 0 ? 'fadein' : 'fadeout', from, to], await api.fadeRange(from, to, dir), from)
+      })
+    },
+
+    // current non-collapsed selection as [from, to] blocks, or null
+    _selRange() {
+      let sel = this.selection.get()
+      if (sel && !sel.collapsed) return [sel.start, sel.end]
+      if (this.loop && this.clipEnd != null && this.clipEnd > this.clipStart) return [this.clipStart, this.clipEnd]
+      return null
+    },
+
+    // export current timeline as WAV; segment breaks become cue points
+    async download() {
+      if (!this.total || this.loading) return
+      this.loading = 'Encoding'
+      try {
+        let sr = this.sampleRate
+        let markers = this._brs.map((b, i) => ({ time: b * BLOCK_SIZE / sr, label: String(i + 1) }))
+        let bytes = await api.encode('wav', markers.length ? { markers } : {})
+        let blob = new Blob([bytes], { type: 'audio/wav' })
+        let link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${(this.filename || 'audio').replace(/\.[^.]+$/, '')}-edited.wav`
+        link.click()
+        URL.revokeObjectURL(link.href)
+      } catch (e) {
+        console.error(e)
+        this.error = e.message || 'Export failed'
+      }
+      this.loading = false
     },
 
     undo() {
@@ -501,10 +550,13 @@ export default function wavearea(el, {
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
+          : op[0] === 'norm' ? await api.normalize()
+          : op[0] === 'fadein' ? await api.fadeRange(op[1], op[2], 1)
+          : op[0] === 'fadeout' ? await api.fadeRange(op[1], op[2], -1)
           : await api.pasteClip(op.clip, op[4])
         this._ops.push(op)
         this._brs = this._shiftBrs(op, op.brs ?? this._brs, r.total)
-        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'ins' ? op[1] : op[4])
+        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'cp' ? op[4] : op[1] ?? this.caretOffset)
         this._syncURL()
       })
     },
@@ -515,7 +567,7 @@ export default function wavearea(el, {
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'br']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'fadein', 'fadeout', 'br']) url.searchParams.delete(k)
       for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
       history.replaceState(null, '', url)
@@ -672,9 +724,10 @@ export default function wavearea(el, {
   let params = new URLSearchParams(location.search)
   src ??= params.get('src')
   if (src) {
-    const ARITY = { del: 2, sil: 2, clip: 2, cp: 4 }
+    const ARITY = { del: 2, sil: 2, clip: 2, cp: 4, fadein: 2, fadeout: 2 }
     let ops = []
     for (let [k, v] of params) {
+      if (k === 'norm') { ops.push(['norm']); continue }
       if (k === 'ins') {
         // ins=<at>-<store id> — the id itself may contain dashes
         let i = v.indexOf('-')

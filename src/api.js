@@ -87,6 +87,23 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
+    // peak-normalize the whole file (target gain derives from full stats)
+    async normalize() {
+      await a.run(['normalize', {}])
+      return refresh()
+    },
+
+    // fade over a range — dir: 1 = in, -1 = out
+    async fadeRange(fromBlock, toBlock, dir) {
+      await a.run(['fade', { in: dir * (toBlock - fromBlock) * BLOCK_SIZE / a.sampleRate, offset: fromBlock * BLOCK_SIZE }])
+      return refresh()
+    },
+
+    // encode current timeline (edits applied); markers become WAV cue points
+    encode(format, opts) {
+      return a.encode(format, opts)
+    },
+
     // clipboard — clone+crop snapshots the current timeline range, sample-precise
     // (clip() takes seconds and can drift ±1 sample → a stray partial block)
     async copyRange(fromBlock, toBlock) {
@@ -143,6 +160,11 @@ export default function createApi({ store } = {}) {
           let b = audioWorker(await store.getFile(args[1]), { worker })
           await b.ready
           await a.run(['insert', { source: b, offset: args[0] * BLOCK_SIZE }])
+        }
+        else if (type === 'norm') await a.run(['normalize', {}])
+        else if (type === 'fadein' || type === 'fadeout') {
+          let d = (type === 'fadein' ? 1 : -1) * (args[1] - args[0]) * BLOCK_SIZE / sr
+          await a.run(['fade', { in: d, offset: args[0] * BLOCK_SIZE }])
         }
       }
       return refresh()

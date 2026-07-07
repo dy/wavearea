@@ -81,14 +81,34 @@
           <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
         </svg>
       </button>
-      <button id="trim"
-        :hidden="!total || loading"
+      <button id="trim" class="op"
+        :hidden="!total || loading || !loop"
         title="Trim to selection"
         :onmousedown.stop.prevent="() => trim()"
         tabindex="-1">
         <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
           <path d="M0 0h24v24H0z" fill="none" />
           <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" />
+        </svg>
+      </button>
+      <button id="fadein" class="op"
+        :hidden="!total || loading || !loop"
+        title="Fade in selection"
+        :onmousedown.stop.prevent="() => fade(1)"
+        tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+          <path d="M0 0h24v24H0z" fill="none" />
+          <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
+        </svg>
+      </button>
+      <button id="fadeout" class="op"
+        :hidden="!total || loading || !loop"
+        title="Fade out selection"
+        :onmousedown.stop.prevent="() => fade(-1)"
+        tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+          <path d="M0 0h24v24H0z" fill="none" />
+          <path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" />
         </svg>
       </button>
     </div>
@@ -124,6 +144,27 @@
         </li>
       </ul>
     </div>
+  </div>
+
+  <div id="toolbar" :if="total && !loading">
+    <button id="normalize" class="op"
+      title="Normalize loudness"
+      :onmousedown.stop.prevent="() => normalize()"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" />
+      </svg>
+    </button>
+    <button id="download" class="op"
+      title="Download WAV"
+      :onmousedown.stop.prevent="() => download()"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+      </svg>
+    </button>
   </div>
 
   <div id="status" :if="loading" :text="`${loading}${total ? ' · ' + timecode(total) : ''}`"></div>

@@ -196,13 +196,13 @@ body {
       opacity: 1;
     }
 
-    #play, #trim {
+    #play, .op {
       background: linear-gradient(to bottom, rgb(255 255 255 / 0%) 0%, rgb(255 255 255 / 100%) 25%, rgb(255 255 255 / 100%) 75%, rgb(255 255 255 / 0%) 100%);
       height: var(--wavefont-lh );
     }
   }
 
-  #trim {
+  .op {
     opacity: .5;
 
     &:hover {
@@ -210,7 +210,21 @@ body {
     }
   }
 
-  #play, #trim {
+  #toolbar {
+    position: fixed;
+    top: .5rem;
+    right: .75rem;
+    display: flex;
+    gap: .25rem;
+    z-index: 10;
+
+    .op {
+      height: auto;
+      padding: .35rem;
+    }
+  }
+
+  #play, .op {
     padding: 0;
     text-align: center;
     appearance: none;
