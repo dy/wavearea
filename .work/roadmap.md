@@ -288,12 +288,13 @@
 ## Phase 4: Zoom & Navigation
 > See the forest and the trees.
 
-* [ ] Zoom levels
-  * [ ] blockSize: 256, 512, 1024, 2048, 4096 samples/char
+* [~] Zoom levels
+  * [~] blockSize 1024–8192 (toolbar buttons, `bs=` in URL); finer than 1024
+        needs engine stat granularity below BLOCK_SIZE
   * [ ] Ctrl+scroll or pinch to zoom
-  * [ ] Zoom centered on caret position
-  * [ ] Re-render waveform string on zoom change
-  * [ ] Cache decoded samples — only regenerate waveform string
+  * [~] Caret block position rescales with zoom (auto-scroll-to-caret pending)
+  * [x] Re-render waveform string on zoom change (stat re-query, no re-decode)
+  * [x] Decoded samples stay in engine — only the string regenerates
 * [ ] Minimap
   * [ ] Small fixed-height overview of entire file at top or side
   * [ ] Viewport indicator: rectangle showing current scroll position
@@ -344,6 +345,7 @@
   * [ ] Export selection only (engine encode supports {at, duration})
   * [x] Filename: `{original}-edited.wav`
   * [~] "Encoding" status shown (engine emits progress events for a real bar later)
+* [x] Drag and drop (see Phase 2: drop opens or inserts at drop point)
 * [ ] Recording
   * [ ] Microphone input via MediaStream
   * [ ] Record at caret position (insert recording into waveform)
@@ -396,10 +398,10 @@
   * [ ] Screen reader: announce playback state, current time
   * [ ] Respect prefers-reduced-motion
   * [ ] Respect prefers-color-scheme for auto dark mode
-* [ ] Offline / PWA
-  * [ ] Service worker for static assets
-  * [ ] App manifest for installability
-  * [ ] Works fully offline after first load
+* [~] Offline / PWA
+  * [x] Service worker for static assets (stale-while-revalidate, https only)
+  * [x] App manifest for installability
+  * [~] Works offline after first load (verify on deploy)
 * [ ] Responsive layout
   * [ ] Mobile: waveform fills width, larger touch targets
   * [ ] Tablet: comfortable with or without keyboard
