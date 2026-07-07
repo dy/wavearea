@@ -183,20 +183,20 @@
 ## Phase 2: Editing Operations
 > The textarea metaphor comes alive: delete, insert, copy, paste.
 
-* [ ] Operation model
-  * [ ] Define op types: `del(from-to)`, `sil(at-dur)`, `mov(from-to-dest)`, `br(offset)`
-  * [ ] Ops are append-only list — never mutate original PCM chunks
-  * [ ] Worker resolves ops → virtual timeline (position → chunk+offset mapping)
-  * [ ] Playback reads virtual timeline; export materializes it
-  * [ ] Op chain stored in URL search params, serialized/deserialized on load
-  * [ ] Ops are composable and orderable
-* [ ] Delete
-  * [ ] Backspace: delete 1 block before caret
-  * [ ] Delete key: delete 1 block after caret
-  * [ ] Select range + Backspace/Delete: delete selection
-  * [ ] Debounce consecutive backspace presses into single `del` op
-  * [ ] Visual: waveform shrinks, caret repositions
-  * [ ] Audio: Worker updates virtual timeline, playback adapts immediately
+* [~] Operation model
+  * [~] Define op types: `del(from-to)` done; `sil(at-dur)`, `mov(from-to-dest)`, `br(offset)` pending
+  * [x] Ops are append-only list — never mutate original PCM chunks (engine `a.edits`)
+  * [x] Worker resolves ops → virtual timeline (engine plan compiler)
+  * [x] Playback reads virtual timeline (`a.read` reads through edits); export materializes it
+  * [x] Op chain stored in URL search params, serialized/deserialized on load
+  * [x] Ops are composable and orderable (UI `_ops` list, 1 engine edit per op)
+* [x] Delete
+  * [x] Backspace: delete 1 block before caret
+  * [x] Delete key: delete 1 block after caret
+  * [x] Select range + Backspace/Delete: delete selection
+  * [x] Held-key repeat merges burst into single `del` op (KeyboardEvent.repeat)
+  * [x] Visual: waveform shrinks, caret repositions
+  * [x] Audio: engine updates virtual timeline, playback adapts immediately
 * [ ] Insert silence
   * [ ] Position caret → insert N blocks of silence
   * [ ] Via keyboard shortcut or menu action
@@ -215,29 +215,28 @@
   * [ ] Visual: slight gap or line between segments
   * [ ] Segments allow per-segment operations (normalize one segment, etc.)
   * [ ] Backspace at segment start: join with previous segment
-* [ ] Undo / Redo
-  * [ ] App-level undo stack (NOT browser history — don't abuse pushState)
-  * [ ] Ctrl+Z: pop last op from ops list → push to redo stack → Worker.applyOp(undo)
-  * [ ] Ctrl+Shift+Z: pop from redo stack → push to ops list → Worker.applyOp(redo)
-  * [ ] New edit clears redo stack
-  * [ ] URL updated after each op change (or session persisted to OPFS if ops > ~50)
-* [ ] Waveform sync after edits
-  * [ ] After op applied: Worker recalculates virtual timeline
-  * [ ] Worker returns waveform string delta (only changed region) + new total duration
-  * [ ] Main thread splices delta into waveform string, updates UI
-  * [ ] If playing: engine handles buffer rebuild if edit affects current window (see arch notes)
-* [ ] Tests
-  * [ ] Delete single block (backspace)
-  * [ ] Delete selection (various positions: head, middle, tail)
+* [x] Undo / Redo
+  * [x] App-level undo stack (NOT browser history — don't abuse pushState)
+  * [x] Ctrl/Cmd+Z: pop last op from ops list → push to redo stack → engine undo
+  * [x] Ctrl/Cmd+Shift+Z: pop from redo stack → push to ops list → engine re-run
+  * [x] New edit clears redo stack
+  * [x] URL updated after each op change (replaceState; OPFS session for ops > ~50 pending)
+* [~] Waveform sync after edits
+  * [x] After op applied: engine recalculates virtual timeline (stats remapped, no PCM walk)
+  * [~] Full waveform re-render from stats per op — delta splice is a later optimization
+  * [x] Playback stops on edit (edit-during-playback rebuild deferred, see arch notes)
+* [~] Tests
+  * [x] Delete single block (backspace, delete, boundary no-ops)
+  * [x] Delete selection
   * [ ] Delete all
   * [ ] Insert silence at start, middle, end
   * [ ] Copy+paste within same file
   * [ ] Cut+paste
   * [ ] Trim to selection
-  * [ ] Undo each operation
-  * [ ] Redo after undo
-  * [ ] URL reflects operations after each edit
-  * [ ] Refresh page → same state (URL reconstruction)
+  * [x] Undo each operation
+  * [x] Redo after undo (incl. redo cleared by new edit)
+  * [x] URL reflects operations after each edit
+  * [x] Refresh page → same state (URL reconstruction)
 
 
 ## Phase 3: Audio Processing
