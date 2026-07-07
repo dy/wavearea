@@ -100,6 +100,17 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
+    // insert an external stored file at position — opens a second instance
+    // on the same engine worker, inserted by ref
+    async insertFile(atBlock, id) {
+      let b = audioWorker(await store.getFile(id), { worker })
+      await b.ready
+      await a.run(['insert', { source: b, offset: atBlock * BLOCK_SIZE }])
+      let r = await refresh()
+      r.src = b
+      return r
+    },
+
     async undoEdit() {
       let edit = await a.undo()
       return edit ? refresh() : null
@@ -128,6 +139,11 @@ export default function createApi({ store } = {}) {
         else if (type === 'sil') await a.run(['insert', { source: args[1] * BLOCK_SIZE / sr, offset: args[0] * BLOCK_SIZE }])
         else if (type === 'clip') await a.run(['crop', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
         else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * BLOCK_SIZE }])
+        else if (type === 'ins') {
+          let b = audioWorker(await store.getFile(args[1]), { worker })
+          await b.ready
+          await a.run(['insert', { source: b, offset: args[0] * BLOCK_SIZE }])
+        }
       }
       return refresh()
     },

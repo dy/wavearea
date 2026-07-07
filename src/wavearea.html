@@ -51,12 +51,8 @@
         }
       "
       :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
-      :ondrop.prevent="async e => {
-          let files = e.dataTransfer.files
-          let file = files[0]
-          if (!file.type.startsWith('audio')) return false;
-        }
-      "
+      :ondragover.prevent="e=>e"
+      :ondrop.prevent="e => drop(e)"
       ></div>
 
     <div id="timecodes" :ref="refs.timecodes">
@@ -100,7 +96,9 @@
   <div id="opener"
     :if="!total && !loading"
     :scope="{files: [], sortBy: 'date'}"
-    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => [])}">
+    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => [])}"
+    :ondragover.prevent="e=>e"
+    :ondrop.prevent="e => { let f = [...e.dataTransfer.files].find(f => f.type.startsWith('audio')); f && loadAudio(f, { save: true }) }">
     <nav>
       <input id="file" type="file"
             accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"

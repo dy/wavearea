@@ -348,6 +348,29 @@ export default function wavearea(el, {
       })
     },
 
+    // insert a dropped audio file at the drop point (fallback: caret)
+    drop(e) {
+      let file = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith('audio'))
+      if (!file || !this.total) return
+      let at = this.caretOffset
+      let range = document.caretRangeFromPoint?.(e.clientX, e.clientY)
+      let ea = this.refs.editarea
+      if (range && ea?.contains(range.startContainer) && range.startContainer.nodeType === 3)
+        at = cleanText(range.startContainer.textContent.slice(0, range.startOffset)).length
+      return this._edit(async () => {
+        this.stop()
+        let prev = this.total
+        let id = await api.saveFile(file, { name: file.name })
+        let r = await api.insertFile(at, id)
+        let op = ['ins', at, id]
+        op.src = r.src
+        this._ops.push(op)
+        this._redoOps.length = 0
+        this._applyEdit(r, at + (r.total - prev))
+        this._syncURL()
+      })
+    },
+
     // trim to selection — keep only the selected range
     trim() {
       let sel = this.selection.get()
@@ -387,8 +410,9 @@ export default function wavearea(el, {
         let r = op[0] === 'del' ? await api.removeRange(op[1], op[2])
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
+          : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
           : await api.pasteClip(op.clip, op[4])
-        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[4])
+        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'ins' ? op[1] : op[4])
         this._syncURL()
       })
     },
@@ -398,7 +422,7 @@ export default function wavearea(el, {
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
-      for (let k of ['del', 'sil', 'clip', 'cp']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins']) url.searchParams.delete(k)
       for (let op of this._ops) url.searchParams.append(op[0], op.slice(1).join('-'))
       history.replaceState(null, '', url)
     },
@@ -532,6 +556,14 @@ export default function wavearea(el, {
     const ARITY = { del: 2, sil: 2, clip: 2, cp: 4 }
     let ops = []
     for (let [k, v] of params) {
+      if (k === 'ins') {
+        // ins=<at>-<store id> — the id itself may contain dashes
+        let i = v.indexOf('-')
+        let at = Number(v.slice(0, i))
+        let id = v.slice(i + 1)
+        if (Number.isInteger(at) && at >= 0 && id) ops.push(['ins', at, id])
+        continue
+      }
       if (!ARITY[k]) continue
       let nums = v.split('-').map(Number)
       if (nums.length === ARITY[k] && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push([k, ...nums])

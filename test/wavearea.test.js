@@ -1640,6 +1640,62 @@ test.describe('editing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('dropped audio file inserts at the drop point', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+
+    let dt = await page.evaluateHandle(async () => {
+      let resp = await fetch('/test/fixtures/sine-3s.mp3');
+      let dt = new DataTransfer();
+      dt.items.add(new File([await resp.blob()], 'dropped.mp3', { type: 'audio/mpeg' }));
+      return dt;
+    });
+    // synthetic drop lands at (0,0) -> caretRangeFromPoint maps it to block 0
+    await page.dispatchEvent('#editarea', 'drop', { dataTransfer: dt });
+
+    // fixture length is not block-aligned — measure the grown length instead of assuming 2×
+    await page.waitForFunction((t) =>
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length > t,
+      total, { timeout: 10000 });
+    let grown = await cleanLen(page);
+    expect(grown).toBeGreaterThanOrEqual(total * 2 - 1);
+    expect(page.url()).toMatch(/ins=0-.+dropped/);
+
+    // undo removes the insert
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(page.url()).not.toContain('ins=');
+
+    // redo re-inserts
+    await page.keyboard.press('Control+Shift+z');
+    await waitLen(page, grown);
+    expect(errors).toEqual([]);
+  });
+
+  test('reload reconstructs dropped-file insert from URL (ins replay)', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+
+    let dt = await page.evaluateHandle(async () => {
+      let resp = await fetch('/test/fixtures/sine-3s.mp3');
+      let dt = new DataTransfer();
+      dt.items.add(new File([await resp.blob()], 'dropped.mp3', { type: 'audio/mpeg' }));
+      return dt;
+    });
+    await page.dispatchEvent('#editarea', 'drop', { dataTransfer: dt });
+    await page.waitForFunction((t) =>
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length > t,
+      total, { timeout: 10000 });
+    let grown = await cleanLen(page);
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await waitLen(page, grown);
+    expect(page.url()).toContain('ins=');
+    expect(errors).toEqual([]);
+  });
+
   test('reload reconstructs paste from URL (cp replay)', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     let total = await cleanLen(page);
