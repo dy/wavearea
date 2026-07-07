@@ -197,15 +197,17 @@
   * [x] Held-key repeat merges burst into single `del` op (KeyboardEvent.repeat)
   * [x] Visual: waveform shrinks, caret repositions
   * [x] Audio: engine updates virtual timeline, playback adapts immediately
-* [ ] Insert silence
-  * [ ] Position caret → insert N blocks of silence
-  * [ ] Via keyboard shortcut or menu action
-  * [ ] Use case: add pause between speech segments
-* [ ] Copy / Cut / Paste
-  * [ ] Ctrl+C: copy selected audio blocks to internal clipboard
-  * [ ] Ctrl+X: cut (copy + delete)
-  * [ ] Ctrl+V: paste at caret position
-  * [ ] Internal clipboard (not system clipboard — raw audio data is not text)
+* [x] Insert silence
+  * [x] Space types a silence block at caret (held key merges); Ctrl/Cmd+Space = play
+  * [x] URL: `sil=at-n`
+  * [x] Use case: add pause between speech segments
+* [~] Copy / Cut / Paste
+  * [x] Ctrl/Cmd+C: copy selection to internal clipboard (engine clone+crop snapshot)
+  * [x] Ctrl/Cmd+X: cut (copy + delete)
+  * [x] Ctrl/Cmd+V: paste at caret, repeatable; URL `cp=f-t-v-at` (v = chain position
+        of the snapshot; replay recreates clips at v; undo below v invalidates clipboard)
+  * [x] Internal clipboard (not system clipboard — raw audio data is not text)
+  * [ ] Paste external audio file (insert at caret, store in OPFS, `ins=<id>-at`)
   * [ ] Visual feedback: brief highlight on paste
 * [ ] Trim to selection
   * [ ] Select range → trim: delete everything outside selection
@@ -229,9 +231,9 @@
   * [x] Delete single block (backspace, delete, boundary no-ops)
   * [x] Delete selection
   * [ ] Delete all
-  * [ ] Insert silence at start, middle, end
-  * [ ] Copy+paste within same file
-  * [ ] Cut+paste
+  * [x] Insert silence (caret, merge burst, undo)
+  * [x] Copy+paste within same file (incl. URL replay)
+  * [x] Cut+paste
   * [ ] Trim to selection
   * [x] Undo each operation
   * [x] Redo after undo (incl. redo cleared by new edit)
