@@ -5,6 +5,7 @@ import sprae from 'sprae';
 import template from './wavearea.html';
 import { createSelection, cleanText, cleanToRaw, isBlock } from './selection.js';
 import createApi from './api.js';
+import { buildRawLines, windowRange } from './virtual.js';
 import createPlayer from './player.js';
 import { BLOCK_SIZE } from './constants.js';
 import _smoothCaret from './layers/smooth-caret.js';
@@ -40,7 +41,7 @@ export default function wavearea(el, {
   let api = createApi({ store: typeof store === 'string' ? (store === 'auto' ? undefined : store) : store })
   let player = null
   let _engine = engine === 'auto' ? undefined : engine
-  let selection = createSelection(() => el.querySelector('#editarea'))
+  let selection = createSelection(() => el.querySelector('#editarea'), () => state.winBase)
   let ensurePlayer = () => player ??= createPlayer(
     (from, to) => api.getWindow(from, to),
     { sampleRate: state.sampleRate, channels: state.channels, engine: _engine, blockSize: () => state.blockSize }
@@ -108,6 +109,58 @@ export default function wavearea(el, {
     _brs: [],
     // starting block of each visual line (wraps + segment breaks)
     lineOffsets: [],
+
+    // virtualized rendering — full text lives here, DOM holds a line window
+    _text: '',
+    _rawLines: [],                       // raw index of each line start in _text
+    _rawCursor: { raw: 0, blocks: 0 },   // resumable scan for append-only growth
+    winStart: 0,                         // first rendered line
+    winEnd: 0,                           // end rendered line (exclusive)
+    winBase: 0,                          // block offset of the window start
+    winLines: [],                        // rendered line indexes (timecodes)
+
+    computeRawLines() {
+      this._rawCursor = { raw: 0, blocks: 0 }
+      this._rawLines = []
+      buildRawLines(this._text, this.lineOffsets, this._rawLines, this._rawCursor)
+    },
+
+    extendRawLines() {
+      buildRawLines(this._text, this.lineOffsets, this._rawLines, this._rawCursor)
+    },
+
+    // slice the visible window (± buffer) into the single text node;
+    // spacers are padding on #editarea so the node structure never changes
+    renderWindow(force) {
+      let ea = this.refs.editarea
+      if (!ea || this.isMouseDown) return  // don't swap text mid-drag
+      let lineH = this._lineH || 70
+      let lines = this.lines || 1
+      // padding keeps the box top at the virtual line-0 origin
+      let top = ea.getBoundingClientRect().top + scrollY
+      let [first, last] = windowRange(scrollY, top, lineH, innerHeight, lines)
+      let sameRange = first === this.winStart && last === this.winEnd
+      if (!force && sameRange) return
+      let rawS = this._rawLines[first] ?? this._text.length
+      let rawE = last < this._rawLines.length ? this._rawLines[last] : this._text.length
+      let slice = this._text.slice(rawS, rawE)
+      let node = ea.firstChild
+      let textChanged = node?.nodeType !== 3 || node.data !== slice
+      if (node?.nodeType === 3) { if (textChanged) node.data = slice }
+      else ea.textContent = slice
+      ea.style.paddingTop = first * lineH + 'px'
+      ea.style.paddingBottom = Math.max(0, lines - last) * lineH + 'px'
+      this.winStart = first
+      this.winEnd = last
+      this.winBase = this.lineOffsets[first] ?? 0
+      if (!sameRange || textChanged) this.winLines = Array.from({ length: last - first }, (_, i) => first + i)
+      // a text swap drops the DOM selection — restore only then, so idle
+      // re-renders (resize ticks) never clobber a live selection
+      if (textChanged && !this.playing) {
+        if (this.loop && this.clipEnd != null) this.selection.set(this.clipStart, this.clipEnd)
+        else this.selection.set(this.caretOffset)
+      }
+    },
 
     // measure editarea dimensions: char width, line height, cols per line, total lines
     measureWaveform() {
@@ -185,6 +238,11 @@ export default function wavearea(el, {
       this._brs = []
       this.marks = []
       this._clip = null
+      this._text = ''
+      this._rawLines = []
+      this._rawCursor = { raw: 0, blocks: 0 }
+      this.winStart = this.winEnd = this.winBase = 0
+      this.winLines = []
       this.blockSize = bs || BLOCK_SIZE
       api.setBlockSize(this.blockSize)
       // store ids are `${timestamp}-${name}`, URLs keep their last path segment
@@ -196,24 +254,19 @@ export default function wavearea(el, {
 
       console.time('[render] decode + render')
       try {
-        // append to single text node, throttled adaptively
+        // accumulate into the state text, window-render per frame
         let pending = '', pendingClean = 0, flushId = null
         let flushPending = () => {
           flushId = null
           if (!pending) return
-          let ea = this.refs.editarea
-          if (!ea) {
-            this.total += pendingClean; pendingClean = 0
-            this.duration = this.total * BLOCK_SIZE / this.sampleRate
-            flushId = setTimeout(flushPending, 16)
-            return
-          }
-          let node = ea.firstChild
-          if (node && node.nodeType === 3) node.appendData(pending)
-          else ea.textContent = pending
+          this._text += pending
           this.total += pendingClean
           this.duration = this.total * BLOCK_SIZE / this.sampleRate
           pending = ''; pendingClean = 0
+          if (!this.refs.editarea) { flushId = setTimeout(flushPending, 16); return }
+          this.computeLines(this.refs.editarea)
+          this.extendRawLines()
+          this.renderWindow(true)
         }
         let meta = await api.loadFile(file, (str) => {
           pending += str
@@ -232,6 +285,10 @@ export default function wavearea(el, {
           await new Promise(r => requestAnimationFrame(r))
           this.measureWaveform()
         }
+        // font metrics settled — re-window with the final line layout
+        this.measureWaveform()
+        this.computeRawLines()
+        this.renderWindow(true)
         // reconstruct edit chain from URL ops
         if (ops?.length) {
           this._ops = ops
@@ -259,6 +316,7 @@ export default function wavearea(el, {
         console.error('Failed to load file:', err)
         this.error = err.message || 'Failed to load file'
         this.total = 0
+        this._text = ''
         let ea = this.refs.editarea
         if (ea) ea.textContent = ''
         this.loading = false
@@ -578,7 +636,7 @@ export default function wavearea(el, {
       let range = document.caretRangeFromPoint?.(e.clientX, e.clientY)
       let ea = this.refs.editarea
       if (range && ea?.contains(range.startContainer) && range.startContainer.nodeType === 3)
-        at = cleanText(range.startContainer.textContent.slice(0, range.startOffset)).length
+        at = this.winBase + cleanText(range.startContainer.textContent.slice(0, range.startOffset)).length
       return this._insertFile(at, file)
     },
 
@@ -827,22 +885,20 @@ export default function wavearea(el, {
 
     // re-render current waveform text with updated breaks (no engine round-trip)
     _rerenderBreaks(at) {
-      let ea = this.refs.editarea
-      if (ea?.firstChild) ea.firstChild.data = this._withBreaks(ea.firstChild.data.replace(/\n/g, ''))
+      this._text = this._withBreaks(this._text.replace(/\n/g, ''))
       this.measureWaveform()
+      this.computeRawLines()
+      this.renderWindow(true)
       this._setCaret(at)
     },
 
     _applyEdit({ waveform, total, duration }, at) {
       this.total = total
       this.duration = duration
-      let ea = this.refs.editarea
-      if (ea) {
-        let str = this._withBreaks(waveform)
-        if (ea.firstChild?.nodeType === 3) ea.firstChild.data = str
-        else ea.textContent = str
-      }
+      this._text = this._withBreaks(waveform)
       this.measureWaveform()
+      this.computeRawLines()
+      this.renderWindow(true)
       this._setCaret(at)
       this._refreshMinimap()
     },
@@ -851,6 +907,15 @@ export default function wavearea(el, {
       let caret = Math.max(0, Math.min(at, this.total))
       this.caretOffset = caret
       this.caretLine = this.lineFromBlock(caret)
+      // bring the caret's line into the rendered window
+      if (this.caretLine < this.winStart || this.caretLine >= this.winEnd) {
+        let ea = this.refs.editarea
+        if (ea) {
+          let top = ea.getBoundingClientRect().top + scrollY
+          scrollTo({ top: Math.max(0, top + this.caretLine * (this._lineH || 0) - innerHeight / 3) })
+          this.renderWindow()
+        }
+      }
       this.clipStart = caret
       this.clipEnd = this.total
       this.loop = false

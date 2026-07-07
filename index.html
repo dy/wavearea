@@ -12,7 +12,8 @@
 
   <script type="module">
     import wavearea from './dist/wavearea.js'
-    wavearea(document.getElementById('wavearea'), {
+    // exposed for console poking and tests
+    window.wa = wavearea(document.getElementById('wavearea'), {
       engine: window.__playerEngine || undefined,
       store: window.__store || undefined,
     })

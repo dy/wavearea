@@ -1,5 +1,7 @@
 
-export function createSelection(getEl) {
+// Selection over a virtualized waveform: the editarea text node holds only a
+// window of the document; getBase() gives the window's starting block offset.
+export function createSelection(getEl, getBase = () => 0) {
   return {
     get() {
       let s = window.getSelection()
@@ -10,9 +12,10 @@ export function createSelection(getEl) {
       let node = s.anchorNode
       if (!node || !el.contains(node)) return
 
+      let base = getBase()
       let range = s.getRangeAt(0)
-      let start = cleanOffset(range.startContainer, range.startOffset, el)
-      let end = cleanOffset(range.endContainer, range.endOffset, el)
+      let start = base + cleanOffset(range.startContainer, range.startOffset, el)
+      let end = base + cleanOffset(range.endContainer, range.endOffset, el)
       if (start > end) [start, end] = [end, start]
 
       return { start, end, collapsed: s.isCollapsed, range }
@@ -27,8 +30,10 @@ export function createSelection(getEl) {
       let textNode = el?.firstChild
       if (!textNode) return { start, end, collapsed: start === end, range: null }
 
-      let rawStart = cleanToRaw(textNode.textContent, start)
-      let rawEnd = cleanToRaw(textNode.textContent, end)
+      // clamp into the rendered window
+      let base = getBase()
+      let rawStart = cleanToRaw(textNode.textContent, Math.max(0, start - base))
+      let rawEnd = cleanToRaw(textNode.textContent, Math.max(0, end - base))
 
       if (s.rangeCount) {
         let cur = s.getRangeAt(0)
@@ -58,7 +63,7 @@ function cleanOffset(node, rawOffset, el) {
   return cleanText(node.textContent.slice(0, rawOffset)).length
 }
 
-// a block char is a wavefont glyph U+0100\u2013U+0180; combining marks (U+0300/0301)
+// a block char is a wavefont glyph U+0100–U+0180; combining marks (U+0300/0301)
 // and segment breaks ('\n') take no block offset
 export const isBlock = c => c >= '\u0100' && c < '\u0300'
 

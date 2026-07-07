@@ -1,6 +1,6 @@
 <div class="container"
   :ref="refs.container"
-  :onscroll.window.throttle-raf:onresize.window.throttle-raf="() => _trackScroll()"
+  :onscroll.window.throttle-raf:onresize.window.throttle-raf="() => (_trackScroll(), renderWindow())"
   :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, loop = false, clipEnd = null, e.target.closest?.('#editarea') && window.getSelection().removeAllRanges(), e=> isMouseDown = false)"
   :onkeydown.document.delete="e => _key(e) && (e.preventDefault(), del(e.key === 'Backspace' ? -1 : 1, e.repeat))"
   :onkeydown.document.ctrl-z.prevent:onkeydown.document.meta-z.prevent="e => e.shiftKey ? redo() : undo()"
@@ -29,7 +29,7 @@
     <div id="editarea" class="wavefont" inputmode="none"
       :ref="refs.editarea"
       :class="{'playing':playing}"
-      :resize.throttle-raf="() => measureWaveform()"
+      :resize.throttle-raf="() => (measureWaveform(), computeRawLines(), renderWindow(true))"
       :onclick:onkeyup.arrow:ontouchend:onselect:onfocus:onkeydown.arrow.throttle-raf="
         let sel = selection.get()
         if (!sel) return
@@ -69,14 +69,14 @@
         :onclick="() => jumpTo(b)"></span>
     </div>
 
-    <div id="timecodes" :ref="refs.timecodes">
-      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(lineOffsets[i] ?? i * (cols || 0))}`" :text="timecode(lineOffsets[i] ?? i * (cols || 0))"
-        :onclick.prevent="() => jumpTo(lineOffsets[i] ?? i * (cols || 0))"></a>
+    <div id="timecodes" :ref="refs.timecodes" :style="{paddingTop: winStart * _lineH + 'px'}">
+      <a :each="li in winLines" :data-id="li" :href="`#${timecode(lineOffsets[li] ?? 0)}`" :text="timecode(lineOffsets[li] ?? 0)"
+        :onclick.prevent="() => jumpTo(lineOffsets[li] ?? 0)"></a>
     </div>
 
     <div id="floater" :ref="refs.floater"
       :class="{'loaded': total && !loading}"
-      :fx.delay="caretLine, lines; refs.timecodes?.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
+      :fx.delay="caretLine, winLines; refs.timecodes?.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
       <button id="play" aria-label="Play/pause"
         :ref="refs.playButton"
         :hidden="!total || loading"

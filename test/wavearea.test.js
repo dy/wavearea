@@ -2217,6 +2217,101 @@ test.describe('recording new document', () => {
   });
 });
 
+// --- Virtualization: long docs render only a window of lines ---
+
+test.describe('virtualization', () => {
+  let errors;
+
+  // 10min silence doc with widened chars → ~130 lines, far beyond the window
+  test.beforeEach(async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await page.waitForFunction(() => window.wa, { timeout: 5000 });
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+      wa.openSilence(600);
+    });
+    await page.waitForFunction(() =>
+      !document.querySelector('#status') && wa.total > 25000, { timeout: 30000 });
+    await page.waitForTimeout(300);
+  });
+
+  test('DOM holds only a line window; scroll moves it', async ({ page }) => {
+    let info = await page.evaluate(() => ({
+      total: wa.total,
+      lines: wa.lines,
+      dom: document.querySelector('#editarea').textContent.length,
+      full: wa._text.length,
+      timecodes: document.querySelectorAll('#timecodes a').length,
+    }));
+    expect(info.lines).toBeGreaterThan(80);
+    expect(info.dom).toBeLessThan(info.full * 0.6); // window ≪ document
+    expect(info.timecodes).toBeLessThan(info.lines);
+
+    let moved = await page.evaluate(async () => {
+      scrollTo({ top: document.documentElement.scrollHeight * 0.7 });
+      await new Promise(r => setTimeout(r, 400));
+      return {
+        winStart: wa.winStart,
+        padTop: parseFloat(document.querySelector('#editarea').style.paddingTop),
+        firstTimecode: document.querySelector('#timecodes a')?.textContent,
+      };
+    });
+    expect(moved.winStart).toBeGreaterThan(20);
+    expect(moved.padTop).toBeGreaterThan(1000);
+    expect(moved.firstTimecode).not.toBe('0:00');
+    expect(errors).toEqual([]);
+  });
+
+  test('caret, edit and undo at a far offset work through the window', async ({ page }) => {
+    let total = await page.evaluate(() => wa.total);
+    await page.evaluate((t) => wa.jumpTo(t - 100), total);
+    await page.waitForTimeout(400);
+
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction((t) => wa.total === t - 1, total, { timeout: 8000 });
+    expect(page.url()).toContain(`del=${total - 101}-${total - 100}`);
+
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction((t) => wa.total === t, total, { timeout: 8000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('markers and playback at far offsets', async ({ page }) => {
+    let total = await page.evaluate(() => wa.total);
+    await page.evaluate((t) => wa.jumpTo(t - 500), total);
+    await page.waitForTimeout(400);
+    await page.keyboard.press('m');
+    await page.waitForFunction((t) => location.search.includes(`m=${t - 500}`), total, { timeout: 5000 });
+
+    await page.keyboard.press('Control+Space');
+    await page.waitForTimeout(500);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('reload reconstructs a far edit and re-windows', async ({ page }) => {
+    let total = await page.evaluate(() => wa.total);
+    await page.evaluate((t) => wa.jumpTo(t - 100), total);
+    await page.waitForTimeout(400);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction((t) => wa.total === t - 1, total, { timeout: 8000 });
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await page.waitForFunction((t) => window.wa && wa.total === t - 1, total, { timeout: 30000 });
+    let dom = await page.evaluate(() => document.querySelector('#editarea').textContent.length);
+    let full = await page.evaluate(() => wa._text.length);
+    expect(dom).toBeLessThan(full); // still windowed after reload
+    expect(errors).toEqual([]);
+  });
+
+});
+
+
 
 
 test.describe('audioElPlayer backend', () => {

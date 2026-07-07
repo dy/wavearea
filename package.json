@@ -6,8 +6,8 @@
   "scripts": {
     "start": "esbuild ./src/wavearea.js ./src/engine-worker.js --bundle --splitting --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --servedir=. --external:@audio/aiff-decode --external:@audio/caf-decode --external:@audio/webm-decode --external:@audio/amr-decode --external:@audio/wma-decode --external:fs --external:fs/promises --external:url --external:node:worker_threads --external:audio-speaker --external:audio-mic --out-extension:.js=.js --entry-names=[name]",
     "build": "rm -rf ./dist/* && esbuild ./src/wavearea.js ./src/engine-worker.js --bundle --splitting --minify --sourcemap --loader:.svg=text --loader:.html=text --loader:.woff2=file --format=esm --outdir=dist --external:@audio/aiff-decode --external:@audio/caf-decode --external:@audio/webm-decode --external:@audio/amr-decode --external:@audio/wma-decode --external:fs --external:fs/promises --external:url --external:node:worker_threads --external:audio-speaker --external:audio-mic --entry-names=[name]",
-    "test": "node test/unit/selection.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js && npx playwright test",
-    "test:unit": "node test/unit/selection.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js",
+    "test": "node test/unit/selection.test.js && node test/unit/virtual.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js && npx playwright test",
+    "test:unit": "node test/unit/selection.test.js && node test/unit/virtual.test.js && node test/unit/adapter.test.js && node test/unit/store.test.js",
     "test:e2e": "npx playwright test"
   },
   "repository": {
