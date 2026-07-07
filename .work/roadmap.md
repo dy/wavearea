@@ -295,20 +295,19 @@
   * [~] Caret block position rescales with zoom (auto-scroll-to-caret pending)
   * [x] Re-render waveform string on zoom change (stat re-query, no re-decode)
   * [x] Decoded samples stay in engine — only the string regenerates
-* [ ] Minimap
-  * [ ] Small fixed-height overview of entire file at top or side
-  * [ ] Viewport indicator: rectangle showing current scroll position
-  * [ ] Click minimap to jump
-  * [ ] Drag viewport rectangle to scroll
-  * [ ] Renders at coarsest zoom level (4096+ blockSize)
-* [ ] Markers / Bookmarks
-  * [ ] Click gutter to add marker at line
-  * [ ] Keyboard shortcut to add marker at caret
-  * [ ] Navigate between markers: Ctrl+Up/Down or dropdown
-  * [ ] Markers stored in URL: `m=offset1,offset2,...`
-* [ ] Search by time
-  * [ ] Jump to specific time: click timecode area, type time
-  * [ ] `g` key (like vim) → enter time → jump
+* [x] Minimap
+  * [x] Fixed-height whole-file overview (bottom strip, canvas from block stats)
+  * [x] Viewport indicator follows scroll
+  * [x] Click to jump, drag to scroll
+  * [x] Renders from coarse stat bins (~2px per bin)
+* [~] Markers / Bookmarks
+  * [ ] Click gutter to add marker at line (gutter click = jump instead)
+  * [x] `m` toggles marker at caret; shift with edits/zoom, undo-snapshot per op
+  * [x] Navigate between markers: Ctrl/Cmd+Up/Down
+  * [x] Markers stored in URL: `m=a..b`; export as WAV cue points
+* [x] Search by time
+  * [x] Timecode click jumps caret (no navigation)
+  * [x] `g` → time input (m:ss or seconds) → jump
 * [ ] Virtual rendering (if needed)
   * [ ] Only render visible lines + buffer above/below
   * [ ] Maintain scroll position and caret mapping
@@ -346,12 +345,12 @@
   * [x] Filename: `{original}-edited.wav`
   * [~] "Encoding" status shown (engine emits progress events for a real bar later)
 * [x] Drag and drop (see Phase 2: drop opens or inserts at drop point)
-* [ ] Recording
-  * [ ] Microphone input via MediaStream
-  * [ ] Record at caret position (insert recording into waveform)
-  * [ ] Record to new file
-  * [ ] Visual: live waveform grows as you record
-  * [ ] Stop recording → audio integrated into waveform
+* [~] Recording
+  * [x] Microphone input via MediaStream + capture worklet (mono WAV to store)
+  * [x] Record at caret position (insert on stop, `ins=` replayable)
+  * [x] Record to new file (opener action)
+  * [~] Live timer in status while recording (growing waveform preview later)
+  * [x] Stop recording → audio integrated into waveform
 * [ ] Drag and drop
   * [ ] Drop file anywhere → open it
   * [ ] Drop on existing waveform → insert at caret? or replace?
@@ -392,12 +391,12 @@
   * [ ] Target: <16ms playback position update
   * [ ] Memory: don't hold decoded samples twice (worker + main)
   * [ ] Large files (>1hr): streaming decode, chunked render
-* [ ] Accessibility
-  * [ ] ARIA roles for custom controls
-  * [ ] Focus management: trap in modals, return on close
+* [~] Accessibility
+  * [~] aria-labels on icon controls (roles/announcements pending)
+  * [ ] Focus management (op buttons are deliberately tabindex=-1 — needs keyboard design)
   * [ ] Screen reader: announce playback state, current time
-  * [ ] Respect prefers-reduced-motion
-  * [ ] Respect prefers-color-scheme for auto dark mode
+  * [x] Respect prefers-reduced-motion (caret/pulse animations off)
+  * [ ] Respect prefers-color-scheme for auto dark mode (theme system, Phase 5)
 * [~] Offline / PWA
   * [x] Service worker for static assets (stale-while-revalidate, https only)
   * [x] App manifest for installability
