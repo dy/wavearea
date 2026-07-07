@@ -68,23 +68,61 @@ export default function createApi({ store } = {}) {
     },
 
     // edit ops — offsets in blocks, engine takes samples;
-    // op history/redo lives in UI state (URL ops), engine just executes
+    // op history/redo lives in UI state (URL ops), engine executes 1 edit per op
     async removeRange(fromBlock, toBlock, { replace } = {}) {
       if (replace) await a.undo()
       await a.run(['remove', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
       return refresh()
     },
 
-    // apply a batch (URL reconstruction) — sequential ops, single re-render
-    async removeRanges(ranges) {
-      for (let [from, to] of ranges)
-        await a.run(['remove', { offset: from * BLOCK_SIZE, length: (to - from) * BLOCK_SIZE }])
+    async insertSilence(atBlock, nBlocks, { replace } = {}) {
+      if (replace) await a.undo()
+      await a.run(['insert', { source: nBlocks * BLOCK_SIZE / a.sampleRate, offset: atBlock * BLOCK_SIZE }])
+      return refresh()
+    },
+
+    // clipboard — clone+crop snapshots the current timeline range, sample-precise
+    // (clip() takes seconds and can drift ±1 sample → a stray partial block)
+    async copyRange(fromBlock, toBlock) {
+      let c = await a.clone()
+      await c.run(['crop', { offset: fromBlock * BLOCK_SIZE, length: (toBlock - fromBlock) * BLOCK_SIZE }])
+      return c
+    },
+
+    async pasteClip(clip, atBlock) {
+      await a.run(['insert', { source: clip, offset: atBlock * BLOCK_SIZE }])
       return refresh()
     },
 
     async undoEdit() {
       let edit = await a.undo()
       return edit ? refresh() : null
+    },
+
+    // replay an op chain (URL reconstruction) — sequential, single re-render.
+    // cp ops reference the timeline state after their first v ops: clips for
+    // v === k are snapshotted right before op k applies.
+    async applyOps(ops) {
+      let sr = a.sampleRate
+      let clipAt = new Map() // v → [cp ops]
+      for (let op of ops) if (op[0] === 'cp') {
+        if (!clipAt.has(op[3])) clipAt.set(op[3], [])
+        clipAt.get(op[3]).push(op)
+      }
+      let clips = new Map() // cp op → clip facade
+      for (let k = 0; k <= ops.length; k++) {
+        for (let cp of clipAt.get(k) || []) {
+          let c = await a.clone()
+          await c.run(['crop', { offset: cp[1] * BLOCK_SIZE, length: (cp[2] - cp[1]) * BLOCK_SIZE }])
+          clips.set(cp, c)
+        }
+        if (k === ops.length) break
+        let [type, ...args] = ops[k]
+        if (type === 'del') await a.run(['remove', { offset: args[0] * BLOCK_SIZE, length: (args[1] - args[0]) * BLOCK_SIZE }])
+        else if (type === 'sil') await a.run(['insert', { source: args[1] * BLOCK_SIZE / sr, offset: args[0] * BLOCK_SIZE }])
+        else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * BLOCK_SIZE }])
+      }
+      return refresh()
     },
 
     async saveFile(file, meta) {

@@ -3,6 +3,10 @@
   :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, loop = false, clipEnd = null, e.target.closest?.('#editarea') && window.getSelection().removeAllRanges(), e=> isMouseDown = false)"
   :onkeydown.document.delete.prevent="e => del(e.key === 'Backspace' ? -1 : 1, e.repeat)"
   :onkeydown.document.ctrl-z.prevent:onkeydown.document.meta-z.prevent="e => e.shiftKey ? redo() : undo()"
+  :onkeydown.document.space.prevent="e => e.ctrlKey || e.metaKey || sil(e.repeat)"
+  :onkeydown.document.ctrl-c:onkeydown.document.meta-c="() => copy()"
+  :onkeydown.document.ctrl-x.prevent:onkeydown.document.meta-x.prevent="() => cut()"
+  :onkeydown.document.ctrl-v.prevent:onkeydown.document.meta-v.prevent="() => paste()"
   :style="{
     '--cols': cols,
     '--carety': (caretY - (refs.editarea?.getBoundingClientRect().top ?? 0)) + 'px',
@@ -65,8 +69,8 @@
       <button id="play"
         :ref="refs.playButton"
         :hidden="!total || loading"
-        :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Space)`"
-        :onclick:onkeydown.document.space.prevent..onclick:onkeydown.document.space.prevent="() => play()"
+        :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Ctrl+Space)`"
+        :onclick:onkeydown.document.ctrl-space.prevent:onkeydown.document.meta-space.prevent..onclick:onkeydown.document.ctrl-space.prevent:onkeydown.document.meta-space.prevent="() => play()"
         tabindex="-1">
         <span class="clickarea"></span>
         <svg :if="!playing" xmlns="http://www.w3.org/2000/svg"

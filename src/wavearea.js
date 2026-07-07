@@ -126,6 +126,7 @@ export default function wavearea(el, {
       this.total = 0
       this._ops = []
       this._redoOps = []
+      this._clip = null
       // clear stale edit chain from URL — unless we're about to reconstruct it
       if (!ops?.length) this._syncURL()
       // create player eagerly DURING user gesture (Safari requires this for AudioContext)
@@ -172,7 +173,7 @@ export default function wavearea(el, {
         // reconstruct edit chain from URL ops
         if (ops?.length) {
           this._ops = ops
-          this._applyEdit(await api.removeRanges(ops), 0)
+          this._applyEdit(await api.applyOps(ops), 0)
         }
         this.loading = false
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
@@ -264,9 +265,12 @@ export default function wavearea(el, {
       })
     },
 
-    // applied ops (URL-serialized state) + redo history — raw, not reactive
+    // applied ops (URL-serialized state) + redo history — raw, not reactive.
+    // op shapes: ['del', from, to] | ['sil', at, n] | ['cp', from, to, v, at]
+    // cp references the timeline after its first v ops; op.clip holds the live snapshot
     _ops: [],
     _redoOps: [],
+    _clip: null, // { from, to, v, clip } — invalidated when undo breaks the v prefix
 
     // dir: -1 = backspace (before caret), +1 = delete (after caret)
     // repeat: key held (KeyboardEvent.repeat) — merge the burst into one undo step
@@ -282,15 +286,64 @@ export default function wavearea(el, {
           if (dir < 0) { if (at <= 0) return; from = at - 1; to = at }
           else { if (at >= this.total) return; from = at; to = at + 1 }
           // merge a held-key burst into the last op — one undo step
-          if (last && repeat) {
-            if (dir < 0 && to === last[0]) { merge = true; last[0] = from }
-            else if (dir > 0 && from === last[0]) { merge = true; last[1] += to - from }
+          if (last?.[0] === 'del' && repeat) {
+            if (dir < 0 && to === last[1]) { merge = true; last[1] = from }
+            else if (dir > 0 && from === last[1]) { merge = true; last[2] += to - from }
           }
         }
         this.stop()
-        if (!merge) this._ops.push(last = [from, to])
+        if (!merge) this._ops.push(last = ['del', from, to])
         this._redoOps.length = 0
-        this._applyEdit(await api.removeRange(last[0], last[1], { replace: merge }), from)
+        this._applyEdit(await api.removeRange(last[1], last[2], { replace: merge }), from)
+        this._syncURL()
+      })
+    },
+
+    // insert one block of silence at caret (typing into the document); repeat merges
+    sil(repeat) {
+      if (!this.total) return
+      return this._edit(async () => {
+        let sel = this.selection.get()
+        let at = sel ? sel.start : this.caretOffset
+        let last = this._ops[this._ops.length - 1]
+        let merge = last?.[0] === 'sil' && repeat && at === last[1] + last[2]
+        this.stop()
+        if (merge) last[2]++
+        else this._ops.push(last = ['sil', at, 1])
+        this._redoOps.length = 0
+        this._applyEdit(await api.insertSilence(last[1], last[2], { replace: merge }), at + 1)
+        this._syncURL()
+      })
+    },
+
+    copy() {
+      let sel = this.selection.get()
+      if (!sel || sel.collapsed) return
+      let { start: from, end: to } = sel
+      return this._edit(async () => {
+        this._clip = { from, to, v: this._ops.length, clip: await api.copyRange(from, to) }
+      })
+    },
+
+    cut() {
+      let sel = this.selection.get()
+      if (!sel || sel.collapsed) return
+      this.copy()
+      return this.del(-1)
+    },
+
+    paste() {
+      if (!this._clip || !this.total) return
+      return this._edit(async () => {
+        let { from, to, v, clip } = this._clip
+        let sel = this.selection.get()
+        let at = sel ? sel.start : this.caretOffset
+        let op = ['cp', from, to, v, at]
+        op.clip = clip
+        this.stop()
+        this._ops.push(op)
+        this._redoOps.length = 0
+        this._applyEdit(await api.pasteClip(clip, at), at + (to - from))
         this._syncURL()
       })
     },
@@ -301,6 +354,8 @@ export default function wavearea(el, {
         let r = await api.undoEdit()
         if (!r) return
         this._redoOps.push(this._ops.pop())
+        // clipboard referenced a chain state that no longer exists
+        if (this._clip && this._ops.length < this._clip.v) this._clip = null
         this.stop()
         this._applyEdit(r, this.caretOffset)
         this._syncURL()
@@ -313,17 +368,21 @@ export default function wavearea(el, {
         if (!op) return
         this._ops.push(op)
         this.stop()
-        this._applyEdit(await api.removeRange(op[0], op[1]), op[0])
+        let r = op[0] === 'del' ? await api.removeRange(op[1], op[2])
+          : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
+          : await api.pasteClip(op.clip, op[4])
+        this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[4])
         this._syncURL()
       })
     },
 
-    // URL is the state: ?src=<store id | remote url>&del=f-t..f-t
+    // URL is the state: ?src=<store id | remote url>&del=f-t&sil=at-n&cp=f-t-v-at
+    // repeated params, document order = application order
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
-      if (this._ops.length) url.searchParams.set('del', this._ops.map(([f, t]) => `${f}-${t}`).join('..'))
-      else url.searchParams.delete('del')
+      for (let k of ['del', 'sil', 'cp']) url.searchParams.delete(k)
+      for (let op of this._ops) url.searchParams.append(op[0], op.slice(1).join('-'))
       history.replaceState(null, '', url)
     },
 
@@ -449,13 +508,19 @@ export default function wavearea(el, {
 
   state[Symbol.dispose] = () => cleanups.forEach(fn => fn())
 
-  // auto-load src from option or URL; ?del= reconstructs the edit chain
+  // auto-load src from option or URL; op params reconstruct the edit chain
   let params = new URLSearchParams(location.search)
   src ??= params.get('src')
   if (src) {
-    let ops = (params.get('del') || '').split('..')
-      .map(r => r.split('-').map(Number))
-      .filter(([f, t]) => f >= 0 && t > f)
+    const ARITY = { del: 2, sil: 2, cp: 4 }
+    let ops = []
+    for (let [k, v] of params) {
+      if (!ARITY[k]) continue
+      let nums = v.split('-').map(Number)
+      if (nums.length === ARITY[k] && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push([k, ...nums])
+    }
+    // a cp op may only reference the chain prefix before its own position
+    ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     state.loadAudio(src, { ops })
   }
 

@@ -157,7 +157,7 @@ test.describe('wavearea', () => {
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
     await page.waitForTimeout(200);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     let result = await page.evaluate(() => {
@@ -190,7 +190,7 @@ test.describe('wavearea', () => {
     expect(result.caretHeight).toBeLessThan(100);
     expect(result.caretHeight).toBeGreaterThan(5);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('caret animation starts within 200ms of play', async ({ page }) => {
@@ -211,7 +211,7 @@ test.describe('wavearea', () => {
     });
     console.log(`Caret animation latency: ${latency}ms`);
     expect(latency).toBeLessThan(200);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('play starts within 500ms', async ({ page }) => {
@@ -231,7 +231,7 @@ test.describe('wavearea', () => {
     });
     expect(latency).toBeLessThan(500);
 
-    await page.keyboard.press('Space'); // stop
+    await page.keyboard.press('Control+Space'); // stop
   });
 
   test('space toggles playback on and off without errors', async ({ page }) => {
@@ -248,14 +248,14 @@ test.describe('wavearea', () => {
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
 
     // press space to start playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
     expect(errors).toEqual([]);
 
     // press space again to stop playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
@@ -338,7 +338,7 @@ test.describe('wavearea', () => {
     expect(playPath).toContain('5v14l11'); // play triangle
 
     // start playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     // now: pause icon visible, play icon not in DOM
@@ -348,7 +348,7 @@ test.describe('wavearea', () => {
     expect(pausePath).toContain('6 19h4V5'); // pause bars
 
     // stop playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     // back to play icon
@@ -383,7 +383,7 @@ test.describe('wavearea', () => {
     await page.waitForTimeout(300);
 
     // start playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     // verify overlay CSS vars match caret position
@@ -405,7 +405,7 @@ test.describe('wavearea', () => {
     expect(overlay.caretX).toBeGreaterThan(0);
 
     // stop playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(200);
 
     expect(errors).toEqual([]);
@@ -631,7 +631,7 @@ test.describe('visual layers', () => {
     expect(beforePlay.transform).toContain('translate');
 
     // play — should advance smoothly
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(800);
 
     let t1 = await page.evaluate(() => document.querySelector('.smooth-caret')?.style.transform);
@@ -639,7 +639,7 @@ test.describe('visual layers', () => {
     let t2 = await page.evaluate(() => document.querySelector('.smooth-caret')?.style.transform);
     expect(t1).not.toBe(t2);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     expect(errors).toEqual([]);
   });
 
@@ -659,7 +659,7 @@ test.describe('visual layers', () => {
     });
 
     // start playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     // get position after play — should be near beforePos, not at origin (0)
@@ -673,7 +673,7 @@ test.describe('visual layers', () => {
     expect(afterPos).toBeGreaterThan(eaBox.x + 20);
 
     expect(errors).toEqual([]);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('native caret is hidden when smooth caret is active', async ({ page }) => {
@@ -694,7 +694,7 @@ test.describe('visual layers', () => {
     expect(animation).toContain('caret-blink');
 
     // during playback, should not blink
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     let animPlaying = await page.evaluate(() => {
@@ -703,7 +703,7 @@ test.describe('visual layers', () => {
     });
     expect(animPlaying).not.toContain('caret-blink');
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('smooth caret follows drag selection endpoint', async ({ page }) => {
@@ -750,7 +750,7 @@ test.describe('visual layers', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     // sample smooth caret position twice — should advance
@@ -769,7 +769,7 @@ test.describe('visual layers', () => {
     expect(pos1).toBeGreaterThan(0);
 
     expect(errors).toEqual([]);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 });
 
@@ -864,7 +864,7 @@ test.describe('bufferPlayer backend', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     let spy = await page.evaluate(() => window.__audioSpy);
@@ -886,9 +886,9 @@ test.describe('bufferPlayer backend', () => {
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500); // wait for deferred stop
 
     let spy = await page.evaluate(() => window.__audioSpy);
@@ -905,7 +905,7 @@ test.describe('bufferPlayer backend', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     let spy = await page.evaluate(() => window.__audioSpy);
@@ -926,7 +926,7 @@ test.describe('bufferPlayer backend', () => {
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
     await page.waitForTimeout(100);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     // check smooth caret is advancing
@@ -937,7 +937,7 @@ test.describe('bufferPlayer backend', () => {
     expect(errors).toEqual([]);
     expect(pos2).toBeGreaterThan(pos1);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('play → stop → play resumes from caret, not from original position', async ({ page }) => {
@@ -954,11 +954,11 @@ test.describe('bufferPlayer backend', () => {
     });
 
     // play for 1.5s to advance caret
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(1500);
 
     // stop
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(200);
 
     let stoppedOffset = await page.evaluate(() => {
@@ -968,7 +968,7 @@ test.describe('bufferPlayer backend', () => {
     expect(stoppedOffset).toBeGreaterThan(startOffset);
 
     // play again — should start from stopped position, not from original
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     let resumedOffset = await page.evaluate(() => {
@@ -980,7 +980,7 @@ test.describe('bufferPlayer backend', () => {
     // caret should be past the stopped position, not back at startOffset
     expect(resumedOffset).toBeGreaterThanOrEqual(stoppedOffset);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('slow click during playback seeks to clicked position', async ({ page }) => {
@@ -989,7 +989,7 @@ test.describe('bufferPlayer backend', () => {
 
     // play from start
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
@@ -1014,7 +1014,7 @@ test.describe('bufferPlayer backend', () => {
     expect(pos).toBeGreaterThan(textLen * 0.5);
 
     expect(errors).toEqual([]);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('drag-selecting during playback loops the selection', async ({ page }) => {
@@ -1028,7 +1028,7 @@ test.describe('bufferPlayer backend', () => {
 
     // play from start
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
@@ -1069,7 +1069,7 @@ test.describe('bufferPlayer backend', () => {
     }
 
     expect(errors).toEqual([]);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('clicking during playback seeks to clicked position', async ({ page }) => {
@@ -1078,7 +1078,7 @@ test.describe('bufferPlayer backend', () => {
 
     // click near start, play for 300ms (caret advances a few blocks)
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
@@ -1111,7 +1111,7 @@ test.describe('bufferPlayer backend', () => {
     expect(pos2).toBeGreaterThanOrEqual(pos1);
 
     expect(errors).toEqual([]);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('quick double-space does not select or loop', async ({ page }) => {
@@ -1121,7 +1121,8 @@ test.describe('bufferPlayer backend', () => {
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
     await page.waitForTimeout(100);
 
-    // rapid space: play then stop within 100ms
+    // rapid ctrl+space: play then stop within 100ms
+    await page.keyboard.down('Control');
     await page.keyboard.down('Space');
     await page.waitForTimeout(50);
     await page.keyboard.up('Space');
@@ -1129,6 +1130,7 @@ test.describe('bufferPlayer backend', () => {
     await page.keyboard.down('Space');
     await page.waitForTimeout(50);
     await page.keyboard.up('Space');
+    await page.keyboard.up('Control');
     await page.waitForTimeout(300);
 
     // should not be playing (stopped by second space)
@@ -1150,7 +1152,7 @@ test.describe('bufferPlayer backend', () => {
     });
 
     // play again — should play normally from near start, not loop a fragment
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(800);
 
     // verify caret is advancing (not stuck looping a single char)
@@ -1161,7 +1163,7 @@ test.describe('bufferPlayer backend', () => {
     expect(errors).toEqual([]);
     expect(offset2).toBeGreaterThan(offset1);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('play → pause → play creates new source nodes', async ({ page }) => {
@@ -1169,11 +1171,11 @@ test.describe('bufferPlayer backend', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     let spy = await page.evaluate(() => window.__audioSpy);
@@ -1182,7 +1184,7 @@ test.describe('bufferPlayer backend', () => {
     let startCalls = spy.calls.filter(c => c.method === 'source.start');
     expect(startCalls.length).toBeGreaterThanOrEqual(2);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
   });
 
   test('play button triggers same engine', async ({ page }) => {
@@ -1199,7 +1201,7 @@ test.describe('bufferPlayer backend', () => {
     expect(spy.calls.some(c => c.method === 'source.start')).toBe(true);
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
   });
@@ -1247,7 +1249,7 @@ test.describe('saved file', () => {
     // 4. Timecodes must be valid (not Infinity:NaN)
     // 4. Play — sampleRate must be valid, no errors
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(500);
 
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
@@ -1260,7 +1262,7 @@ test.describe('saved file', () => {
     expect(bufferCall.buffer.sampleRate).toBeGreaterThanOrEqual(3000);
 
     // stop playback
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(200);
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
 
@@ -1317,6 +1319,27 @@ const setCaret = (page, block) => page.evaluate((b) => {
 const waitLen = (page, len) => page.waitForFunction((l) =>
   document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length === l,
   len, { timeout: 5000 });
+
+// select an exact block range \u2014 interior ranges only (the trailing char is a partial
+// block, so tail-inclusive selections paste fewer chars than selected)
+const setSelection = (page, from, to) => page.evaluate(([f, t]) => {
+  let node = document.querySelector('#editarea').firstChild;
+  let toRaw = (b) => {
+    let str = node.textContent, c = 0, raw = 0;
+    while (c < b && raw < str.length) {
+      if (str[raw] < '\u0300') c++;
+      raw++;
+      while (raw < str.length && str[raw] >= '\u0300') raw++;
+    }
+    return raw;
+  };
+  let sel = window.getSelection();
+  sel.removeAllRanges();
+  let r = new Range();
+  r.setStart(node, toRaw(f));
+  r.setEnd(node, toRaw(t));
+  sel.addRange(r);
+}, [from, to]);
 
 test.describe('editing', () => {
   let errors;
@@ -1441,10 +1464,10 @@ test.describe('editing', () => {
     for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace', { delay: 30 });
     await waitLen(page, total - 3);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(400);
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     expect(errors).toEqual([]);
   });
 
@@ -1457,12 +1480,12 @@ test.describe('editing', () => {
 
     await page.keyboard.press('Backspace');
     await waitLen(page, total - 2);
-    expect(page.url()).toContain('del=9-10..8-9');
+    expect(page.url()).toContain('del=9-10&del=8-9');
 
     await page.keyboard.press('Control+z');
     await waitLen(page, total - 1);
     expect(page.url()).toContain('del=9-10');
-    expect(page.url()).not.toContain('..');
+    expect(page.url().match(/del=/g).length).toBe(1);
 
     await page.keyboard.press('Control+z');
     await waitLen(page, total);
@@ -1482,7 +1505,7 @@ test.describe('editing', () => {
     await key(true);
     await waitLen(page, total - 3);
     expect(page.url()).toContain('del=7-10');
-    expect(page.url()).not.toContain('..');
+    expect(page.url().match(/del=/g).length).toBe(1);
 
     // one undo reverts the whole burst
     await page.keyboard.press('Control+z');
@@ -1506,6 +1529,90 @@ test.describe('editing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('space inserts a silence block at caret', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.keyboard.press('Space');
+    await waitLen(page, total + 1);
+    expect(await caretPos(page)).toBe(11);
+    expect(page.url()).toContain('sil=10-1');
+
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(page.url()).not.toContain('sil=');
+    expect(errors).toEqual([]);
+  });
+
+  test('held space merges the silence burst into one op', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    let key = (repeat) => page.evaluate((rep) =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', cancelable: true, repeat: rep })), repeat);
+    await key(false);
+    await waitLen(page, total + 1);
+    await key(true);
+    await waitLen(page, total + 2);
+    await key(true);
+    await waitLen(page, total + 3);
+    expect(page.url()).toContain('sil=10-3');
+
+    // one undo reverts the whole burst
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(errors).toEqual([]);
+  });
+
+  test('copy + paste inserts the copied range at caret', async ({ page }) => {
+    let total = await cleanLen(page);
+
+    await setSelection(page, 20, 50);
+    await page.keyboard.press('Control+c');
+    await page.waitForTimeout(300);
+    await setCaret(page, 0);
+    await page.keyboard.press('Control+v');
+    await waitLen(page, total + 30);
+    expect(page.url()).toContain('cp=20-50-0-0');
+    expect(await caretPos(page)).toBe(30);
+
+    // paste again at the same caret — clipboard persists
+    await page.keyboard.press('Control+v');
+    await waitLen(page, total + 60);
+    expect(errors).toEqual([]);
+  });
+
+  test('cut removes selection, paste restores it elsewhere', async ({ page }) => {
+    let total = await cleanLen(page);
+
+    await setSelection(page, 40, 60);
+    await page.keyboard.press('Control+x');
+    await waitLen(page, total - 20);
+
+    await setCaret(page, 0);
+    await page.keyboard.press('Control+v');
+    await waitLen(page, total);
+    expect(page.url()).toContain('del=40-60');
+    expect(page.url()).toContain('cp=40-60-0-0');
+    expect(errors).toEqual([]);
+  });
+
+  test('reload reconstructs paste from URL (cp replay)', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+
+    await setSelection(page, 20, 50);
+    await page.keyboard.press('Control+c');
+    await page.waitForTimeout(300);
+    await setCaret(page, 5);
+    await page.keyboard.press('Control+v');
+    await waitLen(page, total + 30);
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await waitLen(page, total + 30);
+    expect(page.url()).toContain('cp=20-50-0-5');
+    expect(errors).toEqual([]);
+  });
+
 });
 
 test.describe('audioElPlayer backend', () => {
@@ -1521,7 +1628,7 @@ test.describe('audioElPlayer backend', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(800);
 
     let spy = await page.evaluate(() => window.__audioElSpy);
@@ -1537,9 +1644,9 @@ test.describe('audioElPlayer backend', () => {
     page.on('pageerror', e => errors.push(e.message));
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(800);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     let spy = await page.evaluate(() => window.__audioElSpy);
@@ -1555,12 +1662,12 @@ test.describe('audioElPlayer backend', () => {
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
 
     await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(800);
 
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Control+Space');
     await page.waitForTimeout(300);
 
     await expect(page.locator('#editarea.playing')).toHaveCount(0);
@@ -1587,11 +1694,11 @@ function playbackContractTests(backendName, initScript) {
       await expect(page.locator('#editarea.playing')).toHaveCount(0);
 
       await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
       await page.waitForTimeout(500);
       await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
       await page.waitForTimeout(300);
       await expect(page.locator('#editarea.playing')).toHaveCount(0);
 
@@ -1605,10 +1712,10 @@ function playbackContractTests(backendName, initScript) {
       await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
       await page.waitForTimeout(100);
 
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
       await page.waitForTimeout(1000);
 
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
       await page.waitForTimeout(200);
 
       let stoppedOffset = await page.evaluate(() => {
@@ -1616,7 +1723,7 @@ function playbackContractTests(backendName, initScript) {
         return s.rangeCount ? s.getRangeAt(0).startOffset : 0;
       });
 
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
       await page.waitForTimeout(500);
 
       let resumedOffset = await page.evaluate(() => {
@@ -1627,7 +1734,7 @@ function playbackContractTests(backendName, initScript) {
       expect(errors).toEqual([]);
       expect(resumedOffset).toBeGreaterThanOrEqual(stoppedOffset);
 
-      await page.keyboard.press('Space');
+      await page.keyboard.press('Control+Space');
     });
 
     test('play button works same as space', async ({ page }) => {
