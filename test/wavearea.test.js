@@ -1296,40 +1296,42 @@ const FORCE_AUDIO_EL = () => {
 // --- Editing: delete, undo/redo ---
 
 const cleanLen = (page) => page.evaluate(() =>
-  document.querySelector('#editarea').textContent.replace(/[\u0300\u0301]/g, '').length);
+  document.querySelector('#editarea').textContent.replace(/[\u0300\u0301\n]/g, '').length);
 
 const caretPos = (page) => page.evaluate(() => {
   let s = window.getSelection(), r = s.rangeCount ? s.getRangeAt(0) : null;
   if (!r) return null;
-  return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301]/g, '').length;
+  return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301\n]/g, '').length;
 });
 
 const setCaret = (page, block) => page.evaluate((b) => {
   let node = document.querySelector('#editarea').firstChild;
+  let isB = c => c >= '\u0100' && c < '\u0300';
   let str = node.textContent, clean = 0, raw = 0;
   while (clean < b && raw < str.length) {
-    if (str[raw] < '\u0300') clean++;
+    if (isB(str[raw])) clean++;
     raw++;
-    while (raw < str.length && str[raw] >= '\u0300') raw++;
+    while (raw < str.length && !isB(str[raw])) raw++;
   }
   window.getSelection().collapse(node, raw);
 }, block);
 
 // wait until edit queue settles and length matches expectation
 const waitLen = (page, len) => page.waitForFunction((l) =>
-  document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length === l,
+  document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length === l,
   len, { timeout: 5000 });
 
 // select an exact block range \u2014 interior ranges only (the trailing char is a partial
 // block, so tail-inclusive selections paste fewer chars than selected)
 const setSelection = (page, from, to) => page.evaluate(([f, t]) => {
   let node = document.querySelector('#editarea').firstChild;
+  let isB = c => c >= '\u0100' && c < '\u0300';
   let toRaw = (b) => {
     let str = node.textContent, c = 0, raw = 0;
     while (c < b && raw < str.length) {
-      if (str[raw] < '\u0300') c++;
+      if (isB(str[raw])) c++;
       raw++;
-      while (raw < str.length && str[raw] >= '\u0300') raw++;
+      while (raw < str.length && !isB(str[raw])) raw++;
     }
     return raw;
   };
@@ -1711,6 +1713,144 @@ test.describe('editing', () => {
     await page.reload();
     await waitLen(page, total + 30);
     expect(page.url()).toContain('cp=20-50-0-5');
+    expect(errors).toEqual([]);
+  });
+
+});
+
+
+// --- Segments: Enter splits, Backspace at start joins, breaks shift with edits ---
+
+const breakCount = (page) => page.evaluate(() =>
+  (document.querySelector('#editarea').textContent.match(/\n/g) || []).length);
+
+test.describe('segments', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  test('enter splits segment at caret; timecodes follow', async ({ page }) => {
+    let total = await cleanLen(page);
+    let lines = await page.locator('#timecodes a').count();
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    expect(await breakCount(page)).toBe(1);
+    expect(await cleanLen(page)).toBe(total); // no audio change
+    expect(await page.locator('#timecodes a').count()).toBe(lines + 1);
+    expect(errors).toEqual([]);
+  });
+
+  test('enter at start or end is a no-op', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 0);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    expect(await breakCount(page)).toBe(0);
+    await setCaret(page, total);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    expect(await breakCount(page)).toBe(0);
+    expect(page.url()).not.toContain('br=');
+    expect(errors).toEqual([]);
+  });
+
+  test('backspace at segment start joins, audio unchanged', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    // caret sits at segment start after enter — backspace joins
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => !location.search.includes('br='), { timeout: 5000 });
+    expect(await breakCount(page)).toBe(0);
+    expect(await cleanLen(page)).toBe(total);
+    expect(errors).toEqual([]);
+  });
+
+  test('deleting audio before a break shifts it; deleting across removes it', async ({ page }) => {
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    // delete a block before the break → br=49
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => location.search.includes('br=49'), { timeout: 5000 });
+
+    // delete a range spanning the break → break dropped
+    await setSelection(page, 40, 60);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => !location.search.includes('br='), { timeout: 5000 });
+    expect(await breakCount(page)).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('undo/redo of break; undo of shifting edit restores break position', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    // shifting edit
+    await setCaret(page, 10);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => location.search.includes('br=49'), { timeout: 5000 });
+
+    // undo the delete → break back at 50
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+    expect(await cleanLen(page)).toBe(total);
+
+    // undo the break itself
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => !location.search.includes('br='), { timeout: 5000 });
+    expect(await breakCount(page)).toBe(0);
+
+    // redo restores the break
+    await page.keyboard.press('Control+Shift+z');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+    expect(await breakCount(page)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('playback works across a segment break', async ({ page }) => {
+    await setCaret(page, 50);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=50'), { timeout: 5000 });
+
+    await setCaret(page, 45);
+    await page.keyboard.press('Control+Space');
+    await page.waitForTimeout(600);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('reload restores segment breaks from URL', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await setCaret(page, 30);
+    await page.keyboard.press('Enter');
+    await setCaret(page, 70);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=30..70'), { timeout: 5000 });
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+
+    await page.reload();
+    await page.waitForFunction(() =>
+      (document.querySelector('#editarea')?.textContent.match(/\n/g) || []).length === 2,
+      { timeout: 15000 });
+    // 2 breaks → at least 3 segment lines
+    expect(await page.locator('#timecodes a').count()).toBeGreaterThanOrEqual(3);
+    expect(page.url()).toContain('br=30..70');
     expect(errors).toEqual([]);
   });
 

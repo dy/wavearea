@@ -58,16 +58,20 @@ function cleanOffset(node, rawOffset, el) {
   return cleanText(node.textContent.slice(0, rawOffset)).length
 }
 
+// a block char is a wavefont glyph U+0100\u2013U+0180; combining marks (U+0300/0301)
+// and segment breaks ('\n') take no block offset
+export const isBlock = c => c >= '\u0100' && c < '\u0300'
+
 export function cleanToRaw(content, cleanPos) {
   let clean = 0, raw = 0
   while (clean < cleanPos && raw < content.length) {
-    if (content[raw] < '\u0300') clean++
+    if (isBlock(content[raw])) clean++
     raw++
-    while (raw < content.length && content[raw] >= '\u0300') raw++
+    while (raw < content.length && !isBlock(content[raw])) raw++
   }
   return raw
 }
 
 export function cleanText(str) {
-  return str.replace(/[\u0300\u0301]/g, '')
+  return str.replace(/[\u0300\u0301\n]/g, '')
 }

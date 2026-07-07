@@ -3,7 +3,7 @@
 
 import sprae from 'sprae';
 import template from './wavearea.html';
-import { createSelection, cleanText } from './selection.js';
+import { createSelection, cleanText, cleanToRaw, isBlock } from './selection.js';
 import createApi from './api.js';
 import createPlayer from './player.js';
 import { BLOCK_SIZE } from './constants.js';
@@ -88,6 +88,11 @@ export default function wavearea(el, {
     _charW: 0,
     _lineH: 0,
 
+    // segment breaks \u2014 block offsets in current timeline, rendered as '\n'
+    _brs: [],
+    // starting block of each visual line (wraps + segment breaks)
+    lineOffsets: [],
+
     // measure editarea dimensions: char width, line height, cols per line, total lines
     measureWaveform() {
       let ea = this.refs.editarea
@@ -100,9 +105,9 @@ export default function wavearea(el, {
         if (n > 0) {
           let rawEnd = 0, clean = 0
           while (clean < n && rawEnd < text.length) {
-            if (text[rawEnd] < '\u0300') clean++
+            if (isBlock(text[rawEnd])) clean++
             rawEnd++
-            while (rawEnd < text.length && text[rawEnd] >= '\u0300') rawEnd++
+            while (rawEnd < text.length && !isBlock(text[rawEnd])) rawEnd++
           }
           let r = new Range()
           r.setStart(ea.firstChild, 0)
@@ -115,10 +120,35 @@ export default function wavearea(el, {
       this._eaRect = ea.getBoundingClientRect()
       // compute cols from char width (reliable even during loading)
       this.cols = this._charW ? Math.floor(this._eaRect.width / this._charW) || 1 : this.countCols(ea)
-      this.lines = this.total ? Math.ceil(this.total / this.cols) : this.countLines(ea)
+      this.computeLines(ea)
     },
 
-    async loadAudio(file, { save, ops } = {}) {
+    // visual lines = wrapped rows per segment
+    computeLines(ea) {
+      if (!this.total) {
+        this.lineOffsets = [0]
+        this.lines = ea ? this.countLines(ea) : 0
+        return
+      }
+      let cols = this.cols || 1, offs = [], prev = 0
+      for (let b of [...this._brs, this.total]) {
+        for (let o = prev; o < b; o += cols) offs.push(o)
+        prev = b
+      }
+      if (!offs.length) offs.push(0)
+      this.lineOffsets = offs
+      this.lines = offs.length
+    },
+
+    lineFromBlock(b) {
+      let offs = this.lineOffsets
+      if (!offs?.length) return Math.floor(b / (this.cols || 1))
+      let i = offs.length - 1
+      while (i > 0 && offs[i] > b) i--
+      return i
+    },
+
+    async loadAudio(file, { save, ops, brs } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
@@ -126,9 +156,10 @@ export default function wavearea(el, {
       this.total = 0
       this._ops = []
       this._redoOps = []
+      this._brs = []
       this._clip = null
       // clear stale edit chain from URL — unless we're about to reconstruct it
-      if (!ops?.length) this._syncURL()
+      if (!ops?.length && !brs?.length) this._syncURL()
       // create player eagerly DURING user gesture (Safari requires this for AudioContext)
       ensurePlayer()
 
@@ -174,6 +205,11 @@ export default function wavearea(el, {
         if (ops?.length) {
           this._ops = ops
           this._applyEdit(await api.applyOps(ops), 0)
+        }
+        // restore segment breaks (current-timeline coords, applied after ops)
+        if (brs?.length) {
+          this._brs = [...new Set(brs)].filter(b => b > 0 && b < this.total).sort((a, b) => a - b)
+          if (this._brs.length) this._rerenderBreaks(0)
         }
         this.loading = false
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
@@ -272,6 +308,29 @@ export default function wavearea(el, {
     _redoOps: [],
     _clip: null, // { from, to, v, clip } — invalidated when undo breaks the v prefix
 
+    // finalize an op: snapshot & shift segment breaks, push op, render, sync URL.
+    // merged ops keep their original pre-burst snapshot and re-shift from it.
+    _commit(op, r, caretAt, merge = false) {
+      if (!merge) { op.brs = [...this._brs]; this._ops.push(op) }
+      this._brs = this._shiftBrs(op, op.brs, r.total)
+      this._redoOps.length = 0
+      this._applyEdit(r, caretAt)
+      this._syncURL()
+    },
+
+    // remap break offsets through an op; drops collapsed/out-of-range breaks
+    _shiftBrs(op, brs, newTotal) {
+      let [t, a, b] = op, out
+      if (t === 'del') out = brs.filter(x => x <= a || x >= b).map(x => x >= b ? x - (b - a) : x)
+      else if (t === 'clip') out = brs.filter(x => x > a && x < b).map(x => x - a)
+      else if (t === 'sil') out = brs.map(x => x > a ? x + b : x)
+      else if (t === 'cp') out = brs.map(x => x > op[4] ? x + (op[2] - op[1]) : x)
+      else if (t === 'ins') out = brs.map(x => x > a ? x + (op.len || 0) : x)
+      else if (t === 'br') out = op[2] > 0 ? [...brs, a] : brs.filter(x => x !== a)
+      else out = brs
+      return [...new Set(out)].filter(x => x > 0 && x < newTotal).sort((p, q) => p - q)
+    },
+
     // dir: -1 = backspace (before caret), +1 = delete (after caret)
     // repeat: key held (KeyboardEvent.repeat) — merge the burst into one undo step
     del(dir, repeat) {
@@ -283,6 +342,8 @@ export default function wavearea(el, {
         if (sel && !sel.collapsed) [from, to] = [sel.start, sel.end]
         else {
           let at = sel ? sel.start : this.caretOffset
+          // backspace at segment start joins segments instead of deleting audio
+          if (dir < 0 && this._brs.includes(at)) return this._break(at, -1)
           if (dir < 0) { if (at <= 0) return; from = at - 1; to = at }
           else { if (at >= this.total) return; from = at; to = at + 1 }
           // merge a held-key burst into the last op — one undo step
@@ -292,10 +353,8 @@ export default function wavearea(el, {
           }
         }
         this.stop()
-        if (!merge) this._ops.push(last = ['del', from, to])
-        this._redoOps.length = 0
-        this._applyEdit(await api.removeRange(last[1], last[2], { replace: merge }), from)
-        this._syncURL()
+        if (!merge) last = ['del', from, to]
+        this._commit(last, await api.removeRange(last[1], last[2], { replace: merge }), from, merge)
       })
     },
 
@@ -309,11 +368,32 @@ export default function wavearea(el, {
         let merge = last?.[0] === 'sil' && repeat && at === last[1] + last[2]
         this.stop()
         if (merge) last[2]++
-        else this._ops.push(last = ['sil', at, 1])
-        this._redoOps.length = 0
-        this._applyEdit(await api.insertSilence(last[1], last[2], { replace: merge }), at + 1)
-        this._syncURL()
+        else last = ['sil', at, 1]
+        this._commit(last, await api.insertSilence(last[1], last[2], { replace: merge }), at + 1, merge)
       })
+    },
+
+    // Enter: split segment at caret; Backspace at segment start joins (see del)
+    br() {
+      if (!this.total) return
+      return this._edit(async () => {
+        let sel = this.selection.get()
+        let at = sel ? sel.start : this.caretOffset
+        if (at <= 0 || at >= this.total || this._brs.includes(at)) return
+        this._break(at, 1)
+      })
+    },
+
+    // visual-only break op: no engine edit, local re-render
+    _break(at, dir) {
+      this.stop()
+      let op = ['br', at, dir]
+      op.brs = [...this._brs]
+      this._ops.push(op)
+      this._brs = this._shiftBrs(op, op.brs, this.total)
+      this._redoOps.length = 0
+      this._rerenderBreaks(at)
+      this._syncURL()
     },
 
     copy() {
@@ -341,10 +421,7 @@ export default function wavearea(el, {
         let op = ['cp', from, to, v, at]
         op.clip = clip
         this.stop()
-        this._ops.push(op)
-        this._redoOps.length = 0
-        this._applyEdit(await api.pasteClip(clip, at), at + (to - from))
-        this._syncURL()
+        this._commit(op, await api.pasteClip(clip, at), at + (to - from))
       })
     },
 
@@ -364,10 +441,8 @@ export default function wavearea(el, {
         let r = await api.insertFile(at, id)
         let op = ['ins', at, id]
         op.src = r.src
-        this._ops.push(op)
-        this._redoOps.length = 0
-        this._applyEdit(r, at + (r.total - prev))
-        this._syncURL()
+        op.len = r.total - prev
+        this._commit(op, r, at + op.len)
       })
     },
 
@@ -380,19 +455,26 @@ export default function wavearea(el, {
       else return
       return this._edit(async () => {
         this.stop()
-        this._ops.push(['clip', from, to])
-        this._redoOps.length = 0
-        this._applyEdit(await api.cropRange(from, to), 0)
-        this._syncURL()
+        this._commit(['clip', from, to], await api.cropRange(from, to), 0)
       })
     },
 
     undo() {
       return this._edit(async () => {
-        if (!this._ops.length) return
+        let last = this._ops[this._ops.length - 1]
+        if (!last) return
+        if (last[0] === 'br') {
+          this._redoOps.push(this._ops.pop())
+          this._brs = last.brs
+          this.stop()
+          this._rerenderBreaks(last[1])
+          this._syncURL()
+          return
+        }
         let r = await api.undoEdit()
         if (!r) return
         this._redoOps.push(this._ops.pop())
+        this._brs = last.brs ?? this._brs
         // clipboard referenced a chain state that no longer exists
         if (this._clip && this._ops.length < this._clip.v) this._clip = null
         this.stop()
@@ -405,42 +487,79 @@ export default function wavearea(el, {
       return this._edit(async () => {
         let op = this._redoOps.pop()
         if (!op) return
-        this._ops.push(op)
+        if (op[0] === 'br') {
+          op.brs = [...this._brs]
+          this._ops.push(op)
+          this._brs = this._shiftBrs(op, op.brs, this.total)
+          this.stop()
+          this._rerenderBreaks(op[1])
+          this._syncURL()
+          return
+        }
         this.stop()
         let r = op[0] === 'del' ? await api.removeRange(op[1], op[2])
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
           : await api.pasteClip(op.clip, op[4])
+        this._ops.push(op)
+        this._brs = this._shiftBrs(op, op.brs ?? this._brs, r.total)
         this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'ins' ? op[1] : op[4])
         this._syncURL()
       })
     },
 
-    // URL is the state: ?src=<store id | remote url>&del=f-t&sil=at-n&cp=f-t-v-at
-    // repeated params, document order = application order
+    // URL is the state: ?src=<store id | remote url>&del=f-t&sil=at-n&cp=f-t-v-at&br=a..b
+    // repeated op params, document order = application order; br is a separate
+    // visual-only list in current-timeline coords
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins']) url.searchParams.delete(k)
-      for (let op of this._ops) url.searchParams.append(op[0], op.slice(1).join('-'))
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'br']) url.searchParams.delete(k)
+      for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
+      if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
       history.replaceState(null, '', url)
     },
 
-    _applyEdit({ waveform, total, duration }, at) {
-      let ea = this.refs.editarea
-      if (ea) {
-        if (ea.firstChild?.nodeType === 3) ea.firstChild.data = waveform
-        else ea.textContent = waveform
+    // splice '\n' at break offsets into a break-less wavefont string
+    _withBreaks(str) {
+      if (!this._brs.length) return str
+      let out = '', prevRaw = 0
+      for (let b of this._brs) {
+        let raw = cleanToRaw(str, b)
+        out += str.slice(prevRaw, raw) + '\n'
+        prevRaw = raw
       }
+      return out + str.slice(prevRaw)
+    },
+
+    // re-render current waveform text with updated breaks (no engine round-trip)
+    _rerenderBreaks(at) {
+      let ea = this.refs.editarea
+      if (ea?.firstChild) ea.firstChild.data = this._withBreaks(ea.firstChild.data.replace(/\n/g, ''))
+      this.measureWaveform()
+      this._setCaret(at)
+    },
+
+    _applyEdit({ waveform, total, duration }, at) {
       this.total = total
       this.duration = duration
+      let ea = this.refs.editarea
+      if (ea) {
+        let str = this._withBreaks(waveform)
+        if (ea.firstChild?.nodeType === 3) ea.firstChild.data = str
+        else ea.textContent = str
+      }
       this.measureWaveform()
-      let caret = Math.max(0, Math.min(at, total))
+      this._setCaret(at)
+    },
+
+    _setCaret(at) {
+      let caret = Math.max(0, Math.min(at, this.total))
       this.caretOffset = caret
-      this.caretLine = Math.floor(caret / (this.cols || 1))
+      this.caretLine = this.lineFromBlock(caret)
       this.clipStart = caret
-      this.clipEnd = total
+      this.clipEnd = this.total
       this.loop = false
       let sel = this.selection.set(caret)
       let rect = sel?.range?.getClientRects()
@@ -481,7 +600,7 @@ export default function wavearea(el, {
             if (rect) {
               this.caretX = rect.right
               this.caretY = rect.top
-              this.caretLine = Math.floor(block / (this.cols || 1))
+              this.caretLine = this.lineFromBlock(block)
             }
           }
         }
@@ -524,14 +643,14 @@ export default function wavearea(el, {
       while (left < right) {
         let mid = Math.floor((left + right + 1) / 2)
         let pos = mid
-        while (pos < str.length && str[pos] >= '\u0300') pos++
+        while (pos < str.length && !isBlock(str[pos])) pos++
         range.setStart(textNode, 0), range.setEnd(textNode, pos)
         let rects = range.getClientRects()
         if (rects[rects.length - 1].y > y) right = mid - 1; else left = mid;
       }
 
       let count = 0
-      for (let i = 0; i < left; i++) if (str[i] < '\u0300') count++
+      for (let i = 0; i < left; i++) if (isBlock(str[i])) count++
       return count
     }
   })
@@ -570,7 +689,8 @@ export default function wavearea(el, {
     }
     // a cp op may only reference the chain prefix before its own position
     ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
-    state.loadAudio(src, { ops })
+    let brs = (params.get('br') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n > 0)
+    state.loadAudio(src, { ops, brs })
   }
 
   return state

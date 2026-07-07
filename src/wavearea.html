@@ -4,6 +4,7 @@
   :onkeydown.document.delete.prevent="e => del(e.key === 'Backspace' ? -1 : 1, e.repeat)"
   :onkeydown.document.ctrl-z.prevent:onkeydown.document.meta-z.prevent="e => e.shiftKey ? redo() : undo()"
   :onkeydown.document.space.prevent="e => e.ctrlKey || e.metaKey || sil(e.repeat)"
+  :onkeydown.document.enter.prevent="() => br()"
   :onkeydown.document.ctrl-c:onkeydown.document.meta-c="() => copy()"
   :onkeydown.document.ctrl-x.prevent:onkeydown.document.meta-x.prevent="() => cut()"
   :onkeydown.document.ctrl-v.prevent:onkeydown.document.meta-v.prevent="() => paste()"
@@ -27,7 +28,7 @@
         if (!playing && sel.start === caretOffset && sel.collapsed) return
 
         caretOffset = sel.start;
-        caretLine = Math.floor(sel.end / cols);
+        caretLine = lineFromBlock(sel.end);
 
         let rects = sel.range.getClientRects()
         let rect = rects[rects.length - 1]
@@ -56,7 +57,7 @@
       ></div>
 
     <div id="timecodes" :ref="refs.timecodes">
-      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(i * (cols || 0))}`" :text="timecode(i * (cols || 0))"></a>
+      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(lineOffsets[i] ?? i * (cols || 0))}`" :text="timecode(lineOffsets[i] ?? i * (cols || 0))"></a>
     </div>
 
     <div id="floater" :ref="refs.floater"
