@@ -209,14 +209,16 @@
   * [x] Internal clipboard (not system clipboard — raw audio data is not text)
   * [ ] Paste external audio file (insert at caret, store in OPFS, `ins=<id>-at`)
   * [ ] Visual feedback: brief highlight on paste
-* [ ] Trim to selection
-  * [ ] Select range → trim: delete everything outside selection
-  * [ ] Common workflow: select the good part, trim the rest
-* [ ] Segments / breaks
-  * [ ] Enter key: insert segment break at caret
-  * [ ] Visual: slight gap or line between segments
+* [x] Trim to selection
+  * [x] Select range → trim (floater button, crop op, URL `clip=f-t`)
+  * [x] Common workflow: select the good part, trim the rest
+* [~] Segments / breaks
+  * [x] Enter key: insert segment break at caret ('\n' in the text node, URL `br=a..b`)
+  * [x] Visual: line break between segments; timecodes/caret follow segment lines
+  * [x] Breaks shift with every edit, snapshot per op for undo
   * [ ] Segments allow per-segment operations (normalize one segment, etc.)
-  * [ ] Backspace at segment start: join with previous segment
+  * [ ] Export segments as WAV cue/labl chunks (Phase 5)
+  * [x] Backspace at segment start: join with previous segment
 * [x] Undo / Redo
   * [x] App-level undo stack (NOT browser history — don't abuse pushState)
   * [x] Ctrl/Cmd+Z: pop last op from ops list → push to redo stack → engine undo
@@ -234,7 +236,9 @@
   * [x] Insert silence (caret, merge burst, undo)
   * [x] Copy+paste within same file (incl. URL replay)
   * [x] Cut+paste
-  * [ ] Trim to selection
+  * [x] Trim to selection (incl. URL replay)
+  * [x] Drop external file → insert at drop point (incl. URL replay)
+  * [x] Segments: split/join/shift/undo/playback/reload
   * [x] Undo each operation
   * [x] Redo after undo (incl. redo cleared by new edit)
   * [x] URL reflects operations after each edit
