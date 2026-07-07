@@ -135,6 +135,13 @@ export default function createApi({ store } = {}) {
     // full re-render at the current block size (zoom change, post-load)
     rerender() { return refresh() },
 
+    // coarse whole-file min/max for the minimap
+    async overview(bins) {
+      if (!a?.length) return null
+      let [mins, maxs] = await a.stat(['min', 'max'], { bins, channel: 0 })
+      return { mins, maxs }
+    },
+
     async undoEdit() {
       let edit = await a.undo()
       return edit ? refresh() : null

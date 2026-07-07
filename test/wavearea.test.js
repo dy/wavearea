@@ -2080,6 +2080,144 @@ test.describe('opener & zoom', () => {
 
 });
 
+// --- Markers, jump-to-time, minimap, recording ---
+
+test.describe('markers & navigation', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  test('m toggles a marker at caret; edits shift it', async ({ page }) => {
+    await setCaret(page, 20);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=20'), { timeout: 5000 });
+    expect(await page.locator('#marks .mark').count()).toBe(1);
+
+    // delete before the marker → shifts to 19
+    await setCaret(page, 5);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => location.search.includes('m=19'), { timeout: 5000 });
+
+    // toggle off
+    await setCaret(page, 19);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => !location.search.includes('m='), { timeout: 5000 });
+    expect(await page.locator('#marks .mark').count()).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('ctrl+arrow navigates between markers', async ({ page }) => {
+    await setCaret(page, 20);
+    await page.keyboard.press('m');
+    await setCaret(page, 60);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=20..60'), { timeout: 5000 });
+
+    await setCaret(page, 40);
+    await page.keyboard.press('Control+ArrowDown');
+    await page.waitForTimeout(200);
+    expect(await caretPos(page)).toBe(60);
+    await page.keyboard.press('Control+ArrowUp');
+    await page.waitForTimeout(200);
+    expect(await caretPos(page)).toBe(20);
+    expect(errors).toEqual([]);
+  });
+
+  test('reload restores markers from URL', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await setCaret(page, 20);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=20'), { timeout: 5000 });
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelectorAll('#marks .mark').length === 1, { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('g opens jump input; time jump moves caret; input suppresses shortcuts', async ({ page }) => {
+    let total = await cleanLen(page);
+    await page.keyboard.press('g');
+    await expect(page.locator('#jump')).toBeVisible();
+
+    // keys typed into the input must not trigger editing shortcuts
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(300);
+    expect(await cleanLen(page)).toBe(total);
+
+    await page.locator('#jump').fill('0:01');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    // 1s @ 44.1kHz / 1024 ≈ 43 blocks
+    expect(await caretPos(page)).toBe(Math.round(44100 / 1024));
+    await expect(page.locator('#jump')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('timecode click jumps caret without navigation', async ({ page }) => {
+    await setCaret(page, 50);
+    let url = page.url();
+    // floater overlays the caret line's timecode — dispatch instead of native click
+    await page.locator('#timecodes a').first().dispatchEvent('click');
+    await page.waitForTimeout(200);
+    expect(await caretPos(page)).toBe(0);
+    expect(page.url()).toBe(url); // no hash navigation/reload
+    expect(errors).toEqual([]);
+  });
+
+  test('minimap renders and tracks edits', async ({ page }) => {
+    await expect(page.locator('#minimap canvas')).toBeVisible();
+    let drawn = await page.evaluate(() => {
+      let cv = document.querySelector('#minimap canvas');
+      let d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true;
+      return false;
+    });
+    expect(drawn).toBe(true);
+    await expect(page.locator('#minimap #viewport')).toBeAttached();
+    expect(errors).toEqual([]);
+  });
+
+  test('recording inserts at caret (fake mic)', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'fake media device flags are chromium-only');
+    let total = await cleanLen(page);
+    await setCaret(page, 10);
+    await page.locator('#record').dispatchEvent('mousedown');
+    await expect(page.locator('#status')).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.locator('#record').dispatchEvent('mousedown');
+    await page.waitForFunction((t) =>
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > t, total, { timeout: 10000 });
+    expect(page.url()).toMatch(/ins=10-.+recording/);
+    expect(errors).toEqual([]);
+  });
+
+});
+
+test.describe('recording new document', () => {
+  test('opener record creates a doc from the mic', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'fake media device flags are chromium-only');
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('#record-new'), { timeout: 5000 });
+    await page.locator('#record-new').click();
+    await page.waitForTimeout(800);
+    await page.locator('#record-new').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > 10, { timeout: 15000 });
+    await page.waitForFunction(() => location.search.includes('recording.wav'), { timeout: 10000 });
+    expect(errors).toEqual([]);
+  });
+});
+
+
 
 test.describe('audioElPlayer backend', () => {
   test.beforeEach(async ({ page }) => {

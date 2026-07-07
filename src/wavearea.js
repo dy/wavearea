@@ -10,16 +10,18 @@ import { BLOCK_SIZE } from './constants.js';
 import _smoothCaret from './layers/smooth-caret.js';
 import _loopHighlight from './layers/loop-highlight.js';
 
-// minimal mono 16-bit WAV of silence — a blank document to type/paste/record into
-function silentFile(sec = 3, sr = 44100) {
-  let n = sec * sr, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
+// minimal mono 16-bit WAV — silence for blank docs, samples for recordings
+function wavFile(samples, sr = 44100, name = 'audio.wav') {
+  let n = samples.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
   let w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
   w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt ')
   v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
   v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
   w(36, 'data'); v.setUint32(40, n * 2, true)
-  return new File([buf], 'silence.wav', { type: 'audio/wav' })
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7FFF, true)
+  return new File([buf], name, { type: 'audio/wav' })
 }
+const silentFile = (sec = 3, sr = 44100) => wavFile(new Float32Array(sec * sr), sr, 'silence.wav')
 
 export default function wavearea(el, {
   src,
@@ -172,7 +174,7 @@ export default function wavearea(el, {
       return this.loadAudio(new URL('birds-forest.mp3', location.href).href)
     },
 
-    async loadAudio(file, { save, ops, brs, bs } = {}) {
+    async loadAudio(file, { save, ops, brs, marks, bs } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
@@ -181,6 +183,7 @@ export default function wavearea(el, {
       this._ops = []
       this._redoOps = []
       this._brs = []
+      this.marks = []
       this._clip = null
       this.blockSize = bs || BLOCK_SIZE
       api.setBlockSize(this.blockSize)
@@ -242,7 +245,9 @@ export default function wavearea(el, {
           this._brs = [...new Set(brs)].filter(b => b > 0 && b < this.total).sort((a, b) => a - b)
           if (this._brs.length) this._rerenderBreaks(0)
         }
+        if (marks?.length) this.marks = [...new Set(marks)].filter(b => b >= 0 && b < this.total).sort((a, b) => a - b)
         this.loading = false
+        this._refreshMinimap()
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
         // reopened stored file / remote URL — reflect source in URL
         if (typeof file === 'string') this._syncURL(file)
@@ -322,6 +327,113 @@ export default function wavearea(el, {
       console.timeEnd('[stop]')
     },
 
+    // minimap viewport tracking (scroll/resize update these signals)
+    scrollFrac: 0,
+    viewFrac: 1,
+
+    _trackScroll() {
+      let doc = document.documentElement
+      let max = Math.max(1, doc.scrollHeight)
+      this.scrollFrac = scrollY / max
+      this.viewFrac = Math.min(1, innerHeight / max)
+    },
+
+    // redraw the whole-file minimap canvas from coarse stats
+    async _refreshMinimap() {
+      let cv = this.refs.minimap
+      if (!cv || !this.total) return
+      let w = cv.clientWidth || 300, h = cv.clientHeight || 24
+      let dpr = devicePixelRatio || 1
+      cv.width = Math.round(w * dpr)
+      cv.height = Math.round(h * dpr)
+      let data = await api.overview(Math.max(32, Math.min(Math.round(w / 2), 800)))
+      if (!data) return
+      let { mins, maxs } = data
+      let ctx = cv.getContext('2d')
+      ctx.scale(dpr, dpr)
+      ctx.clearRect(0, 0, w, h)
+      ctx.fillStyle = 'rgb(0 0 0 / 55%)'
+      let n = maxs.length, bw = Math.max(1, w / n - 0.5)
+      for (let i = 0; i < n; i++) {
+        let y0 = (1 - Math.min(1, Math.max(-1, maxs[i]))) / 2 * h
+        let y1 = (1 - Math.min(1, Math.max(-1, mins[i]))) / 2 * h
+        ctx.fillRect(i / n * w, y0, bw, Math.max(1, y1 - y0))
+      }
+      this._trackScroll()
+    },
+
+    // click/drag the minimap to scroll the document
+    minimapSeek(e) {
+      let el = this.refs.minimapBox
+      let scroll = ev => {
+        let r = el.getBoundingClientRect()
+        let f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width))
+        scrollTo({ top: f * document.documentElement.scrollHeight - innerHeight / 2 })
+      }
+      scroll(e)
+      let up = () => { removeEventListener('pointermove', scroll); removeEventListener('pointerup', up) }
+      addEventListener('pointermove', scroll)
+      addEventListener('pointerup', up)
+    },
+
+    // true unless the event targets a text field — global single-key shortcuts guard
+    _key(e) {
+      return !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName)
+    },
+
+    // markers — block offsets, shifted with edits like breaks; URL m=a..b
+    marks: [],
+
+    // toggle marker at caret (m key)
+    mark() {
+      if (!this.total) return
+      let sel = this.selection.get()
+      let at = sel ? sel.start : this.caretOffset
+      if (at < 0 || at >= this.total) return
+      this.marks = this.marks.includes(at)
+        ? this.marks.filter(x => x !== at)
+        : [...this.marks, at].sort((a, b) => a - b)
+      this._syncURL()
+    },
+
+    // jump to prev/next marker (Ctrl+Up/Down)
+    markJump(dir) {
+      if (!this.marks.length) return
+      let sel = this.selection.get()
+      let at = sel ? sel.start : this.caretOffset
+      let next = dir > 0
+        ? this.marks.find(x => x > at) ?? this.marks[0]
+        : [...this.marks].reverse().find(x => x < at) ?? this.marks[this.marks.length - 1]
+      this.jumpTo(next)
+    },
+
+    // move caret to block and scroll it into view
+    jumpTo(block) {
+      if (!this.total) return
+      block = Math.max(0, Math.min(Math.round(block), this.total))
+      this._setCaret(block)
+      let sel = this.selection.set(block)
+      let rect = sel?.range?.getClientRects()?.[0]
+      if (rect && (rect.top < 0 || rect.bottom > innerHeight))
+        scrollTo({ top: scrollY + rect.top - innerHeight / 3, behavior: 'smooth' })
+      if (this.playing) this.seekTo(block)
+    },
+
+    // 'g': jump to typed time (m:ss or seconds)
+    jumpToTime(str) {
+      let m = String(str).trim().match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/)
+      if (!m) return
+      let t = (+(m[1] || 0)) * 60 + +m[2]
+      this.jumpTo(t * this.sampleRate / this.blockSize)
+    },
+
+    // marker screen position (reads cols/lineOffsets signals for reactivity)
+    markPos(b) {
+      let line = this.lineFromBlock(b)
+      let x = (b - (this.lineOffsets[line] ?? 0)) * (this._charW || 0)
+      return { left: x + 'px', top: line * (this._lineH || 0) + 'px' }
+    },
+
     // edits run through a queue — hold-repeat keys must see each other's result
     _editQ: null,
     _edit(fn) {
@@ -342,8 +454,9 @@ export default function wavearea(el, {
     // finalize an op: snapshot & shift segment breaks, push op, render, sync URL.
     // merged ops keep their original pre-burst snapshot and re-shift from it.
     _commit(op, r, caretAt, merge = false) {
-      if (!merge) { op.brs = [...this._brs]; this._ops.push(op) }
+      if (!merge) { op.brs = [...this._brs]; op.marks = [...this.marks]; this._ops.push(op) }
       this._brs = this._shiftBrs(op, op.brs, r.total)
+      this.marks = this._shiftBrs(op, op.marks ?? this.marks, r.total)
       this._redoOps.length = 0
       this._applyEdit(r, caretAt)
       this._syncURL()
@@ -420,6 +533,7 @@ export default function wavearea(el, {
       this.stop()
       let op = ['br', at, dir]
       op.brs = [...this._brs]
+      op.marks = [...this.marks]
       this._ops.push(op)
       this._brs = this._shiftBrs(op, op.brs, this.total)
       this._redoOps.length = 0
@@ -465,6 +579,11 @@ export default function wavearea(el, {
       let ea = this.refs.editarea
       if (range && ea?.contains(range.startContainer) && range.startContainer.nodeType === 3)
         at = cleanText(range.startContainer.textContent.slice(0, range.startOffset)).length
+      return this._insertFile(at, file)
+    },
+
+    // save a file to the store and insert it at block position (drop, recording)
+    _insertFile(at, file) {
       return this._edit(async () => {
         this.stop()
         let prev = this.total
@@ -475,6 +594,52 @@ export default function wavearea(el, {
         op.len = r.total - prev
         this._commit(op, r, at + op.len)
       })
+    },
+
+    // mic recording — toggles; stop inserts at caret, or opens as a new doc
+    _recStop: null,
+    async record() {
+      if (this._recStop) return this._recStop()
+      if (this.loading) return
+      try {
+        let stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        let ctx = new AudioContext()
+        await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([`
+          class R extends AudioWorkletProcessor {
+            process(inputs) { if (inputs[0]?.[0]) this.port.postMessage(inputs[0][0].slice()); return true }
+          }
+          registerProcessor('rec', R)
+        `], { type: 'application/javascript' })))
+        let src = ctx.createMediaStreamSource(stream)
+        let node = new AudioWorkletNode(ctx, 'rec', { numberOfOutputs: 0 })
+        src.connect(node)
+        let chunks = [], len = 0
+        node.port.onmessage = e => { chunks.push(e.data); len += e.data.length }
+        this.recording = '0:00'
+        let timer = setInterval(() => {
+          let sec = len / ctx.sampleRate
+          this.recording = `${Math.floor(sec / 60)}:${String(Math.floor(sec) % 60).padStart(2, '0')}`
+        }, 250)
+        this._recStop = async () => {
+          this._recStop = null
+          clearInterval(timer)
+          node.disconnect(); src.disconnect()
+          stream.getTracks().forEach(t => t.stop())
+          await ctx.close()
+          this.recording = false
+          if (!len) return
+          let samples = new Float32Array(len), off = 0
+          for (let c of chunks) { samples.set(c, off); off += c.length }
+          let file = wavFile(samples, ctx.sampleRate, 'recording.wav')
+          if (!this.total) return this.loadAudio(file, { save: true })
+          let sel = this.selection.get()
+          return this._insertFile(sel ? sel.start : this.caretOffset, file)
+        }
+      } catch (e) {
+        console.error(e)
+        this.recording = false
+        this.error = e.message || 'Microphone unavailable'
+      }
     },
 
     // trim to selection — keep only the selected range
@@ -526,8 +691,11 @@ export default function wavearea(el, {
         if (range) {
           opts.at = range[0] * this.blockSize / sr
           opts.duration = (range[1] - range[0]) * this.blockSize / sr
-        } else if (this._brs.length) {
-          opts.markers = this._brs.map((b, i) => ({ time: b * this.blockSize / sr, label: String(i + 1) }))
+        } else if (this._brs.length || this.marks.length) {
+          opts.markers = [
+            ...this.marks.map((b, i) => ({ time: b * this.blockSize / sr, label: String(i + 1) })),
+            ...this._brs.map(b => ({ time: b * this.blockSize / sr, label: '¶' })),
+          ].sort((a, b) => a.time - b.time)
         }
         let bytes = await api.encode(fmt, opts)
         let blob = new Blob([bytes], { type: fmt === 'mp3' ? 'audio/mpeg' : 'audio/wav' })
@@ -559,6 +727,7 @@ export default function wavearea(el, {
         let scale = x => Math.round(x * ratio)
         for (let op of [...this._ops, ...this._redoOps]) this._scaleOp(op, scale)
         this._brs = [...new Set(this._brs.map(scale))].filter(x => x > 0).sort((a, b) => a - b)
+        this.marks = [...new Set(this.marks.map(scale))].sort((a, b) => a - b)
         if (this._clip) this._clip = { ...this._clip, from: scale(this._clip.from), to: scale(this._clip.to) }
         this._applyEdit(await api.rerender(), scale(this.caretOffset))
         this._syncURL()
@@ -571,6 +740,7 @@ export default function wavearea(el, {
       else if (op[0] === 'ins') { op[1] = s(op[1]); if (op.len) op.len = s(op.len) }
       else if (typeof op[1] === 'number') { op[1] = s(op[1]); if (typeof op[2] === 'number' && op[0] !== 'br') op[2] = s(op[2]) }
       if (op.brs) op.brs = op.brs.map(s)
+      if (op.marks) op.marks = op.marks.map(s)
     },
 
     undo() {
@@ -589,6 +759,7 @@ export default function wavearea(el, {
         if (!r) return
         this._redoOps.push(this._ops.pop())
         this._brs = last.brs ?? this._brs
+        this.marks = last.marks ?? this.marks
         // clipboard referenced a chain state that no longer exists
         if (this._clip && this._ops.length < this._clip.v) this._clip = null
         this.stop()
@@ -621,6 +792,7 @@ export default function wavearea(el, {
           : await api.pasteClip(op.clip, op[4])
         this._ops.push(op)
         this._brs = this._shiftBrs(op, op.brs ?? this._brs, r.total)
+        this.marks = this._shiftBrs(op, op.marks ?? this.marks, r.total)
         this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'cp' ? op[4] : op[1] ?? this.caretOffset)
         this._syncURL()
       })
@@ -634,9 +806,10 @@ export default function wavearea(el, {
       if (src != null) url.searchParams.set('src', src)
       if (this.blockSize !== BLOCK_SIZE) url.searchParams.set('bs', this.blockSize)
       else url.searchParams.delete('bs')
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'fadein', 'fadeout', 'br']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
       for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
+      if (this.marks.length) url.searchParams.set('m', this.marks.join('..'))
       history.replaceState(null, '', url)
     },
 
@@ -671,6 +844,7 @@ export default function wavearea(el, {
       }
       this.measureWaveform()
       this._setCaret(at)
+      this._refreshMinimap()
     },
 
     _setCaret(at) {
@@ -810,8 +984,9 @@ export default function wavearea(el, {
     // a cp op may only reference the chain prefix before its own position
     ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     let brs = (params.get('br') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n > 0)
+    let marks = (params.get('m') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n >= 0)
     let bs = [1024, 2048, 4096, 8192].includes(+params.get('bs')) ? +params.get('bs') : undefined
-    state.loadAudio(src, { ops, brs, bs })
+    state.loadAudio(src, { ops, brs, marks, bs })
   }
 
   return state

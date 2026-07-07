@@ -16,7 +16,11 @@ export default defineConfig({
     reuseExistingServer: false,
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'chromium', use: {
+      browserName: 'chromium',
+      permissions: ['microphone'],
+      launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
+    } },
     { name: 'webkit', use: { browserName: 'webkit' }, timeout: 60000 },
   ],
 });

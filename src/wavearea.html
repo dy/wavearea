@@ -1,10 +1,18 @@
 <div class="container"
   :ref="refs.container"
+  :onscroll.window.throttle-raf:onresize.window.throttle-raf="() => _trackScroll()"
   :onmousedown.document..onmouseup.document="e=> (isMouseDown = true, loop = false, clipEnd = null, e.target.closest?.('#editarea') && window.getSelection().removeAllRanges(), e=> isMouseDown = false)"
-  :onkeydown.document.delete.prevent="e => del(e.key === 'Backspace' ? -1 : 1, e.repeat)"
+  :onkeydown.document.delete="e => _key(e) && (e.preventDefault(), del(e.key === 'Backspace' ? -1 : 1, e.repeat))"
   :onkeydown.document.ctrl-z.prevent:onkeydown.document.meta-z.prevent="e => e.shiftKey ? redo() : undo()"
-  :onkeydown.document.space.prevent="e => e.ctrlKey || e.metaKey || sil(e.repeat)"
-  :onkeydown.document.enter.prevent="() => br()"
+  :onkeydown.document.space="e => _key(e) && (e.preventDefault(), e.ctrlKey || e.metaKey || sil(e.repeat))"
+  :onkeydown.document.enter="e => _key(e) && (e.preventDefault(), br())"
+  :onkeydown.document="e => {
+    if (!_key(e) || e.ctrlKey || e.metaKey || e.altKey) return
+    if (e.key === 'm') mark()
+    else if (e.key === 'g' && total) { refs.jump.hidden = false; refs.jump.value = ''; refs.jump.focus() }
+  }"
+  :onkeydown.document.ctrl-arrowup.prevent:onkeydown.document.meta-arrowup.prevent="() => markJump(-1)"
+  :onkeydown.document.ctrl-arrowdown.prevent:onkeydown.document.meta-arrowdown.prevent="() => markJump(1)"
   :onkeydown.document.ctrl-c:onkeydown.document.meta-c="() => copy()"
   :onkeydown.document.ctrl-x.prevent:onkeydown.document.meta-x.prevent="() => cut()"
   :onkeydown.document.ctrl-v.prevent:onkeydown.document.meta-v.prevent="() => paste()"
@@ -56,14 +64,20 @@
       :ondrop.prevent="e => drop(e)"
       ></div>
 
+    <div id="marks">
+      <span class="mark" :each="b in marks" :style="markPos(b)" :title="timecode(b, 2)"
+        :onclick="() => jumpTo(b)"></span>
+    </div>
+
     <div id="timecodes" :ref="refs.timecodes">
-      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(lineOffsets[i] ?? i * (cols || 0))}`" :text="timecode(lineOffsets[i] ?? i * (cols || 0))"></a>
+      <a :each="_, i in (lines)" :data-id="i" :href="`#${timecode(lineOffsets[i] ?? i * (cols || 0))}`" :text="timecode(lineOffsets[i] ?? i * (cols || 0))"
+        :onclick.prevent="() => jumpTo(lineOffsets[i] ?? i * (cols || 0))"></a>
     </div>
 
     <div id="floater" :ref="refs.floater"
       :class="{'loaded': total && !loading}"
       :fx.delay="caretLine, lines; refs.timecodes?.querySelector(`[data-id='${caretLine}']`)?.before(refs.floater)">
-      <button id="play"
+      <button id="play" aria-label="Play/pause"
         :ref="refs.playButton"
         :hidden="!total || loading"
         :title="loading ? loading : `${playing ? 'Pause' : 'Play'} (Ctrl+Space)`"
@@ -82,6 +96,7 @@
         </svg>
       </button>
       <button id="trim" class="op"
+      aria-label="Trim to selection"
         :hidden="!total || loading || !loop"
         title="Trim to selection"
         :onmousedown.stop.prevent="() => trim()"
@@ -92,6 +107,7 @@
         </svg>
       </button>
       <button id="fadein" class="op"
+      aria-label="Fade in selection"
         :hidden="!total || loading || !loop"
         title="Fade in selection"
         :onmousedown.stop.prevent="() => fade(1)"
@@ -102,6 +118,7 @@
         </svg>
       </button>
       <button id="fadeout" class="op"
+      aria-label="Fade out selection"
         :hidden="!total || loading || !loop"
         title="Fade out selection"
         :onmousedown.stop.prevent="() => fade(-1)"
@@ -133,6 +150,14 @@
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="none"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" stroke="#000000" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
         <span>sample</span>
       </button>
+      <button id="record-new" class="open-action"
+      aria-label="Record from microphone"
+        :title="recording ? 'Stop recording' : 'Record from microphone'"
+        :onclick="() => record()">
+        <svg :if="!recording" width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#000000" stroke-width="1.5"></rect><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 18V22M12 22H9M12 22H15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <svg :else width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="7" width="10" height="10" fill="#e33"/></svg>
+        <span :text="recording ? recording : 'record'"></span>
+      </button>
       <button id="silence" class="open-action" title="New blank document (3s silence)"
         :onclick="() => openSilence()">
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="none"><path d="M3 12h4l2-5 3 10 2-5h7" stroke="#000000" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".25"/><path d="M3 12h18" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -155,8 +180,22 @@
     </div>
   </div>
 
+  <div id="minimap" :if="total && !loading"
+    :ref="refs.minimapBox"
+    :onpointerdown.prevent="e => minimapSeek(e)"
+    :resize.throttle-raf="() => _refreshMinimap()">
+    <canvas :ref="refs.minimap"></canvas>
+    <span id="viewport" :style="{ left: scrollFrac * 100 + '%', width: viewFrac * 100 + '%' }"></span>
+  </div>
+
   <div id="toolbar" :if="total && !loading">
+    <input id="jump" hidden placeholder="m:ss" size="6" aria-label="Jump to time"
+      :ref="refs.jump"
+      :onkeydown.enter.prevent.stop="e => (jumpToTime(e.target.value), e.target.hidden = true)"
+      :onkeydown.esc.stop="e => e.target.hidden = true"
+      :onblur="e => e.target.hidden = true" />
     <button id="zoomin" class="op"
+      aria-label="Zoom in"
       :disabled="blockSize <= 1024"
       title="Zoom in"
       :onmousedown.stop.prevent="() => zoom(1)"
@@ -167,6 +206,7 @@
       </svg>
     </button>
     <button id="zoomout" class="op"
+      aria-label="Zoom out"
       :disabled="blockSize >= 8192"
       title="Zoom out"
       :onmousedown.stop.prevent="() => zoom(-1)"
@@ -176,7 +216,19 @@
         <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z" />
       </svg>
     </button>
+    <button id="record" class="op"
+      aria-label="Record"
+      :class="{rec: recording}"
+      :title="recording ? 'Stop recording' : 'Record at caret'"
+      :onmousedown.stop.prevent="() => record()"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px">
+        <circle :if="!recording" cx="12" cy="12" r="7" fill="#e33" />
+        <rect :else x="6" y="6" width="12" height="12" fill="#e33" />
+      </svg>
+    </button>
     <button id="normalize" class="op"
+      aria-label="Normalize loudness"
       title="Normalize loudness"
       :onmousedown.stop.prevent="() => normalize()"
       tabindex="-1">
@@ -186,6 +238,7 @@
       </svg>
     </button>
     <button id="download" class="op"
+      aria-label="Download WAV"
       title="Download WAV (selection if active)"
       :onmousedown.stop.prevent="() => download('wav')"
       tabindex="-1">
@@ -196,6 +249,7 @@
       <span class="fmt">wav</span>
     </button>
     <button id="download-mp3" class="op"
+      aria-label="Download MP3"
       title="Download MP3 (selection if active)"
       :onmousedown.stop.prevent="() => download('mp3')"
       tabindex="-1">
@@ -207,7 +261,7 @@
     </button>
   </div>
 
-  <div id="status" :if="loading" :text="`${loading}${total ? ' · ' + timecode(total) : ''}`"></div>
+  <div id="status" :if="loading || recording" :text="recording ? `● ${recording}` : `${loading}${total ? ' · ' + timecode(total) : ''}`"></div>
 
   <div id="error" :if="error" :text="error">
   </div>
