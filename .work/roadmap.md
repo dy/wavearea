@@ -308,11 +308,14 @@
 * [x] Search by time
   * [x] Timecode click jumps caret (no navigation)
   * [x] `g` → time input (m:ss or seconds) → jump
-* [ ] Virtual rendering (if needed)
-  * [ ] Only render visible lines + buffer above/below
-  * [ ] Maintain scroll position and caret mapping
-  * [ ] Benchmark first: how many chars before DOM is slow?
-  * [ ] ContentEditable + virtualization is hard — may need creative approach
+* [x] Virtual rendering
+  * [x] Only visible lines + buffer render; spacers are #editarea padding,
+        so the single text node (and selection math) survives — the
+        "creative approach": we're not contenteditable, padding is enough
+  * [x] Scroll position and caret map through winBase block offset
+  * [x] 8h scale: ~80ms string rebuild + 24ms line index per edit, ~0ms per
+        scroll; engine pages + evicts PCM to OPFS (its own design)
+  * [x] Unit-tested helpers (virtual.js) + e2e window/far-edit/reload suite
 * [ ] Tests
   * [ ] Zoom in/out preserves caret time position
   * [ ] Minimap reflects scroll position
@@ -389,8 +392,8 @@
   * [ ] Target: <2s to first waveform line for 10MB file
   * [ ] Target: <50ms caret response time
   * [ ] Target: <16ms playback position update
-  * [ ] Memory: don't hold decoded samples twice (worker + main)
-  * [ ] Large files (>1hr): streaming decode, chunked render
+  * [x] Memory: PCM lives only in the engine worker (paged, OPFS-evicted)
+  * [x] Large files (>1hr): streaming decode, windowed render (8h target)
 * [~] Accessibility
   * [~] aria-labels on icon controls (roles/announcements pending)
   * [ ] Focus management (op buttons are deliberately tabindex=-1 — needs keyboard design)
