@@ -1,4 +1,3 @@
-// Engine worker entry — the whole audio library (decode, PCM pages, stats,
-// edits) runs here; the main thread holds only the audio/worker facade.
-// Extra codecs/plugins must be imported before the host wires the message loop.
-import 'audio/worker-host'
+// Engine worker entry — audio/worker self-hosts inside a Worker (facade on
+// main thread, engine host here); extra codecs must register before it.
+import 'audio/worker'
