@@ -33,7 +33,7 @@
     "@audio/aac-decode": "^1.0.1",
     "audio": "^2.6.1",
     "sprae": "^13.4.0",
-    "wavefont": "^3.5.0"
+    "wavefont": "^3.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
