@@ -1,6 +1,6 @@
 # Wavefont Browser Quirks
 
-Font: wavefont 3.6+ (`asset/wavefont.woff2` = `wavefont/fonts/variable/Wavefont[ROND,YELA,wght].woff2`).
+Font: wavefont 3.6+ npm package — `src/wavearea.js` imports `wavefont/fonts/variable/Wavefont[ROND,YELA,wght].woff2` (esbuild file loader emits the hashed woff2 into dist) and registers it via the FontFace API (`display: block`). No checked-in font copy.
 Axes: `wght` 4–1000 (user-space; internal advance = wght/4 per mille), `ROND` 0–100, `YELA` -100/0/100 = bottom/center/top.
 Caret span -30..130 (3.6+) — `--wavefont-lh` uses ratio 1.6 (minimal non-overlapping selection).
 

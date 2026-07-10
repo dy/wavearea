@@ -89,8 +89,12 @@
     </div>
 
     <div id="timecodes" :ref="refs.timecodes" :style="{paddingTop: winStart * _lineH + 'px'}">
-      <a :each="li in winLines" :data-id="li" :href="`#${timecode(lineOffsets[li] ?? 0)}`" :text="timecode(lineOffsets[li] ?? 0)"
-        :onclick.prevent="() => jumpTo(lineOffsets[li] ?? 0)"></a>
+      <!-- caret row hides + — the floater's play button sits in its gutter slot -->
+      <span class="tc" :each="li in winLines" :data-id="li" :class="{'caret-row': li === caretLine}"
+        ><button class="add-mark" aria-label="Add marker at this line" title="Add marker here"
+          :onclick.prevent="() => markAt(lineOffsets[li] ?? 0)">+</button
+        ><a :href="`#${timecode(lineOffsets[li] ?? 0)}`" :text="timecode(lineOffsets[li] ?? 0)"
+          :onclick.prevent="() => jumpTo(lineOffsets[li] ?? 0)"></a></span>
     </div>
 
     <div id="floater" :ref="refs.floater"
@@ -423,7 +427,9 @@
   <!-- #status is white-space:pre — spans must stay adjacent, whitespace renders -->
   <div id="status" :if="loading || recording"><span :text="recording ? `● ${recording}` : `${loading}${progress != null ? ` ${Math.round(progress * 100)}%` : ''}${total ? ' · ' + timecode(total) : ''}`"></span><span id="rec-wave" class="wavefont" :if="recording" :text="recWave"></span></div>
 
-  <div id="error" :if="error" :text="error">
+  <div id="error" :if="error">
+    <span :text="error"></span>
+    <button id="retry" :if="!total && !loading && _lastLoad" :onclick="() => retry()">retry</button>
   </div>
 
 </div>

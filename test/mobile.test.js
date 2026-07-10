@@ -1,6 +1,6 @@
 // iOS-Safari-shaped smoke (webkit + iPhone viewport + touch) — layout fit,
 // touch caret, transport, playback. Physical-device quirks still need a real pass.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './base.js';
 
 let errors;
 
@@ -41,6 +41,21 @@ test('tap moves the caret; tapped timecode jumps', async ({ page }) => {
   await page.waitForTimeout(300);
   let caret = await page.evaluate(() => wa.caretOffset);
   expect(caret).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+test('narrow 320px: toolbar and content still fit', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.waitForTimeout(400);
+
+  let { scrollW, innerW } = await page.evaluate(() => ({
+    scrollW: document.documentElement.scrollWidth, innerW: innerWidth,
+  }));
+  expect(scrollW).toBeLessThanOrEqual(innerW + 1);
+
+  let toolbar = await page.locator('#toolbar').boundingBox();
+  expect(toolbar.x).toBeGreaterThanOrEqual(0);
+  expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(321);
   expect(errors).toEqual([]);
 });
 

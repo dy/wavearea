@@ -52,12 +52,6 @@ body {
   display: none!important;
 }
 
-@font-face {
-  font-family: wavefont;
-  font-display: block;
-  src: url(./asset/wavefont.woff2) format('woff2');
-}
-
 .wavefont {
   display: block;
   font-family: wavefont;
@@ -261,12 +255,65 @@ body {
     color: var(--secondary);
   }
 
+  /* fixed gutter width — the floater child must not widen the column
+     (justify-end rows would drift over the waveform) */
+  #timecodes {
+    width: 3rem;
+  }
+
+  #timecodes .tc {
+    position: relative;
+
+    a {
+      text-decoration: none;
+      color: var(--secondary);
+    }
+
+    /* + floats in the free margin left of the gutter — no layout footprint */
+    .add-mark {
+      position: absolute;
+      right: 100%;
+      top: 0;
+      appearance: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0 .2rem;
+      font-size: .8rem;
+      line-height: var(--wavefont-lh);
+      color: #e33;
+      opacity: 0;
+    }
+
+    &:hover .add-mark, .add-mark:focus-visible {
+      opacity: 1;
+    }
+
+    &.caret-row .add-mark {
+      display: none;
+    }
+  }
+
   #error {
     font-family: sans-serif;
     font-size: .875rem;
     color: var(--secondary);
     text-align: center;
     padding: 2rem 1rem;
+
+    #retry {
+      appearance: none;
+      border: 1px solid var(--secondary);
+      border-radius: .25rem;
+      background: none;
+      color: var(--fg);
+      font-size: .8rem;
+      padding: .2rem .75rem;
+      margin-left: .75rem;
+      cursor: pointer;
+
+      &:hover { background: rgb(from var(--fg) r g b / 8%); }
+    }
   }
 
   #caret-line {
@@ -293,6 +340,8 @@ body {
     line-height: 0;
     opacity: 0;
     transition: opacity .3s ease;
+    /* above the positioned .tc gutter rows — play must stay clickable on the caret row */
+    z-index: 2;
 
     &.loaded {
       opacity: 1;
@@ -771,6 +820,16 @@ body {
         color: var(--secondary);
       }
     }
+  }
+}
+
+/* compact chrome on narrow screens — the full toolbar fits 320px */
+@media (max-width: 480px) {
+  #wavearea {
+    #toolbar { gap: .1rem; right: .25rem; }
+    #toolbar .op { padding: .25rem; }
+    #minimap #volume { width: 48px; }
+    #waveform { margin-left: 3rem; }
   }
 }
 

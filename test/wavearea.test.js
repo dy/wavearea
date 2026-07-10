@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './base.js';
 import path from 'path';
 
 const FIXTURE = path.resolve('test/fixtures/sine-3s.mp3');
@@ -57,6 +57,8 @@ test.describe('wavearea', () => {
     await loadFile(page);
     let text = await page.locator('#editarea').textContent();
     expect(text.length).toBeGreaterThan(10);
+    // wavefont face (bundled from the npm package) actually loads
+    expect(await page.evaluate(() => document.fonts.load('50px wavefont').then(faces => faces.length))).toBeGreaterThan(0);
     // play button should be visible
     await expect(page.locator('#play')).toBeVisible();
   });
@@ -2295,9 +2297,13 @@ test.describe('opener & zoom', () => {
 
   test('opener sorts files and clears all storage', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // idb store: clear-all wipes origin storage, and Firefox shares OPFS across
+    // parallel contexts — this test must not race other tests' stored files
+    await page.addInitScript(() => { window.__store = 'idb' });
+    await page.goto('/');
     // two stored files with distinct names/dates: sine fixture + silence doc
     await loadFile(page);
-    await waitForSave(page);
+    await page.waitForFunction(() => location.search.includes('sine-3s.mp3'), { timeout: 15000 });
     await page.evaluate(() => wa.openSilence(3));
     await page.waitForFunction(() => location.search.includes('silence.wav'), { timeout: 15000 });
 
@@ -2317,7 +2323,7 @@ test.describe('opener & zoom', () => {
     await page.waitForFunction(() => !document.querySelector('#files li'), { timeout: 5000 });
     expect(await page.evaluate(async () => {
       let { createStore } = await import('/src/store/index.js');
-      return (await createStore().getFiles()).length;
+      return (await createStore('idb').getFiles()).length;
     })).toBe(0);
     expect(errors).toEqual([]);
   });
@@ -2643,6 +2649,29 @@ test.describe('edit during playback', () => {
     expect(errors).toEqual([]);
   });
 
+  test('undo and redo during playback keep playing', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 30);
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => wa.playing === true, { timeout: 5000 });
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 1);
+
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+
+    await page.keyboard.press('Control+Shift+z');
+    await waitLen(page, total - 1);
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+
+    // caret continues advancing after the redo
+    let a = await page.evaluate(() => wa.caretOffset);
+    await page.waitForFunction((x) => wa.caretOffset > x, a, { timeout: 5000 });
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
   test('escape during looped playback drops the loop, playback continues', async ({ page }) => {
     await selectLoop(page, 20, 40);
     await page.keyboard.press('Control+Space');
@@ -2683,6 +2712,23 @@ test.describe('markers & navigation', () => {
     // toggle off
     await setCaret(page, 19);
     await page.keyboard.press('m');
+    await page.waitForFunction(() => !location.search.includes('m='), { timeout: 5000 });
+    expect(await page.locator('#marks .mark').count()).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('gutter + toggles a marker at the line start', async ({ page }) => {
+    // two lines — caret lands on line 1, so line 0's + is accessible
+    // (the caret row hides its + under the floater's play button)
+    await setCaret(page, 60);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=60'), { timeout: 5000 });
+
+    await page.locator('#timecodes .tc .add-mark').first().click({ force: true });
+    await page.waitForFunction(() => location.search.includes('m=0'), { timeout: 5000 });
+    expect(await page.locator('#marks .mark').count()).toBe(1);
+
+    await page.locator('#timecodes .tc .add-mark').first().click({ force: true });
     await page.waitForFunction(() => !location.search.includes('m='), { timeout: 5000 });
     expect(await page.locator('#marks .mark').count()).toBe(0);
     expect(errors).toEqual([]);
@@ -2882,6 +2928,26 @@ test.describe('markers & navigation', () => {
 
 });
 
+test.describe('network source', () => {
+  test('failed remote load shows retry; retry reloads', async ({ page }) => {
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/?src=' + encodeURIComponent('http://127.0.0.1:8777/nope-' + Date.now() + '.mp3'));
+    await page.waitForSelector('#error', { timeout: 15000 });
+    await expect(page.locator('#retry')).toBeVisible();
+
+    // make the source reachable (swap the failed source for a real file), retry
+    await page.evaluate(async () => {
+      let buf = await (await fetch('/test/fixtures/sine-3s.mp3')).arrayBuffer();
+      wa._lastLoad[0] = new File([buf], 'sine-3s.mp3', { type: 'audio/mp3' });
+    });
+    await page.locator('#retry').click();
+    await page.waitForFunction(() => wa.total > 50 && !document.querySelector('#status'), { timeout: 15000 });
+    await expect(page.locator('#error')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe('recording new document', () => {
   test('opener record creates a doc from the mic', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'fake media device flags are chromium-only');
@@ -2958,6 +3024,25 @@ test.describe('virtualization', () => {
 
     await page.keyboard.press('Control+z');
     await page.waitForFunction((t) => wa.total === t, total, { timeout: 8000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('loop highlight maps through the virtual window', async ({ page }) => {
+    test.skip(await page.evaluate(() => typeof Highlight === 'undefined'), 'CSS Custom Highlight API unavailable');
+    // select a range deep in the doc — window base is far from 0
+    await page.evaluate(() => wa.jumpTo(20000));
+    await page.waitForTimeout(300);
+    await page.evaluate(() => wa._setSelRange(20000, 20040));
+    await page.waitForTimeout(100);
+
+    expect(await page.evaluate(() => wa.winBase)).toBeGreaterThan(0);
+    // the highlighted text must cover exactly the selected blocks
+    let hl = await page.evaluate(() => {
+      let h = CSS.highlights.get('loop');
+      let r = h && [...h][0];
+      return r ? r.toString().replace(/[^Ā-˿]/g, '').length : -1;
+    });
+    expect(hl).toBe(40);
     expect(errors).toEqual([]);
   });
 
@@ -3122,13 +3207,12 @@ function playbackContractTests(backendName, initScript) {
       let errors = [];
       page.on('pageerror', e => errors.push(e.message));
 
+      // retrying assertions — fallback backends start slowly under suite load
       await page.locator('#play').click();
-      await page.waitForTimeout(500);
-      await expect(page.locator('#editarea.playing')).toHaveCount(1);
+      await expect(page.locator('#editarea.playing')).toHaveCount(1, { timeout: 10000 });
 
       await page.locator('#play').click();
-      await page.waitForTimeout(300);
-      await expect(page.locator('#editarea.playing')).toHaveCount(0);
+      await expect(page.locator('#editarea.playing')).toHaveCount(0, { timeout: 10000 });
 
       expect(errors).toEqual([]);
     });
@@ -3194,6 +3278,37 @@ test.describe('decode layer', () => {
     let opfsLen = (await page.locator('#editarea').textContent()).length;
     expect(opfsLen).toBe(originalLen);
     expect(errors).toEqual([]);
+  });
+
+  test('export → re-import reproduces the waveform (differential)', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await loadFile(page);
+    let orig = await page.evaluate(() => ({ total: wa.total, text: wa._text }));
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    let tmp = testInfo.outputPath('reimport.wav');
+    await download.saveAs(tmp);
+
+    await page.goto('/');
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('input#file').dispatchEvent('click'),
+    ]);
+    await chooser.setFiles(tmp);
+    await page.waitForFunction(() => wa.total > 50 && !document.querySelector('#status'), { timeout: 15000 });
+    let re = await page.evaluate(() => ({ total: wa.total, text: wa._text }));
+
+    expect(re.total).toBe(orig.total);
+    // 16-bit WAV quantization → at most ±1 amplitude level per block
+    const vals = t => [...t].filter(c => c >= 'Ā' && c < 'ƀ').map(c => c.charCodeAt(0) - 0x100);
+    let a = vals(orig.text), b = vals(re.text);
+    expect(b.length).toBe(a.length);
+    let maxDiff = 0;
+    for (let i = 0; i < a.length; i++) maxDiff = Math.max(maxDiff, Math.abs(a[i] - b[i]));
+    expect(maxDiff).toBeLessThanOrEqual(1);
   });
 
   test('rejects invalid file with error', async ({ page }) => {

@@ -7,8 +7,10 @@ import { createStore } from './store/index.js'
 import { statsToWavefont } from './waveform.js'
 import { BLOCK_SIZE } from './constants.js'
 
-export default function createApi({ store } = {}) {
-  if (!store) store = createStore()
+// budget: resident PCM cap in bytes forwarded to the engine (default: engine detects)
+export default function createApi({ store, budget } = {}) {
+  // string selects an adapter type ('opfs' | 'idb' | 'memory'), object is used as-is
+  if (!store || typeof store === 'string') store = createStore(store || undefined)
 
   let a = null, worker = null
   // display block size — zoom level; ops/caret/URL coords are in bs units
@@ -42,7 +44,7 @@ export default function createApi({ store } = {}) {
       worker?.terminate()
       worker = new Worker(new URL('./engine-worker.js', import.meta.url), { type: 'module' })
       // f stays bound to this load — a concurrent loadFile reassigns `a`
-      let f = a = audioWorker(file, { worker })
+      let f = a = audioWorker(file, { worker, budget })
 
       // progressive render from stat deltas; emit strictly in block order —
       // if the 'data' subscription lands after decode started (FIFO race),
@@ -167,7 +169,7 @@ export default function createApi({ store } = {}) {
     // insert an external stored file at position — opens a second instance
     // on the same engine worker, inserted by ref
     async insertFile(atBlock, id) {
-      let b = audioWorker(await store.getFile(id), { worker })
+      let b = audioWorker(await store.getFile(id), { worker, budget })
       await b.ready
       await a.run(['insert', { source: b, offset: atBlock * bs }])
       let r = await refresh()
@@ -216,7 +218,7 @@ export default function createApi({ store } = {}) {
         else if (type === 'clip') await a.run(['crop', { offset: args[0] * bs, length: (args[1] - args[0]) * bs }])
         else if (type === 'cp') await a.run(['insert', { source: clips.get(ops[k]), offset: args[3] * bs }])
         else if (type === 'ins') {
-          let b = audioWorker(await store.getFile(args[1]), { worker })
+          let b = audioWorker(await store.getFile(args[1]), { worker, budget })
           await b.ready
           await a.run(['insert', { source: b, offset: args[0] * bs }])
         }

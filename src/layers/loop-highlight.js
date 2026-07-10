@@ -5,7 +5,7 @@ import { effect } from 'sprae'
 import { cleanToRaw } from '../selection.js'
 
 export default function loopHighlight(opts = {}) {
-  let { color = 'rgba(100, 160, 255, 0.2)', name = 'loop' } = opts
+  let { color = 'rgb(from var(--fg, #000) r g b / 15%)', name = 'loop' } = opts
 
   return (state, root) => {
     let hasAPI = typeof CSS !== 'undefined' && CSS.highlights
@@ -24,7 +24,9 @@ export default function loopHighlight(opts = {}) {
     let off = effect(() => {
       let ea = state.refs?.editarea
       let textNode = ea?.firstChild
+      // winStart/winEnd read keeps the highlight tracking virtual-window moves
       let loop = state.loop, start = state.clipStart, end = state.clipEnd
+      let base = state.winBase; state.winStart; state.winEnd
 
       if (!ea || !textNode || !loop || start == null || end == null || start >= end) {
         if (hasAPI) highlight.clear()
@@ -32,9 +34,10 @@ export default function loopHighlight(opts = {}) {
         return
       }
 
+      // block offsets are absolute — the text node holds only the window slice
       let content = textNode.textContent
-      let rawStart = cleanToRaw(content, start)
-      let rawEnd = cleanToRaw(content, end)
+      let rawStart = cleanToRaw(content, Math.max(0, start - base))
+      let rawEnd = cleanToRaw(content, Math.max(0, end - base))
 
       if (hasAPI) {
         highlight.clear()

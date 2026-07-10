@@ -16,6 +16,7 @@
     window.wa = wavearea(document.getElementById('wavearea'), {
       engine: window.__playerEngine || undefined,
       store: window.__store || undefined,
+      budget: window.__budget || undefined,
     })
     if ('serviceWorker' in navigator && location.protocol === 'https:')
       navigator.serviceWorker.register('./sw.js').catch(() => {})

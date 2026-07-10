@@ -2,6 +2,7 @@
 // Audio waveform editor component
 
 import sprae from 'sprae';
+import wavefontUrl from 'wavefont/fonts/variable/Wavefont[ROND,YELA,wght].woff2';
 import template from './wavearea.html';
 import { createSelection, cleanText, cleanToRaw, isBlock } from './selection.js';
 import createApi from './api.js';
@@ -11,6 +12,9 @@ import createPlayer from './player.js';
 import { BLOCK_SIZE } from './constants.js';
 import _smoothCaret from './layers/smooth-caret.js';
 import _loopHighlight from './layers/loop-highlight.js';
+
+// wavefont face comes from the npm package — esbuild emits the hashed woff2 next to the bundle
+document.fonts.add(new FontFace('wavefont', `url("${new URL(wavefontUrl, import.meta.url)}")`, { display: 'block' }));
 
 // minimal mono 16-bit WAV — silence for blank docs, samples for recordings
 function wavFile(samples, sr = 44100, name = 'audio.wav') {
@@ -41,12 +45,13 @@ export default function wavearea(el, {
   volume: initVolume = 1,
   speed: initSpeed = 1,
   store = 'auto',          // 'auto' | 'opfs' | 'idb' | 'memory' | adapter
+  budget,                  // engine resident-PCM cap in bytes (default: engine detects)
   onload,
   onerror,
 } = {}) {
   el.innerHTML = template
 
-  let api = createApi({ store: typeof store === 'string' ? (store === 'auto' ? undefined : store) : store })
+  let api = createApi({ store: typeof store === 'string' ? (store === 'auto' ? undefined : store) : store, budget })
   let player = null
   let _engine = engine === 'auto' ? undefined : engine
   let selection = createSelection(() => el.querySelector('#editarea'), () => state.winBase)
@@ -255,6 +260,14 @@ export default function wavearea(el, {
       return this.loadAudio(silentFile(sec), { save: true })
     },
 
+    // re-attempt a failed load (network source) — ops replay from the same args
+    _lastLoad: null,
+    retry() {
+      if (!this._lastLoad) return
+      this.error = null
+      return this.loadAudio(...this._lastLoad)
+    },
+
     // bundled demo sample (forest sounds)
     openSample() {
       return this.loadAudio(new URL('birds-forest.mp3', location.href).href)
@@ -262,6 +275,8 @@ export default function wavearea(el, {
 
     async loadAudio(file, { save, ops, brs, marks, markL, bs, session } = {}) {
       console.time('[loadAudio] loadAudio')
+      // kept for retry after a failed (network) load
+      this._lastLoad = [file, { save, ops, brs, marks, markL, bs, session }]
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
       this.waveform = ''
@@ -386,7 +401,17 @@ export default function wavearea(el, {
         this.playing = false
         this._stopCaretAnimation()
       }
-      player.play(block, toBlock, looping)
+      this._startPlayer(block, toBlock, looping)
+    },
+
+    // backend startup can reject (autoplay policy, worklet load) — reset state
+    // instead of leaking an unhandled rejection; the next press retries cleanly
+    _startPlayer(from, to, looping) {
+      Promise.resolve(player.play(from, to, looping)).catch(e => {
+        console.warn('[play] backend failed to start:', e?.message || e)
+        this.playing = false
+        this._stopCaretAnimation()
+      })
     },
 
     play() {
@@ -412,7 +437,7 @@ export default function wavearea(el, {
         this._stopCaretAnimation()
       }
 
-      player.play(fromBlock, toBlock, looping)
+      this._startPlayer(fromBlock, toBlock, looping)
       this.playing = true
 
       return () => this.stop()
@@ -633,7 +658,11 @@ export default function wavearea(el, {
     mark() {
       if (!this.total) return
       let sel = this.selection.get()
-      let at = sel ? sel.start : this.caretOffset
+      this.markAt(sel ? sel.start : this.caretOffset)
+    },
+
+    // toggle marker at a block offset (gutter +, m key)
+    markAt(at) {
       if (at < 0 || at >= this.total) return
       if (this.marks.includes(at)) {
         this.marks = this.marks.filter(x => x !== at)
@@ -740,12 +769,7 @@ export default function wavearea(el, {
       this._redoOps.length = 0
       this._applyEdit(r, caretAt)
       this._syncURL()
-      if (this._held) {
-        // playhead removed by the op resumes at the op start; loop is dropped
-        let at = this._shiftPos(op, this._held.at) ?? (typeof op[1] === 'number' ? op[1] : 0)
-        this._held = null
-        this.seekTo(Math.max(0, Math.min(at, r.total - 1)))
-      }
+      this._resumeHeld(op, r.total)
     },
 
     // remap one block offset through an op; null = position removed by the op
@@ -757,6 +781,29 @@ export default function wavearea(el, {
       if (t === 'cp') return x > op[4] ? x + (op[2] - op[1]) : x
       if (t === 'ins') return x > a ? x + (op.len || 0) : x
       return x
+    },
+
+    // inverse remap — where a position lands after the op is undone
+    // (positions inside an undone insert clamp to its start)
+    _unshiftPos(op, x) {
+      let [t, a, b] = op
+      if (t === 'del') return x > a ? x + (b - a) : x
+      if (t === 'clip') return x + a
+      if (t === 'sil') return x <= a ? x : x >= a + b ? x - b : a
+      if (t === 'cp') { let L = op[2] - op[1], at = op[4]; return x <= at ? x : x >= at + L ? x - L : at }
+      if (t === 'ins') { let L = op.len || 0; return x <= a ? x : x >= a + L ? x - L : a }
+      return x
+    },
+
+    // resume playback captured by _hold(), playhead remapped through the op
+    // (invert: the op was just undone)
+    _resumeHeld(op, total, invert) {
+      if (!this._held) return
+      let at = op
+        ? (invert ? this._unshiftPos(op, this._held.at) : this._shiftPos(op, this._held.at)) ?? (typeof op[1] === 'number' ? op[1] : 0)
+        : this._held.at
+      this._held = null
+      this.seekTo(Math.max(0, Math.min(at, total - 1)))
     },
 
     // remap break offsets through an op; drops collapsed/out-of-range breaks
@@ -1191,7 +1238,7 @@ export default function wavearea(el, {
         if (last[0] === 'br') {
           this._redoOps.push(this._ops.pop())
           this._brs = last.brs
-          this.stop()
+          if (!this.playing) this.stop()  // visual-only — playback unaffected
           this._rerenderBreaks(last[1])
           this._syncURL()
           return
@@ -1204,9 +1251,10 @@ export default function wavearea(el, {
         this.markL = last.marksL ?? this.markL
         // clipboard referenced a chain state that no longer exists
         if (this._clip && this._ops.length < this._clip.v) this._clip = null
-        this.stop()
+        this._hold()
         this._applyEdit(r, this.caretOffset)
         this._syncURL()
+        this._resumeHeld(last, r.total, true)
       })
     },
 
@@ -1218,12 +1266,12 @@ export default function wavearea(el, {
           op.brs = [...this._brs]
           this._ops.push(op)
           this._brs = this._shiftBrs(op, op.brs, this.total)
-          this.stop()
+          if (!this.playing) this.stop()  // visual-only — playback unaffected
           this._rerenderBreaks(op[1])
           this._syncURL()
           return
         }
-        this.stop()
+        this._hold()
         let r = op[0] === 'del' ? await api.removeRange(op[1], op[2])
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
@@ -1239,6 +1287,7 @@ export default function wavearea(el, {
         ;[this.marks, this.markL] = this._shiftMarks(op, op.marks ?? this.marks, op.marksL ?? this.markL, r.total)
         this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'cp' ? op[4] : op[1] ?? this.caretOffset)
         this._syncURL()
+        this._resumeHeld(op, r.total)
       })
     },
 
