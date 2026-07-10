@@ -11,9 +11,9 @@ test('isBlock accepts wavefont glyphs only', () => {
   is(isBlock('a'), false)
 })
 
-test('cleanText removes combining marks and breaks', () => {
-  is(cleanText('abc'), 'abc')
-  is(cleanText('a\u0300b\u0301c'), 'abc')
+test('cleanText keeps block chars only (complements isBlock)', () => {
+  is(cleanText('abc'), '') // non-block chars never count as blocks
+  is(cleanText('\u0100\u0302\u0101\u030c'), '\u0100\u0101') // 10-step shift marks
   is(cleanText('\u0100\u0300\u0101\u0301'), '\u0100\u0101')
   is(cleanText('\u0100\n\u0101'), '\u0100\u0101')
   is(cleanText('\u0100\u0300\n\u0101\u0301\n'), '\u0100\u0101')
