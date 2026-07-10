@@ -73,11 +73,13 @@
         :ondblclick.prevent.stop="() => markEditStart(b)">
         <span class="mark-label" :if="markL[b] != null" :text="markL[b]"></span>
       </span>
+      <!-- blur() rather than hidden: WebKit keeps focus on hidden elements,
+           which would swallow every global key through the _key guard -->
       <input id="mark-label-input" hidden aria-label="Marker label"
         :ref="refs.markLabel"
         placeholder="label"
-        :onkeydown.enter.prevent.stop="e => (setMarkLabel(markEdit, e.target.value), e.target.hidden = true)"
-        :onkeydown.esc.stop="e => (markEdit = null, e.target.hidden = true)"
+        :onkeydown.enter.prevent.stop="e => (setMarkLabel(markEdit, e.target.value), e.target.blur())"
+        :onkeydown.esc.stop="e => e.target.blur()"
         :onblur="e => (markEdit = null, e.target.hidden = true)"
         :onmousedown.stop:ondblclick.stop="e=>e" />
     </div>
@@ -245,10 +247,12 @@
   </div>
 
   <div id="toolbar" :if="total && !loading">
+    <!-- blur before jumping: WebKit would otherwise clear the selection the jump
+         just set (and keeps focus on merely-hidden inputs, swallowing global keys) -->
     <input id="jump" hidden placeholder="m:ss" size="6" aria-label="Jump to time"
       :ref="refs.jump"
-      :onkeydown.enter.prevent.stop="e => (jumpToTime(e.target.value), e.target.hidden = true)"
-      :onkeydown.esc.stop="e => e.target.hidden = true"
+      :onkeydown.enter.prevent.stop="e => (e.target.blur(), jumpToTime(e.target.value))"
+      :onkeydown.esc.stop="e => e.target.blur()"
       :onblur="e => e.target.hidden = true" />
     <button id="settings-btn" class="op" aria-label="Settings"
       title="Settings"
