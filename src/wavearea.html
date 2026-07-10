@@ -202,7 +202,7 @@
           </button>
           <button class="delete-button" aria-label="Delete stored file"
             :title="`Delete ${fileInfo.name} from storage`"
-            :onclick.stop="async () => { await api.deleteFile(fileInfo.id); files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null) }">
+            :onclick.stop="async () => { await api.deleteFile(fileInfo.id).catch(() => {}); files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null) }">
             <span>×</span>
           </button>
         </li>

@@ -1350,7 +1350,7 @@ export default function wavearea(el, {
       if (!pm) continue
       let b = +pm[1]
       marks.push(b)
-      if (pm[2] != null) { try { markL[b] = decodeURIComponent(pm[2]) } catch {} }
+      if (pm[2]) { try { markL[b] = decodeURIComponent(pm[2]) } catch {} }
     }
     // parked session takes over the op chain
     let session = params.get('session')
