@@ -1,220 +1,120 @@
+# Wavearea todo
 
+> Textarea for audio. Open, see, edit, save.
+> Merged from roadmap.md + legacy todo (2026-07); shipped work archived at the bottom.
 
-## [ ] Restructure
+## Next
 
-* [x] Audio loading via web audio codecs
-* [ ] Store recent files
-* [ ] Audio playback via audio worklet
-  * [ ] Worklet via comlink
-  * [ ] Store segments in indexDB
-  * [ ] Load 3-5min into playback worklet
-* [ ]
-* [ ] History operations
-* [ ] settings-panel
-* [ ] Move all handlers to markup, leave app for logic
-
+* [ ] Shrink pauses op (audio 2.6 `shrink`) — one-click truncate-silence for speech; selection or whole file, URL `shrink=`/`shrink=f-t`
+* [ ] Timecode hours: `h:mm:ss` for ≥1hr (now shows `480:00` on an 8h file)
+* [ ] Auto-scroll follows caret during playback; pause while user scrolls, resume when caret re-enters view (critical for long files + virtual window)
+* [ ] Playback bar polish: volume slider + mute, speed control (0.5–2x, engine live-rate ready), current-time display near play
+* [ ] Settings/params popover — unblocks in one stroke: gain dB, normalize target (peak/RMS/LUFS), fade curve, shrink gap + silence threshold, default block size, time format, theme
+* [ ] Keyboard caret: Left/Right by block, Shift+arrows select, Home/End, Ctrl+Left/Right by line
+* [ ] OPFS session fallback for op chains > ~50 (URL gets unwieldy; `?session=id`)
 
 ## Backlog
 
-* [x] Finish sprae 10
-* [x] no-caret (0 focus) play bug
-* [x] space repeat
-* [x] head of audio is boosted for some reason
-* [~] discrepancy of caret with sound -> can't reproduce
-* [ ] play button position via sticky
-* [ ] parameters manager (based on settings panel)
-* [ ] click on time must not reload anything
-  * [ ] loading link with time should navigate to the line
-* [ ] Automatic tests
-* [ ] Shift play button to the left
-  * [ ] Display current time
-* [ ] All editing operations
-  * [ ] delete
-  * [ ] ctrl+C / ctrl+V
-* [ ] Undo/redo history (separate from browser history)
-* [ ] Save result
-* [ ] Adjustable view
-  * [ ] block size
-  * [ ] color theme
-* [ ] player backends
-  * [ ] Audio
-  * [ ] WAA
-* [ ] Drag-n-drop
-* [ ] Separate by fragments (scenes) via enter
-* [ ] Playback bar with current time, play/stop, more
-  * [ ] Position: bottom floating/appearing, bottom fixed, balloon next to cursor, no (melded into UI)
-* [ ] Operations
-  * [ ] Normalize audio (from playback bar?)
-  * [ ] Revolume selected fragments
-  * [ ] Noise-gate plugin
-  * [ ] Speedup silences (plugin?)
-* [ ] Change number of channels
-* [ ] 11labs integration: generate speech of length
-* [ ] Switchable main-thread / worker / GPU processing
+### Playback
+* [ ] Edit during playback: rebuild window when edit is at/behind playhead, clamp position (arch notes below)
+* [ ] Gapless window transitions: schedule next source before current ends (10s window auto-continue can dip)
+* [ ] Escape clears selection and stops loop
+* [ ] Highlight of played region refinement; loop-range visual tint
+* [ ] Consider facade transport (engine worker playback + live varispeed) as a player backend — would replace player.js window pump
 
-## Reiterating
+### Editing
+* [ ] Per-segment operations (normalize/gain one segment)
+* [ ] Marker labels (editable phrases; exports as cue labl text)
+* [ ] Paste visual feedback (brief highlight)
+* [ ] Breaks/markers positions are kept-but-clamped across `shrink` (multi-remove op) — remap them through the emitted removes
+* [ ] Visible glyphs: `¶` for segment breaks, `·` for silence blocks?
+* [ ] Delete-all edge: empty doc state, undo from opener
 
-* [ ] display audio
-* [ ] play audio
-* [ ] caret indication
-  * [ ] Don't update caret in raf: update only on playback and time change
-  * [ ] Don't track caret on every focus: only when user selects by mouse
-  * [ ] Make playback within the selection
-* [ ] Fix safari
-* [ ] loses caret on play, like insert silence, press play etc
-* [ ] serialize file in url: ?src=path/to/url/file/to/fetch
-* [ ] sprae :onfile-attachment-accepted
-* [ ] add preloader (sprae mount-unmount)
-* [ ] delete fragments -> updates audio
-* [ ] create silence by space
-* [ ] download
-* [ ] caret must be able to be reoriented during the playback
-* [ ] Safari: wrong current time positioning
-* [ ] BUG: stopping drops focus
-* [ ] Make 'Enter' create segments
-* [ ] time codes next to lines
-* [ ] br
-* [ ] del
-  * [ ] fix deleting tail properly
-* [ ] normalize
-* [ ] BUG: setting caret to the beginning of segment (a bit from the left of segment) doesn't start playback properly
-* [ ] faster encoder by just copying changed subbuffer data, opposed to full rerender
-* [ ] fix playback multiple segments
-* [ ] Add vertical shift of average
-* [ ] Shift + select
-* [ ] ~~interleaved buffers pointing to chunks of wav file, rather than audiobuffers~~ same as below
-* [ ] ~~immediate audio ops via copy~~ - saves 15ms, takes a lot in terms of losing AudioBuffer primitive
-* [ ] worker processor
-* [ ] actions via beforeinput inputType
+### Processing (engine has the ops — needs UI)
+* [ ] Gain/amplify selection by dB + clip indicator
+* [ ] Normalize: RMS/LUFS targets; per-selection (needs range-scoped stats resolve)
+* [ ] Fade curves (linear/exp/log/cos); adjustable-fade
+* [ ] EQ (3-band via engine filter), noise gate / denoise (dynamics atoms from the 2.4+ plugin registry)
+* [ ] Reverse selection, remix channels (mono↔stereo), crossfade soft-insert on paste
+* [ ] Stereo view: L/R overlapped half-transparent, intersection dark
 
-## [ ] MVP: basic dubs editor
+### View & navigation
+* [ ] Ctrl+scroll / pinch zoom, centered on caret
+* [ ] Zoom in below 1024 samples/char (needs engine stat granularity < BLOCK_SIZE or raw-PCM window stats)
+* [ ] Click gutter to add marker at line
+* [ ] Minimap: show markers/breaks/selection; current-window shading polish
 
-* [ ] Make delete: `from-to` signature instead of `from-count`
-* [ ] Debounce delete better
-* [ ] "Open audio"
-  * [ ] ~~"Generate speech" or "Pick random audio" intro screen. (+ button at the right)~~ -> use more complete sources config
-* [ ] Reflect operations in URL
-* [ ] Backspace-deleting from the beginning of segment doesn't remove break but deletes tail of prev segment instead
-  * [ ] join operation that serializes as removing break
-* [ ] mute
-* [ ] take source from URL.
-  * [ ] if there's none - take random source
-* [ ] support dropping files
-  * [ ] save dropped files to storage
-* [ ] Make history of changes with undo/redo
-* [ ] Time-codes of following segments are messed up: make them href-able
-* [ ] Bug: insert silence at the beginning of new segment -> feature
-* [ ] ~~Save local file edits to kv-storage~~ - saved in history
-* [ ] BUG: 0:60 in timing
-* [ ] OPTIMIZATION: use onbeforeinput/oninput for handling operations
-* [ ] BUG: deleting from left & then from right of caret is different
-* [ ] BUG: fix playback from caret
-* [ ] Alt-Space for start/stop
-* [ ] Loop play selection
+### Files & export
+* [ ] File management in opener: delete stored file, clear all, storage usage, sort control
+* [ ] Export progress bar (engine emits `progress`), FLAC button, re-import differential test
+* [ ] Recording: live waveform preview while recording (pushable instance streams stats)
+* [ ] Drop-on-waveform visual affordance (dragover style exists, needs design)
+* [ ] Network-source resilience: retry + clear error for `?src=url`
 
+### Settings & theming
+* [ ] Theme system: CSS vars presets (light/dark/high-contrast), wavefont weight/roundness tuning, color ramps; respect prefers-color-scheme
+* [ ] Keyboard shortcuts reference + about (support/github/ॐ)
+* [ ] Storage quota exceeded: surface a warning, not just console
 
-* [ ] Outsource audio-decode, add missing codecs
-* [ ] Outsource media loopStart / loopEnd
-* [ ] Better selection logic: must be immediate
-* [ ] Display open/loading status
-* [ ] Display + for newlines
-* [ ] . for silence
-* [ ] Empty URL shows "Open file"
-* [ ] Loads source from url on init
-* [?] ~~Display loading status in playback~~ not sure still if we need playback
-* [ ] ~~Show average line in samples~~ use dots instead
-* [ ] Deleting, changing caret, deleting again causes UI waveform assertion fail
-* [ ] Small screens wrongly wrap waveform timing
-* [ ] Deleting part of audio screws up play button position
-* [ ] End of file caret positioning is wrong
-* [ ] Delete-all case doesn't get saved
-* [ ] Big file editing generates tons of error logs : must be good
-* [ ] Big files break caret line at the end (see bvg)
-* [ ] Loaded file misses offset
-* [ ] Played waveform update on big files is very slow. Use overlap technique or virtual list via intersection observer
-* [ ] Safari: smooth audio currentTime (opposed to glitchy now)
-* [ ] A way to download / reverse / etc selected fragment (... at the right)
-* [ ] Stopping playback causes glitch
-* [ ] Bug with assets/1s.wav playback - end line caret shifts down
-* [ ] Problematic mobile rendering
-* [ ] Mobile playback doesn't start from selection
-* [ ] Bug: renavigating during play
-* [ ] Bug: mobile safari play button sticks glitchly (alternative to intersection observer?)
-* [ ] Bug: multiline selection is damaged
-* [ ] Bug: empty head starts playing something non-silence
-* [ ] Bug: needs enhanced lines calculation, ideally chars-per-line
-* [ ] Bug: playback with space is glitchy (resets caret)
-* [ ] Bug: deleting is broken
-* [ ] Bug: doesn't renavigate by click
-* [ ] Bug: doesn't scroll on caret offset
-* [ ] Bug: loop playback selection is broken
-* [ ] Make play always cover the time, then it leaves space for "record" button
-* [ ] Zoom
-* [ ] Render only visible part (virtual) - must reduce rendering load significantly
-* [ ] Resize throttle
-* [ ] `<time-codes>`
-* [ ] `<playback-panel>`
-* [ ] `<wave-area>`
-* [ ] Autoplay, loop, current line - can be navigatable from URL
-* [ ] Add info icon: support, github, brahman
-  * tips, generate theme
-  * adjust settings: audio loudness metric, block size
-* [ ] support paste fragment of itself
-* [ ] Mark loop selection
-* [ ] Mark fragments
-* [ ] Detect characters per line via ranges method: https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-* [ ] Separate audio-decode module with all codecs...
-* [ ] Make play button clickable area _big_
-* [ ] Recent files
-* [ ] use media-offset for looping -> own function play-loop
-* [ ] detect cmd/ctrl key depending on platform
-* [ ] make player responsive in mobile as bottom play button with overlay
-* [ ] make playback sticky to avoid hiding playback (intersection observer + position change)
-* [ ] ~~use plain (interleaved?) arrays instead of audio buffers - faster decoding, faster transfering to worker~~ - limited maintainability, no need to transfer to worker
-* [ ] use decodeAudioData main thread "worker" for faster decode, detect supported native codecs & video
-* [ ] Loudness weighting
-  * https://github.com/MTG/essentia/blob/master/src/algorithms/temporal/loudnessebur128.cpp
-  * https://github.com/domchristie/needles
-* [ ] Better loudness display: it is inadequate now
-* [ ] Display left/right channels with half-transparent blacks, and black is their intersection
-* [ ] time codes as # hrefs
-  * [ ] make navigatable
-* [ ] Faster updates: maybe no point rerendering/encoding full waveform, or parallelize, or faster wav encoder (wasm?)
-    * ? should we work straight on wav buffer maybe instead of audio buffers?
-* [ ] Highlight of playable/playing region via diff color
-* [ ] ~~use audio-buffer-list for faster ops?~~ -> use own implementation
-* [ ] theme selector: color gradientish, inverse, cool, hot, dynamic, bw, font style
-* [ ] move loading/decoding/encoding to worker
-* [ ] random phrase player (from URL - like thetamath) via free speech api
-* [ ] broken sprae condition of `:if :ref`
-* [ ] convert ops units to h/s/ms
-* [ ] replace file selector with + under caret?
-* [ ] open file
-* [ ] ~~Make nicer playback UI (bottom of page player)~~ -> not proved to be the best
-  * [ ] Errors and loading state must be indicated there
-  * [ ] Precise current playback time
-* [ ] delete file fully -> displays open file again
-* [ ] save file in storage? -> can be done via browser caching
-* [ ] ~~Safari: initial audio loading state displays Error (show silent buffer)~~
-* [ ] scroll must follow the current caret position
-* [ ] save edits in URL, so that any audio URL can be opened, edited, played.
-* [ ] More audio transforms
-* [ ] Make reusable (web-) component
-  * [ ] Textarea mode: no-line-breaks simple renderer on any textarea, no autosizer
-  * [ ] Adjustable timecodes
-  * [ ] Adjustable menu
-  * [ ] Adjustable theme
-  * [ ] Adjustable line breaks / ops
-* [ ] Think of embeddable links
-* [ ] Recording capability
-* [ ] Add tests (playwright?)
-* [ ] Measure via LUFS and other methods
-* [ ] Process audio with lino?
-* [ ] Vary color based on spectrum
-* [ ] ~~?Use timing object https://github.com/chrisguttandin/timing-object~~ -> nah
-* [ ] Editable labeling / phrases
+### Robustness
+* [ ] Real-device pass: Firefox, iOS Safari touch/selection/playback, Android Chrome
+* [ ] Mobile layout: touch targets, floater/toolbar placement, 320–768px checks
+* [ ] A11y: roles + screen-reader announcements (playback state, time), keyboard access design for op buttons (command palette?), axe-core audit
+* [ ] Offline/PWA verification on deployed https (SW is registered there only)
+* [ ] Perf: waveform delta re-render instead of full stat re-query per edit (~100ms at 8h scale today); profile decode/render/latency targets
+* [ ] Stress: 8h real-file soak (decode minutes, OPFS quota), rapid-ops E2E
 
 ## Ideas
 
-* Export as audiobook (choose cover)
-* Soft insert (via crossfade) to prevent clicks
+* Spectrogram view toggle; color by spectrum
+* Embeddable component (`<wave-area src>`), textarea mode, adjustable everything
+* Audiobook mode: chapters as segments, export with cover
+* AI: transcript overlay (Whisper), speech generation at caret (11labs/free TTS)
+* Sampler mode: named segments dictionary, play by sequence
+* Batch processing (open folder, normalize all)
+* System clipboard audio interop; shareable short URLs
+* Peak meters during playback; auto-save sessions
+* Random phrase/sample sources config (quotes, mantras, Prabhupada vani)
+
+## Reference
+
+### URL scheme (the state)
+```
+?src=<store-id | remote-url>   source (store ids are ts-name)
+&bs=2048                       display block size (zoom), default 1024
+&del=f-t &sil=at-n &clip=f-t   ops, repeated params, document order = application order
+&cp=f-t-v-at                   paste: clip of chain-state v inserted at `at`
+&ins=at-<store-id>             external file / recording insert
+&norm= &fadein=f-t &fadeout=f-t &shrink=[f-t]
+&br=a..b                       segment breaks (visual, current coords, applied after ops)
+&m=a..b                        markers
+```
+All offsets in blocks of `bs` samples. One UI op = one engine edit (undo pops both).
+
+### Architecture
+- Engine = `audio` (npm) self-hosted in a Worker (`src/engine-worker.js`); main thread holds
+  the `audio/worker` facade — PCM never leaves the worker (paged, OPFS-evicted).
+- Waveform = wavefont string from per-block min/max stats; progressive via `data` deltas.
+- Rendering is virtualized: full string in state, DOM text node holds visible lines ± buffer,
+  spacers are #editarea padding (single-text-node invariant; `winBase` maps selection offsets).
+- Ops history/redo live UI-side as URL ops; engine executes; breaks/markers shift per op
+  with per-op snapshots for undo.
+- Player: AudioBufferSourceNode windows over `a.read()` (Safari-tested); `<audio>`/worklet fallbacks.
+
+### Principles (short form)
+Text IS the interface · non-destructive op chain in URL (no hidden state) · browser-native
+over library · progressive everything · offline/local-only · keyboard-first · ship what
+works, hide what doesn't. Anti: no DAW, no premature abstraction, no mocks in tests,
+no CSS-in-JS, don't fight sprae.
+
+## Done (archive)
+
+Phases 0–6 of the original roadmap shipped 2026-07: engine swap to published `audio`
+(worker facade, stat-delta progressive render) · playback (3 backends, loop selection,
+smooth caret) · editing (delete/merge, silence typing, copy/cut/paste with chain-state
+snapshots, trim, drop-insert, segments via Enter/Backspace-join, markers, undo/redo,
+full URL serialize/replay) · processing (normalize, fades) · zoom 1024–8192 with coord
+rescale · minimap · jump-to-time (g) + timecode click · mic recording (insert at caret /
+new doc) · export WAV/MP3, selection export, segment cue points · opener (open/sample/
+silence/record/drop + recent files) · virtualization for multi-hour files (~0ms scroll,
+~100ms edit at 8h scale) · PWA shell + reduced-motion/aria pass · 199 e2e/unit tests.
