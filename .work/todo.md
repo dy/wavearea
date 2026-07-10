@@ -5,13 +5,18 @@
 
 ## Next
 
-* [ ] Shrink pauses op (audio 2.6 `shrink`) — one-click truncate-silence for speech; selection or whole file, URL `shrink=`/`shrink=f-t`
-* [ ] Timecode hours: `h:mm:ss` for ≥1hr (now shows `480:00` on an 8h file)
-* [ ] Auto-scroll follows caret during playback; pause while user scrolls, resume when caret re-enters view (critical for long files + virtual window)
-* [ ] Playback bar polish: volume slider + mute, speed control (0.5–2x, engine live-rate ready), current-time display near play
-* [ ] Settings/params popover — unblocks in one stroke: gain dB, normalize target (peak/RMS/LUFS), fade curve, shrink gap + silence threshold, default block size, time format, theme
-* [ ] Keyboard caret: Left/Right by block, Shift+arrows select, Home/End, Ctrl+Left/Right by line
-* [ ] OPFS session fallback for op chains > ~50 (URL gets unwieldy; `?session=id`)
+* [ ] Gain/amplify selection by dB (settings has the popover pattern; needs value input + clip indicator)
+* [ ] Silence threshold setting wired into shrink/trim ops
+* [ ] Export progress bar (engine emits `progress`) + FLAC button
+* [ ] Marker labels (editable phrases; export as cue labl text)
+* [ ] File management in opener: delete stored file, storage usage
+* [ ] Real-device pass: Firefox, iOS Safari (transport bar, drag selection, playback)
+
+Done this wave: shrink pauses (2.6, gap in URL) · h:mm:ss timecodes · playback
+auto-scroll with user-scroll respect · bottom transport bar (time/speed/volume/
+mute, persisted) · settings popover (gap/curve/norm target/theme, params
+serialize per-op) · dark theme · keyboard caret (arrows/shift/home/end/line) ·
+`?session=` fallback for >50-op chains
 
 ## Backlog
 
