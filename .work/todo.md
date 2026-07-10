@@ -5,32 +5,31 @@
 
 ## Next
 
-* [ ] Trim silence at edges (engine trim op + threshold setting, unexposed)
-* [ ] Paste visual feedback (brief highlight); drop-on-waveform affordance
-* [ ] Opener: clear-all storage, sort control
-* [ ] Per-segment operations (normalize/gain one segment)
-* [ ] Gapless window transitions: schedule next source before current ends
-* [ ] Storage quota exceeded: surface a warning, not just console
+* [ ] Undo/redo during playback (edits hold the playhead now; undo still pauses)
+* [ ] Loop-range visual tint; played-region highlight refinement
+* [ ] Click timecode gutter to add a marker at that line
+* [ ] Export re-import differential test (encode → decode → same stats)
+* [ ] Network-source resilience: retry + clear error for `?src=url`
+* [ ] Mobile layout: touch targets, floater/toolbar placement, 320–768px checks
 
-Done this wave:
-* [x] Escape — closes popovers, else clears selection/loop (playback continues unlooped)
-* [x] Edit during playback — ops hold the playhead, remap it through the op (`_shiftPos`), rebuild the window; zoom rescales it
-* [x] Ctrl+scroll / trackpad-pinch zoom (ctrl+wheel accumulate → discrete steps, caret preserved)
-* [x] Recording live preview — auto-ranged wavefont tail in the status bar
-* [x] Minimap overlays — selection band, break hairlines, red marker ticks; cached stats redraw without engine roundtrip
-* [x] Keyboard shortcuts reference (`?` key + toolbar button) with about/github/ॐ
+Done this wave (wavefont 3.6.0 published + consumed):
+* [x] Trim edge silence — toolbar button, first/last block above settings threshold, commits as plain `clip` op
+* [x] Paste/insert flash (CSS Custom Highlight API) + drop-target affordance (dashed outline)
+* [x] Opener: sort select (date/name/size), two-step clear-all, file list state moved into the component
+* [x] Per-segment ops — double-click selects the segment; gain/fade/trim apply (normalize needs engine range stats)
+* [x] Gapless playback — next window prefetched and start()-scheduled at the seam; block-aligned cap removed the per-seam sample skip
+* [x] Storage-quota failures surface an actionable notice (edits + background saves)
 
-Previous wave:
-* [x] Gain by dB + clip warning (`▲ +N.NdB` → click normalizes) · silence threshold → shrink (`_thr`)
-* [x] Export progress bar + FLAC · marker labels (URL/session/WAV labl) · opener delete + storage usage
+Previous waves:
+* [x] Escape · edit-during-playback · pinch zoom · minimap overlays · live rec preview · `?` help
+* [x] Gain by dB + clip warning · shrink threshold · export progress + FLAC · marker labels · opener delete/usage
 * [x] Firefox CI project + iPhone-13 webkit smoke — physical iOS/Android pass still open
 
 ## Backlog
 
 ### Playback
-* [ ] Highlight of played region refinement; loop-range visual tint
 * [ ] Consider facade transport (engine worker playback + live varispeed) as a player backend — would replace player.js window pump
-* [ ] Undo/redo during playback (edits hold the playhead now; undo still pauses)
+* [ ] Gapless seam on mid-window speed change (currently drops the schedule, refetches once)
 
 ### Editing
 * [ ] Breaks/markers positions are kept-but-clamped across `shrink` (multi-remove op) — remap them through the emitted removes
@@ -46,11 +45,6 @@ Previous wave:
 
 ### View & navigation
 * [ ] Zoom in below 1024 samples/char (needs engine stat granularity < BLOCK_SIZE or raw-PCM window stats)
-* [ ] Click gutter to add marker at line
-
-### Files & export
-* [ ] Export re-import differential test (encode → decode → same stats)
-* [ ] Network-source resilience: retry + clear error for `?src=url`
 
 ### Settings & theming
 * [ ] Theme system: CSS vars presets (light/dark/high-contrast), wavefont weight/roundness tuning, color ramps; respect prefers-color-scheme
@@ -135,3 +129,8 @@ Live wave (2026-07-10): edit during playback (playhead remap + window rebuild) �
 Escape (popovers → selection → loop) · ctrl+scroll/pinch zoom · minimap overlays
 (selection/breaks/markers, cached redraw) · live recording level tail · `?` shortcuts
 help · WebKit hidden-input focus fix · 374 e2e green.
+
+Polish wave (2026-07-10, wavefont 3.6.0): trim edge silence (clip op via stats) ·
+paste flash + drop affordance · opener sort/clear-all (file state → component) ·
+segment double-click select · gapless playback windows (prefetch + seam schedule,
+block-aligned cap) · quota notice · 392 e2e green.
