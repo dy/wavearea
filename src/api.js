@@ -14,12 +14,19 @@ export default function createApi({ store } = {}) {
   // display block size — zoom level; ops/caret/URL coords are in bs units
   let bs = BLOCK_SIZE
 
+  // absolute sample peak — >1 means the timeline clips on export
+  let peakOf = (mins, maxs, from = 0) => {
+    let p = 0
+    for (let i = from; i < maxs.length; i++) { if (maxs[i] > p) p = maxs[i]; if (-mins[i] > p) p = -mins[i] }
+    return p
+  }
+
   // re-render full waveform + meta from engine state (edits applied)
   async function refresh() {
     let total = Math.ceil(a.length / bs)
-    if (!total) return { waveform: '', total: 0, duration: 0 }
+    if (!total) return { waveform: '', total: 0, duration: 0, peak: 0 }
     let [mins, maxs] = await a.stat(['min', 'max'], { bins: total, channel: 0 })
-    return { waveform: statsToWavefont(mins, maxs), total, duration: a.duration }
+    return { waveform: statsToWavefont(mins, maxs), total, duration: a.duration, peak: peakOf(mins, maxs) }
   }
 
   return {
@@ -40,13 +47,14 @@ export default function createApi({ store } = {}) {
       // progressive render from stat deltas; emit strictly in block order —
       // if the 'data' subscription lands after decode started (FIFO race),
       // the missed prefix is healed by the full stat query below
-      let next = 0, pending = new Map()
+      let next = 0, pending = new Map(), peak = 0
       f.on('data', ({ delta }) => {
         pending.set(delta.fromBlock, delta)
         while (pending.has(next)) {
           let d = pending.get(next)
           pending.delete(next)
           onWaveform(statsToWavefont(d.min[0], d.max[0]))
+          peak = Math.max(peak, peakOf(d.min[0], d.max[0]))
           next += d.max[0].length
         }
       })
@@ -57,9 +65,10 @@ export default function createApi({ store } = {}) {
       if (next < total) {
         let [mins, maxs] = await f.stat(['min', 'max'], { bins: total, channel: 0 })
         onWaveform(statsToWavefont(mins.subarray(next), maxs.subarray(next)))
+        peak = Math.max(peak, peakOf(mins, maxs, next))
       }
 
-      return { duration: f.duration, channels: f.channels, sampleRate: f.sampleRate }
+      return { duration: f.duration, channels: f.channels, sampleRate: f.sampleRate, peak }
     },
 
     // playback window — PCM transferred from the engine, never retained here
@@ -97,11 +106,19 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
-    // compress silent pauses to `gap` seconds — whole file or range
-    async shrink(fromBlock, toBlock, gap) {
+    // compress silent pauses to `gap` seconds — whole file or range;
+    // thr: silence threshold in dB (default: engine auto-detects)
+    async shrink(fromBlock, toBlock, gap, thr) {
       let opts = gap != null ? { gap } : {}
+      if (thr != null) opts.threshold = thr
       if (fromBlock != null) { opts.offset = fromBlock * bs; opts.length = (toBlock - fromBlock) * bs }
       await a.run(['shrink', opts])
+      return refresh()
+    },
+
+    // amplify a range by dB (negative attenuates)
+    async gain(fromBlock, toBlock, db) {
+      await a.run(['gain', { value: db, offset: fromBlock * bs, length: (toBlock - fromBlock) * bs }])
       return refresh()
     },
 
@@ -113,9 +130,13 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
-    // encode current timeline (edits applied); markers become WAV cue points
-    encode(format, opts) {
-      return a.encode(format, opts)
+    // encode current timeline (edits applied); markers become WAV cue points.
+    // onProgress receives {offset, total} in seconds per encoded chunk
+    async encode(format, opts, onProgress) {
+      if (!onProgress) return a.encode(format, opts)
+      a.on('progress', onProgress)
+      try { return await a.encode(format, opts) }
+      finally { a.off('progress', onProgress) }
     },
 
     // clipboard — clone+crop snapshots the current timeline range, sample-precise
@@ -188,10 +209,13 @@ export default function createApi({ store } = {}) {
           await a.run(['insert', { source: b, offset: args[0] * bs }])
         }
         else if (type === 'norm') await a.run(['normalize', args[0] != null ? { target: isNaN(+args[0]) ? args[0] : +args[0] } : {}])
+        else if (type === 'gain') await a.run(['gain', { value: args[2], offset: args[0] * bs, length: (args[1] - args[0]) * bs }])
         else if (type === 'shrink') {
-          let opts = {}
-          if (args.length > 1) { opts.offset = args[0] * bs; opts.length = (args[1] - args[0]) * bs; opts.gap = (args[2] ?? 300) / 1000 }
-          else opts.gap = (args[0] ?? 300) / 1000
+          // trailing negative arg = silence threshold dB; rest is [gap] | [f, t, gap]
+          let nums = [...args]
+          let opts = nums[nums.length - 1] < 0 ? { threshold: nums.pop() } : {}
+          if (nums.length > 1) { opts.offset = nums[0] * bs; opts.length = (nums[1] - nums[0]) * bs; opts.gap = (nums[2] ?? 300) / 1000 }
+          else opts.gap = (nums[0] ?? 300) / 1000
           await a.run(['shrink', opts])
         }
         else if (type === 'fadein' || type === 'fadeout') {
@@ -210,6 +234,15 @@ export default function createApi({ store } = {}) {
 
     async getFiles(options) {
       return store.getFiles(options);
+    },
+
+    async deleteFile(id) {
+      return store.deleteFile(id);
+    },
+
+    // storage usage/quota estimate — null when the adapter can't tell
+    async storeInfo() {
+      return store.getStoreInfo?.() ?? null;
     }
   }
 }

@@ -1318,8 +1318,16 @@ const setCaret = (page, block) => page.evaluate((b) => {
 
 // wait until edit queue settles and length matches expectation
 const waitLen = (page, len) => page.waitForFunction((l) =>
-  document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length === l,
+  document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C\n]/g, '').length === l,
   len, { timeout: 5000 });
+
+// select a range AND run the editarea selection handler (loop/clipStart/clipEnd),
+// like a user drag does \u2014 needed for selection-contextual UI (floater ops, gain input)
+const selectLoop = async (page, from, to) => {
+  await setSelection(page, from, to);
+  await page.locator('#editarea').dispatchEvent('focus');
+  await page.waitForFunction(() => window.wa.loop === true, { timeout: 3000 });
+};
 
 // select an exact block range \u2014 interior ranges only (the trailing char is a partial
 // block, so tail-inclusive selections paste fewer chars than selected)
@@ -1991,6 +1999,103 @@ test.describe('processing & export', () => {
     expect(errors).toEqual([]);
   });
 
+  test('gain amplifies selection by dB; clipping shows a warning that normalizes', async ({ page }) => {
+    let before = await text(page);
+    await selectLoop(page, 20, 50);
+    await page.locator('#gain-db').fill('12');
+    await page.locator('#gain-apply').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('gain=20-50-12'), { timeout: 8000 });
+    expect(await text(page)).not.toBe(before);
+
+    // second +12dB pushes peaks over full scale — clip warning appears
+    await selectLoop(page, 20, 50);
+    await page.locator('#gain-apply').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.split('gain=').length === 3, { timeout: 8000 });
+    expect(await page.evaluate(() => wa.peak)).toBeGreaterThan(1);
+    await expect(page.locator('#clip-warn')).toBeVisible();
+
+    // the warning is actionable — click normalizes, warning clears
+    await page.locator('#clip-warn').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('norm='), { timeout: 8000 });
+    expect(await page.evaluate(() => wa.peak)).toBeLessThanOrEqual(1);
+    await expect(page.locator('#clip-warn')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('negative gain attenuates; replays from URL', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let before = await text(page);
+    await selectLoop(page, 20, 50);
+    await page.locator('#gain-db').fill('-6');
+    await page.locator('#gain-apply').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('gain=20-50--6'), { timeout: 8000 });
+    let attenuated = await text(page);
+    expect(attenuated).not.toBe(before);
+
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await page.waitForFunction((t) => document.querySelector('#editarea')?.textContent === t, attenuated, { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('gain without selection is a no-op', async ({ page }) => {
+    await setCaret(page, 10);
+    await page.locator('#gain-apply').dispatchEvent('mousedown');
+    await page.waitForTimeout(300);
+    expect(page.url()).not.toContain('gain=');
+    expect(errors).toEqual([]);
+  });
+
+  test('silence threshold setting rides the shrink op and replays', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+    await page.locator('#settings-btn').dispatchEvent('mousedown');
+    await page.locator('#settings #thr').fill('-40');
+    await page.keyboard.press('Tab'); // commit the change event
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('wavearea:settings')).thr)).toBe(-40);
+
+    // loud fixture: nothing under -40dB — length unchanged, threshold serialized
+    await page.locator('#shrink').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('shrink=300_40'), { timeout: 8000 });
+    expect(await cleanLen(page)).toBe(total);
+
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await waitLen(page, total);
+    expect(page.url()).toContain('shrink=300_40');
+    expect(errors).toEqual([]);
+  });
+
+  test('export reports progress and resets it', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // a longer doc so the encode spans several frames
+    await page.evaluate(() => wa.openSilence(60));
+    await page.waitForFunction(() => !document.querySelector('#status') && wa.total > 2000, { timeout: 20000 });
+
+    // sample the progress signal + bar each frame during the encode
+    await page.evaluate(() => {
+      window.__progress = [];
+      window.__bar = false;
+      let tick = () => {
+        if (wa.progress != null) window.__progress.push(wa.progress);
+        window.__bar ||= !!document.querySelector('#progressbar');
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    expect(download.suggestedFilename()).toBe('silence-edited.wav');
+    let { seen, bar } = await page.evaluate(() => ({ seen: window.__progress, bar: window.__bar }));
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every(p => p >= 0 && p <= 1)).toBe(true);
+    expect(bar).toBe(true);
+    expect(await page.evaluate(() => wa.progress)).toBe(null);
+    expect(errors).toEqual([]);
+  });
+
 });
 
 // --- Opener actions, zoom, export formats ---
@@ -2009,7 +2114,7 @@ test.describe('opener & zoom', () => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     await page.locator('#silence').click();
     await page.waitForFunction(() =>
-      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > 100, { timeout: 15000 });
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C\n]/g, '').length > 100, { timeout: 15000 });
     // 3s @ 44.1kHz / 1024 ≈ 130 blocks of silence
     expect(await cleanLen(page)).toBe(Math.ceil(3 * 44100 / 1024));
     await page.waitForFunction(() => location.search.includes('silence.wav'), { timeout: 10000 });
@@ -2085,6 +2190,42 @@ test.describe('opener & zoom', () => {
     let sync = buf[0] === 0xFF && (buf[1] & 0xE0) === 0xE0;
     let id3 = buf.subarray(0, 3).toString('ascii') === 'ID3';
     expect(sync || id3).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('flac export downloads an encoded file', async ({ page }) => {
+    await loadFile(page);
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download-flac').dispatchEvent('mousedown'),
+    ]);
+    expect(download.suggestedFilename()).toBe('sine-3s-edited.flac');
+    let chunks = [];
+    for await (let c of await download.createReadStream()) chunks.push(c);
+    let buf = Buffer.concat(chunks);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 4).toString('ascii')).toBe('fLaC');
+    expect(errors).toEqual([]);
+  });
+
+  test('opener deletes stored files and shows storage usage', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await loadFile(page);
+    await waitForSave(page);
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelector('#files li'), { timeout: 10000 });
+    expect(await page.locator('#files li').count()).toBe(1);
+    await expect(page.locator('#storage')).toBeVisible();
+    expect(await page.locator('#storage').textContent()).toMatch(/[KM]B used/);
+
+    await page.locator('.delete-button').click();
+    await page.waitForFunction(() => !document.querySelector('#files li'), { timeout: 5000 });
+    // gone from the adapter too, not just the list
+    expect(await page.evaluate(async () => {
+      let { createStore } = await import('/src/store/index.js');
+      let files = await createStore().getFiles();
+      return files.length;
+    })).toBe(0);
     expect(errors).toEqual([]);
   });
 
@@ -2173,7 +2314,7 @@ test.describe('transport & settings', () => {
 
     await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('Shift+ArrowRight');
-    let sel = await page.evaluate(() => { let s = getSelection(); return s.toString().replace(/[\u0300\u0301\n]/g, '').length });
+    let sel = await page.evaluate(() => { let s = getSelection(); return s.toString().replace(/[\u0300-\u030C\n]/g, '').length });
     expect(sel).toBe(2);
     expect(await page.evaluate(() => wa.loop)).toBe(true);
 
@@ -2338,6 +2479,59 @@ test.describe('markers & navigation', () => {
     expect(errors).toEqual([]);
   });
 
+  test('double-click labels a marker; label shows, serializes and shifts with edits', async ({ page }) => {
+    await setCaret(page, 20);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=20'), { timeout: 5000 });
+
+    await page.locator('#marks .mark').dispatchEvent('dblclick');
+    await expect(page.locator('#mark-label-input')).toBeVisible();
+    await page.locator('#mark-label-input').fill('intro v1.2');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#mark-label-input')).toBeHidden();
+    await expect(page.locator('#marks .mark-label')).toHaveText('intro v1.2');
+    await page.waitForFunction(() => location.search.includes('m=20-'), { timeout: 5000 });
+
+    // label follows the marker through a shifting edit
+    await setCaret(page, 5);
+    await page.keyboard.press('Backspace');
+    await page.waitForFunction(() => new URLSearchParams(location.search).get('m')?.startsWith('19-'), { timeout: 5000 });
+    expect(await page.evaluate(() => wa.markL[19])).toBe('intro v1.2');
+
+    // undo restores the pre-edit label position
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => new URLSearchParams(location.search).get('m')?.startsWith('20-'), { timeout: 5000 });
+    expect(await page.evaluate(() => wa.markL[20])).toBe('intro v1.2');
+    expect(errors).toEqual([]);
+  });
+
+  test('marker labels survive reload and export as WAV cue labels', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await setCaret(page, 20);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=20'), { timeout: 5000 });
+    await page.evaluate(() => wa.setMarkLabel(20, 'chorus'));
+    await page.waitForFunction(() => location.search.includes('m=20-chorus'), { timeout: 5000 });
+
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelectorAll('#marks .mark').length === 1, { timeout: 15000 });
+    expect(await page.evaluate(() => wa.markL[20])).toBe('chorus');
+    await expect(page.locator('#marks .mark-label')).toHaveText('chorus');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#download').dispatchEvent('mousedown'),
+    ]);
+    let chunks = [];
+    for await (let c of await download.createReadStream()) chunks.push(c);
+    let ascii = Buffer.concat(chunks).toString('latin1');
+    expect(ascii).toContain('cue ');
+    expect(ascii).toContain('labl');
+    expect(ascii).toContain('chorus');
+    expect(errors).toEqual([]);
+  });
+
   test('g opens jump input; time jump moves caret; input suppresses shortcuts', async ({ page }) => {
     let total = await cleanLen(page);
     await page.keyboard.press('g');
@@ -2391,7 +2585,7 @@ test.describe('markers & navigation', () => {
     await page.waitForTimeout(800);
     await page.locator('#record').dispatchEvent('mousedown');
     await page.waitForFunction((t) =>
-      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > t, total, { timeout: 10000 });
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C\n]/g, '').length > t, total, { timeout: 10000 });
     expect(page.url()).toMatch(/ins=10-.+recording/);
     expect(errors).toEqual([]);
   });
@@ -2409,7 +2603,7 @@ test.describe('recording new document', () => {
     await page.waitForTimeout(800);
     await page.locator('#record-new').click();
     await page.waitForFunction(() =>
-      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301\n]/g, '').length > 10, { timeout: 15000 });
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C\n]/g, '').length > 10, { timeout: 15000 });
     await page.waitForFunction(() => location.search.includes('recording.wav'), { timeout: 10000 });
     expect(errors).toEqual([]);
   });

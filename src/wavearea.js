@@ -24,6 +24,9 @@ function wavFile(samples, sr = 44100, name = 'audio.wav') {
 }
 const silentFile = (sec = 3, sr = 44100) => wavFile(new Float32Array(sec * sr), sr, 'silence.wav')
 
+// URL query keys owned by the op chain
+const OP_PARAMS = ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'gain', 'shrink', 'fadein', 'fadeout', 'br', 'm']
+
 export default function wavearea(el, {
   src,
   readonly = true,
@@ -82,12 +85,19 @@ export default function wavearea(el, {
     speed: +(localStorage.getItem('wavearea:speed') ?? initSpeed) || 1,
     muted: false,
 
-    // op defaults — resolved into each created op and serialized with it (no hidden state)
+    // op defaults — resolved into each created op and serialized with it (no hidden state);
+    // thr: silence threshold dB for shrink (null = engine auto), gainDb: last used gain
     settings: (() => {
-      try { return { gap: 0.3, curve: 'linear', norm: 'peak', theme: 'auto', ...JSON.parse(localStorage.getItem('wavearea:settings') || '{}') } }
-      catch { return { gap: 0.3, curve: 'linear', norm: 'peak', theme: 'auto' } }
+      const DEFAULTS = { gap: 0.3, curve: 'linear', norm: 'peak', theme: 'auto', gainDb: 3, thr: null }
+      try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('wavearea:settings') || '{}') } }
+      catch { return { ...DEFAULTS } }
     })(),
     showSettings: false,
+
+    // absolute sample peak of the timeline — >1 clips on export
+    peak: 0,
+    // export progress 0..1, null when not encoding
+    progress: null,
 
     // total waveform characters (excluding combining marks)
     total: 0,
@@ -235,16 +245,18 @@ export default function wavearea(el, {
       return this.loadAudio(new URL('birds-forest.mp3', location.href).href)
     },
 
-    async loadAudio(file, { save, ops, brs, marks, bs, session } = {}) {
+    async loadAudio(file, { save, ops, brs, marks, markL, bs, session } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
       this.waveform = ''
       this.total = 0
+      this.peak = 0
       this._ops = []
       this._redoOps = []
       this._brs = []
       this.marks = []
+      this.markL = {}
       this._clip = null
       this._session = session ?? null
       this._text = ''
@@ -288,6 +300,7 @@ export default function wavearea(el, {
         this.duration = meta.duration
         this.sampleRate = meta.sampleRate
         this.channels = meta.channels
+        this.peak = meta.peak ?? 0
         // wait for font + layout, retry until char width is measurable
         await document.fonts.ready
         for (let i = 0; i < 10 && !this._charW; i++) {
@@ -311,7 +324,10 @@ export default function wavearea(el, {
           this._brs = [...new Set(brs)].filter(b => b > 0 && b < this.total).sort((a, b) => a - b)
           if (this._brs.length) this._rerenderBreaks(0)
         }
-        if (marks?.length) this.marks = [...new Set(marks)].filter(b => b >= 0 && b < this.total).sort((a, b) => a - b)
+        if (marks?.length) {
+          this.marks = [...new Set(marks)].filter(b => b >= 0 && b < this.total).sort((a, b) => a - b)
+          if (markL) this.markL = Object.fromEntries(this.marks.filter(b => markL[b] != null).map(b => [b, markL[b]]))
+        }
         this.loading = false
         this._refreshMinimap()
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
@@ -551,7 +567,9 @@ export default function wavearea(el, {
     },
 
     // markers — block offsets, shifted with edits like breaks; URL m=a..b
+    // labels keyed by offset (m=120-intro..300), exported as WAV cue labl text
     marks: [],
+    markL: {},
 
     // toggle marker at caret (m key)
     mark() {
@@ -559,9 +577,35 @@ export default function wavearea(el, {
       let sel = this.selection.get()
       let at = sel ? sel.start : this.caretOffset
       if (at < 0 || at >= this.total) return
-      this.marks = this.marks.includes(at)
-        ? this.marks.filter(x => x !== at)
-        : [...this.marks, at].sort((a, b) => a - b)
+      if (this.marks.includes(at)) {
+        this.marks = this.marks.filter(x => x !== at)
+        if (this.markL[at] != null) { let { [at]: _, ...rest } = this.markL; this.markL = rest }
+      } else this.marks = [...this.marks, at].sort((a, b) => a - b)
+      this._syncURL()
+    },
+
+    // dblclick a marker: edit its label in a floating input
+    markEdit: null,
+    markEditStart(b) {
+      let inp = this.refs.markLabel
+      if (!inp) return
+      this.markEdit = b
+      let p = this.markPos(b)
+      inp.style.left = p.left
+      inp.style.top = p.top
+      inp.value = this.markL[b] ?? ''
+      inp.hidden = false
+      inp.focus()
+    },
+
+    setMarkLabel(b, label) {
+      this.markEdit = null
+      if (b == null || !this.marks.includes(b)) return
+      label = String(label).trim()
+      let L = { ...this.markL }
+      if (label) L[b] = label
+      else delete L[b]
+      this.markL = L
       this._syncURL()
     },
 
@@ -621,28 +665,46 @@ export default function wavearea(el, {
     _redoOps: [],
     _clip: null, // { from, to, v, clip } — invalidated when undo breaks the v prefix
 
-    // finalize an op: snapshot & shift segment breaks, push op, render, sync URL.
+    // finalize an op: snapshot & shift segment breaks + markers, push op, render, sync URL.
     // merged ops keep their original pre-burst snapshot and re-shift from it.
     _commit(op, r, caretAt, merge = false) {
-      if (!merge) { op.brs = [...this._brs]; op.marks = [...this.marks]; this._ops.push(op) }
+      if (!merge) { op.brs = [...this._brs]; op.marks = [...this.marks]; op.marksL = { ...this.markL }; this._ops.push(op) }
       this._brs = this._shiftBrs(op, op.brs, r.total)
-      this.marks = this._shiftBrs(op, op.marks ?? this.marks, r.total)
+      ;[this.marks, this.markL] = this._shiftMarks(op, op.marks ?? this.marks, op.marksL ?? this.markL, r.total)
       this._redoOps.length = 0
       this._applyEdit(r, caretAt)
       this._syncURL()
     },
 
+    // remap one block offset through an op; null = position removed by the op
+    _shiftPos(op, x) {
+      let [t, a, b] = op
+      if (t === 'del') return x <= a ? x : x >= b ? x - (b - a) : null
+      if (t === 'clip') return x > a && x < b ? x - a : null
+      if (t === 'sil') return x > a ? x + b : x
+      if (t === 'cp') return x > op[4] ? x + (op[2] - op[1]) : x
+      if (t === 'ins') return x > a ? x + (op.len || 0) : x
+      return x
+    },
+
     // remap break offsets through an op; drops collapsed/out-of-range breaks
     _shiftBrs(op, brs, newTotal) {
-      let [t, a, b] = op, out
-      if (t === 'del') out = brs.filter(x => x <= a || x >= b).map(x => x >= b ? x - (b - a) : x)
-      else if (t === 'clip') out = brs.filter(x => x > a && x < b).map(x => x - a)
-      else if (t === 'sil') out = brs.map(x => x > a ? x + b : x)
-      else if (t === 'cp') out = brs.map(x => x > op[4] ? x + (op[2] - op[1]) : x)
-      else if (t === 'ins') out = brs.map(x => x > a ? x + (op.len || 0) : x)
-      else if (t === 'br') out = op[2] > 0 ? [...brs, a] : brs.filter(x => x !== a)
-      else out = brs
+      let out = op[0] === 'br'
+        ? (op[2] > 0 ? [...brs, op[1]] : brs.filter(x => x !== op[1]))
+        : brs.map(x => this._shiftPos(op, x)).filter(x => x != null)
       return [...new Set(out)].filter(x => x > 0 && x < newTotal).sort((p, q) => p - q)
+    },
+
+    // markers shift like breaks (offset 0 allowed); labels follow their mark
+    _shiftMarks(op, marks, labels, newTotal) {
+      let out = [], outL = {}
+      for (let m of marks) {
+        let x = op[0] === 'br' ? m : this._shiftPos(op, m)
+        if (x == null || x < 0 || x >= newTotal || out.includes(x)) continue
+        out.push(x)
+        if (labels[m] != null) outL[x] = labels[m]
+      }
+      return [out.sort((p, q) => p - q), outL]
     },
 
     // dir: -1 = backspace (before caret), +1 = delete (after caret)
@@ -823,15 +885,40 @@ export default function wavearea(el, {
     },
 
     // compress silent pauses (truncate silence) — selection or whole file;
-    // gap default from settings, serialized with the op (ms)
+    // gap + silence threshold defaults from settings, serialized with the op
+    // (op shape: [gap] | [f, t, gap], trailing negative element = threshold dB)
     shrink() {
       if (!this.total) return
       let range = this._selRange()
       let gapMs = Math.round((+this.settings.gap || 0.3) * 1000)
+      let thr = this.settings.thr == null || this.settings.thr === '' ? null : Math.min(0, +this.settings.thr) || null
       return this._edit(async () => {
         this.stop()
         let op = range ? ['shrink', range[0], range[1], gapMs] : ['shrink', gapMs]
-        this._commit(op, await api.shrink(range?.[0], range?.[1], gapMs / 1000), range ? range[0] : 0)
+        if (thr != null) op.push(thr)
+        this._commit(op, await api.shrink(range?.[0], range?.[1], gapMs / 1000, thr), range ? range[0] : 0)
+      })
+    },
+
+    // decode a shrink op into api.shrink(from, to, gap, thr) args
+    _shrinkArgs(op) {
+      let nums = op.slice(1)
+      let thr = nums[nums.length - 1] < 0 ? nums.pop() : null
+      return nums.length > 1
+        ? [nums[0], nums[1], (nums[2] ?? 300) / 1000, thr]
+        : [null, null, (nums[0] ?? 300) / 1000, thr]
+    },
+
+    // amplify selection by dB (negative attenuates); value persists as the default
+    gain(db) {
+      let range = this._selRange()
+      db = Math.round(+db * 10) / 10
+      if (!range || !Number.isFinite(db) || !db) return
+      db = Math.max(-24, Math.min(24, db))
+      this.setSetting('gainDb', db)
+      return this._edit(async () => {
+        this.stop()
+        this._commit(['gain', range[0], range[1], db], await api.gain(range[0], range[1], db), range[0])
       })
     },
 
@@ -868,11 +955,12 @@ export default function wavearea(el, {
       return null
     },
 
-    // export as WAV/MP3 — selection if active, else whole timeline;
-    // segment breaks become WAV cue points (whole-file export only)
+    // export as WAV/MP3/FLAC — selection if active, else whole timeline;
+    // markers + segment breaks become cue points with labels (whole-file export only)
     async download(fmt = 'wav') {
       if (!this.total || this.loading) return
       this.loading = 'Encoding'
+      this.progress = 0
       try {
         let sr = this.sampleRate, opts = {}
         let range = this._selRange()
@@ -881,12 +969,13 @@ export default function wavearea(el, {
           opts.duration = (range[1] - range[0]) * this.blockSize / sr
         } else if (this._brs.length || this.marks.length) {
           opts.markers = [
-            ...this.marks.map((b, i) => ({ time: b * this.blockSize / sr, label: String(i + 1) })),
+            ...this.marks.map((b, i) => ({ time: b * this.blockSize / sr, label: this.markL[b] ?? String(i + 1) })),
             ...this._brs.map(b => ({ time: b * this.blockSize / sr, label: '¶' })),
           ].sort((a, b) => a.time - b.time)
         }
-        let bytes = await api.encode(fmt, opts)
-        let blob = new Blob([bytes], { type: fmt === 'mp3' ? 'audio/mpeg' : 'audio/wav' })
+        let bytes = await api.encode(fmt, opts, p => this.progress = p.total ? Math.min(1, p.offset / p.total) : null)
+        const MIME = { wav: 'audio/wav', mp3: 'audio/mpeg', flac: 'audio/flac' }
+        let blob = new Blob([bytes], { type: MIME[fmt] || 'application/octet-stream' })
         let link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = `${(this.filename || 'audio').replace(/\.[^.]+$/, '')}-edited.${fmt}`
@@ -896,6 +985,7 @@ export default function wavearea(el, {
         console.error(e)
         this.error = e.message || 'Export failed'
       }
+      this.progress = null
       this.loading = false
     },
 
@@ -915,7 +1005,10 @@ export default function wavearea(el, {
         let scale = x => Math.round(x * ratio)
         for (let op of [...this._ops, ...this._redoOps]) this._scaleOp(op, scale)
         this._brs = [...new Set(this._brs.map(scale))].filter(x => x > 0).sort((a, b) => a - b)
+        let L = {}
+        for (let m of this.marks) if (this.markL[m] != null) L[scale(m)] ??= this.markL[m]
         this.marks = [...new Set(this.marks.map(scale))].sort((a, b) => a - b)
+        this.markL = L
         if (this._clip) this._clip = { ...this._clip, from: scale(this._clip.from), to: scale(this._clip.to) }
         this._applyEdit(await api.rerender(), scale(this.caretOffset))
         this._syncURL()
@@ -923,15 +1016,18 @@ export default function wavearea(el, {
     },
 
     // rescale an op's block coords in place (cp keeps its chain index v, br its
-    // direction, shrink its gap, fades their curve)
+    // direction, shrink its gap/threshold, fades their curve, gain its dB)
     _scaleOp(op, s) {
       if (op[0] === 'cp') { op[1] = s(op[1]); op[2] = s(op[2]); op[4] = s(op[4]) }
       else if (op[0] === 'ins') { op[1] = s(op[1]); if (op.len) op.len = s(op.len) }
-      else if (op[0] === 'shrink') { if (op.length > 2) { op[1] = s(op[1]); op[2] = s(op[2]) } }
+      else if (op[0] === 'shrink') { if (op.length - (op[op.length - 1] < 0 ? 1 : 0) > 2) { op[1] = s(op[1]); op[2] = s(op[2]) } }
       else if (op[0] === 'norm') {}
       else if (typeof op[1] === 'number') { op[1] = s(op[1]); if (typeof op[2] === 'number' && op[0] !== 'br') op[2] = s(op[2]) }
       if (op.brs) op.brs = op.brs.map(s)
-      if (op.marks) op.marks = op.marks.map(s)
+      if (op.marks) {
+        if (op.marksL) op.marksL = Object.fromEntries(Object.entries(op.marksL).map(([k, v]) => [s(+k), v]))
+        op.marks = op.marks.map(s)
+      }
     },
 
     undo() {
@@ -951,6 +1047,7 @@ export default function wavearea(el, {
         this._redoOps.push(this._ops.pop())
         this._brs = last.brs ?? this._brs
         this.marks = last.marks ?? this.marks
+        this.markL = last.marksL ?? this.markL
         // clipboard referenced a chain state that no longer exists
         if (this._clip && this._ops.length < this._clip.v) this._clip = null
         this.stop()
@@ -978,13 +1075,14 @@ export default function wavearea(el, {
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
           : op[0] === 'norm' ? await api.normalize(op[1])
-          : op[0] === 'shrink' ? (op.length > 2 ? await api.shrink(op[1], op[2], (op[3] ?? 300) / 1000) : await api.shrink(null, null, (op[1] ?? 300) / 1000))
+          : op[0] === 'gain' ? await api.gain(op[1], op[2], op[3])
+          : op[0] === 'shrink' ? await api.shrink(...this._shrinkArgs(op))
           : op[0] === 'fadein' ? await api.fadeRange(op[1], op[2], 1, op[3])
           : op[0] === 'fadeout' ? await api.fadeRange(op[1], op[2], -1, op[3])
           : await api.pasteClip(op.clip, op[4])
         this._ops.push(op)
         this._brs = this._shiftBrs(op, op.brs ?? this._brs, r.total)
-        this.marks = this._shiftBrs(op, op.marks ?? this.marks, r.total)
+        ;[this.marks, this.markL] = this._shiftMarks(op, op.marks ?? this.marks, op.marksL ?? this.markL, r.total)
         this._applyEdit(r, op[0] === 'del' ? op[1] : op[0] === 'sil' ? op[1] + op[2] : op[0] === 'clip' ? 0 : op[0] === 'cp' ? op[4] : op[1] ?? this.caretOffset)
         this._syncURL()
       })
@@ -992,23 +1090,30 @@ export default function wavearea(el, {
 
     // URL is the state: ?src=<store id | remote url>&del=f-t&sil=at-n&cp=f-t-v-at&br=a..b
     // repeated op params, document order = application order; br is a separate
-    // visual-only list in current-timeline coords
+    // visual-only list in current-timeline coords; shrink threshold rides as _dB
+    // magnitude, marker labels as -label suffixes (URL-encoded, dots %2E-escaped
+    // to survive the .. separator) — all separators stay literal in the query
     _syncURL(src) {
       let url = new URL(location.href)
       if (src != null) url.searchParams.set('src', src)
       if (this.blockSize !== BLOCK_SIZE) url.searchParams.set('bs', this.blockSize)
       else url.searchParams.delete('bs')
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm', 'session']) url.searchParams.delete(k)
-      for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
+      for (let k of [...OP_PARAMS, 'session']) url.searchParams.delete(k)
+      for (let op of this._ops) if (op[0] !== 'br') {
+        let parts = op.slice(1)
+        let thr = op[0] === 'shrink' && parts[parts.length - 1] < 0 ? -parts.pop() : null
+        url.searchParams.append(op[0], parts.join('-') + (thr ? '_' + thr : ''))
+      }
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
-      if (this.marks.length) url.searchParams.set('m', this.marks.join('..'))
+      if (this.marks.length) url.searchParams.set('m', this.marks.map(b =>
+        this.markL[b] != null ? b + '-' + encodeURIComponent(this.markL[b]).replace(/\./g, '%2E') : b).join('..'))
       // long chains: park the ops in a stored session, keep the URL short
       if (this._ops.length > 50 || url.search.length > 1500) {
-        for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
+        for (let k of OP_PARAMS) url.searchParams.delete(k)
         this._session ??= Date.now().toString(36)
         localStorage.setItem('wavearea:session:' + this._session, JSON.stringify({
           ops: this._ops.filter(o => o[0] !== 'br').map(o => [...o]),
-          brs: [...this._brs], marks: [...this.marks],
+          brs: [...this._brs], marks: [...this.marks], markL: { ...this.markL },
         }))
         url.searchParams.set('session', this._session)
       } else if (this._session) {
@@ -1039,9 +1144,10 @@ export default function wavearea(el, {
       this._setCaret(at)
     },
 
-    _applyEdit({ waveform, total, duration }, at) {
+    _applyEdit({ waveform, total, duration, peak }, at) {
       this.total = total
       this.duration = duration
+      if (peak != null) this.peak = peak
       this._text = this._withBreaks(waveform)
       this.measureWaveform()
       this.computeRawLines()
@@ -1187,12 +1293,23 @@ export default function wavearea(el, {
     let ops = []
     for (let [k, v] of params) {
       if (k === 'norm') { ops.push(v ? ['norm', v] : ['norm']); continue }
+      if (k === 'gain') {
+        // f-t-db, db signed/fractional
+        let m = v.match(/^(\d+)-(\d+)-(-?\d+(?:\.\d+)?)$/)
+        if (m && +m[1] <= +m[2] && Math.abs(+m[3]) <= 24) ops.push(['gain', +m[1], +m[2], +m[3]])
+        continue
+      }
       if (k === 'shrink') {
-        // shrink=[gapMs] | f-t[-gapMs] (legacy: bare / f-t)
-        let nums = v === '' ? [] : v.split('-').map(Number)
+        // shrink=[gapMs] | f-t[-gapMs], optional _thr silence threshold (dB below 0)
+        let [body, thrS] = v.split('_')
+        let nums = body === '' ? [] : body.split('-').map(Number)
         if (!nums.every(n => Number.isInteger(n) && n >= 0)) continue
-        if (nums.length <= 1) ops.push(['shrink', nums[0] ?? 300])
-        else if (nums.length <= 3) ops.push(['shrink', nums[0], nums[1], nums[2] ?? 300])
+        let op
+        if (nums.length <= 1) op = ['shrink', nums[0] ?? 300]
+        else if (nums.length <= 3) op = ['shrink', nums[0], nums[1], nums[2] ?? 300]
+        else continue
+        if (thrS && +thrS > 0 && +thrS <= 120) op.push(-+thrS)
+        ops.push(op)
         continue
       }
       if (k === 'fadein' || k === 'fadeout') {
@@ -1218,20 +1335,28 @@ export default function wavearea(el, {
       if (nums.length === ARITY[k] && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push([k, ...nums])
     }
     let brs = (params.get('br') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n > 0)
-    let marks = (params.get('m') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n >= 0)
+    // m=120..300-label — optional -label per mark (URL-encoded, dots as %2E)
+    let marks = [], markL = {}
+    for (let part of (params.get('m') || '').split('..')) {
+      let pm = part.match(/^(\d+)(?:-(.*))?$/)
+      if (!pm) continue
+      let b = +pm[1]
+      marks.push(b)
+      if (pm[2] != null) { try { markL[b] = decodeURIComponent(pm[2]) } catch {} }
+    }
     // parked session takes over the op chain
     let session = params.get('session')
     if (session) {
       try {
         let st = JSON.parse(localStorage.getItem('wavearea:session:' + session) || 'null')
         if (!st) session = null
-        else { ops = st.ops; brs = st.brs || []; marks = st.marks || [] }
+        else { ops = st.ops; brs = st.brs || []; marks = st.marks || []; markL = st.markL || {} }
       } catch {}
     }
     // a cp op may only reference the chain prefix before its own position
     ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     let bs = [1024, 2048, 4096, 8192].includes(+params.get('bs')) ? +params.get('bs') : undefined
-    state.loadAudio(src, { ops, brs, marks, bs, session })
+    state.loadAudio(src, { ops, brs, marks, markL, bs, session })
   }
 
   return state

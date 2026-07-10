@@ -68,8 +68,18 @@
       ></div>
 
     <div id="marks">
-      <span class="mark" :each="b in marks" :style="markPos(b)" :title="timecode(b, 2)"
-        :onclick="() => jumpTo(b)"></span>
+      <span class="mark" :each="b in marks" :style="markPos(b)" :title="`${timecode(b, 2)} — double-click to label`"
+        :onclick="() => jumpTo(b)"
+        :ondblclick.prevent.stop="() => markEditStart(b)">
+        <span class="mark-label" :if="markL[b] != null" :text="markL[b]"></span>
+      </span>
+      <input id="mark-label-input" hidden aria-label="Marker label"
+        :ref="refs.markLabel"
+        placeholder="label"
+        :onkeydown.enter.prevent.stop="e => (setMarkLabel(markEdit, e.target.value), e.target.hidden = true)"
+        :onkeydown.esc.stop="e => (markEdit = null, e.target.hidden = true)"
+        :onblur="e => (markEdit = null, e.target.hidden = true)"
+        :onmousedown.stop:ondblclick.stop="e=>e" />
     </div>
 
     <div id="timecodes" :ref="refs.timecodes" :style="{paddingTop: winStart * _lineH + 'px'}">
@@ -131,13 +141,25 @@
           <path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" />
         </svg>
       </button>
+      <span id="gain" :hidden="!total || loading || !loop">
+        <input id="gain-db" type="number" min="-24" max="24" step="1" aria-label="Gain, dB"
+          :ref="refs.gainDb"
+          title="Amplify selection, dB (Enter applies)"
+          :value="settings.gainDb"
+          :onmousedown.stop="e=>e"
+          :onkeydown.enter.prevent.stop="e => gain(e.target.value)" />
+        <button id="gain-apply" class="op" aria-label="Apply gain"
+          title="Amplify selection by dB"
+          :onmousedown.stop.prevent="() => gain(refs.gainDb?.value)"
+          tabindex="-1"><span class="fmt">dB</span></button>
+      </span>
     </div>
   </div>
 
   <div id="opener"
     :if="!total && !loading"
-    :scope="{files: [], sortBy: 'date'}"
-    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => [])}"
+    :scope="{files: [], sortBy: 'date', usage: null}"
+    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null)}"
     :ondragover.prevent="e=>e"
     :ondrop.prevent="e => { let f = [...e.dataTransfer.files].find(f => f.type.startsWith('audio')); f && loadAudio(f, { save: true }) }">
     <nav>
@@ -145,7 +167,7 @@
             accept="audio/x-m4a,audio/mp3,audio/amr,audio/aiff,audio/wav,audio/*"
             :onchange="e => loadAudio(e.target.files[0], { save: true })" />
       <label for="file" class="open-action" title="Open audio file">
-        <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#000000"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 20L18 20" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 16V4M12 4L15.5 7.5M12 4L8.5 7.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <span>open</span>
       </label>
       <button id="sample" class="open-action" title="Load demo sample (forest sounds)"
@@ -178,13 +200,25 @@
             <span class="file-name" :text="fileInfo.name"></span>
             <span class="file-date" :text="new Date(fileInfo.timestamp).toLocaleDateString()"></span>
           </button>
+          <button class="delete-button" aria-label="Delete stored file"
+            :title="`Delete ${fileInfo.name} from storage`"
+            :onclick.stop="async () => { await api.deleteFile(fileInfo.id); files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null) }">
+            <span>×</span>
+          </button>
         </li>
       </ul>
+      <p id="storage" :if="usage?.usage"
+        :text="`${usage.usage >= 1048576 ? (usage.usage / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(usage.usage / 1024)) + ' KB'} used${usage.quota ? ` of ${(usage.quota / 1073741824).toFixed(1)} GB` : ''}`"></p>
     </div>
   </div>
 
   <div id="minimap" :if="total && !loading">
     <span id="time" :text="`${timecode(caretOffset)} / ${timecode(total)}`"></span>
+    <button id="clip-warn" class="op" :if="peak > 1"
+      aria-label="Clipping warning"
+      :title="`Peaks ${(20 * Math.log10(peak)).toFixed(1)} dB above full scale — clips on export. Click to normalize.`"
+      :onmousedown.stop.prevent="() => normalize()"
+      tabindex="-1"><span class="fmt" :text="`▲ +${(20 * Math.log10(peak)).toFixed(1)}dB`"></span></button>
     <div id="mini-wave"
       :ref="refs.minimapBox"
       :onpointerdown.prevent="e => minimapSeek(e)"
@@ -297,6 +331,17 @@
       </svg>
       <span class="fmt">mp3</span>
     </button>
+    <button id="download-flac" class="op"
+      aria-label="Download FLAC"
+      title="Download FLAC (selection if active)"
+      :onmousedown.stop.prevent="() => download('flac')"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+      </svg>
+      <span class="fmt">flac</span>
+    </button>
   </div>
 
   <div id="settings" :if="showSettings && total"
@@ -304,6 +349,9 @@
     <label>shrink gap, s
       <input type="number" min="0" max="5" step="0.1" :value="settings.gap"
         :onchange="e => setSetting('gap', +e.target.value || 0.3)" /></label>
+    <label>silence, dB
+      <input id="thr" type="number" min="-90" max="0" step="5" placeholder="auto" :value="settings.thr ?? ''"
+        :onchange="e => setSetting('thr', e.target.value === '' ? null : Math.min(0, +e.target.value))" /></label>
     <label>fade curve
       <select :onchange="e => setSetting('curve', e.target.value)">
         <option :each="c in ['linear','exp','log','cos']" :value="c" :text="c" :selected="settings.curve === c"></option>
@@ -318,7 +366,9 @@
       </select></label>
   </div>
 
-  <div id="status" :if="loading || recording" :text="recording ? `● ${recording}` : `${loading}${total ? ' · ' + timecode(total) : ''}`"></div>
+  <div id="progressbar" :if="progress != null" :style="{width: progress * 100 + '%'}"></div>
+
+  <div id="status" :if="loading || recording" :text="recording ? `● ${recording}` : `${loading}${progress != null ? ` ${Math.round(progress * 100)}%` : ''}${total ? ' · ' + timecode(total) : ''}`"></div>
 
   <div id="error" :if="error" :text="error">
   </div>
