@@ -89,23 +89,27 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
-    // peak-normalize the whole file (target gain derives from full stats)
-    async normalize() {
-      await a.run(['normalize', {}])
+    // normalize the whole file — target: undefined = peak 0dB, number = peak dB,
+    // string = LUFS preset (streaming/podcast/broadcast)
+    async normalize(target) {
+      let opts = target != null ? { target: isNaN(+target) ? target : +target } : {}
+      await a.run(['normalize', opts])
       return refresh()
     },
 
-    // compress silent pauses to the default gap — whole file or range
-    async shrink(fromBlock, toBlock) {
-      let opts = {}
+    // compress silent pauses to `gap` seconds — whole file or range
+    async shrink(fromBlock, toBlock, gap) {
+      let opts = gap != null ? { gap } : {}
       if (fromBlock != null) { opts.offset = fromBlock * bs; opts.length = (toBlock - fromBlock) * bs }
       await a.run(['shrink', opts])
       return refresh()
     },
 
-    // fade over a range — dir: 1 = in, -1 = out
-    async fadeRange(fromBlock, toBlock, dir) {
-      await a.run(['fade', { in: dir * (toBlock - fromBlock) * bs / a.sampleRate, offset: fromBlock * bs }])
+    // fade over a range — dir: 1 = in, -1 = out; optional curve name
+    async fadeRange(fromBlock, toBlock, dir, curve) {
+      let opts = { in: dir * (toBlock - fromBlock) * bs / a.sampleRate, offset: fromBlock * bs }
+      if (curve) opts.curve = curve
+      await a.run(['fade', opts])
       return refresh()
     },
 
@@ -183,15 +187,18 @@ export default function createApi({ store } = {}) {
           await b.ready
           await a.run(['insert', { source: b, offset: args[0] * bs }])
         }
-        else if (type === 'norm') await a.run(['normalize', {}])
+        else if (type === 'norm') await a.run(['normalize', args[0] != null ? { target: isNaN(+args[0]) ? args[0] : +args[0] } : {}])
         else if (type === 'shrink') {
           let opts = {}
-          if (args.length) { opts.offset = args[0] * bs; opts.length = (args[1] - args[0]) * bs }
+          if (args.length > 1) { opts.offset = args[0] * bs; opts.length = (args[1] - args[0]) * bs; opts.gap = (args[2] ?? 300) / 1000 }
+          else opts.gap = (args[0] ?? 300) / 1000
           await a.run(['shrink', opts])
         }
         else if (type === 'fadein' || type === 'fadeout') {
           let d = (type === 'fadein' ? 1 : -1) * (args[1] - args[0]) * bs / sr
-          await a.run(['fade', { in: d, offset: args[0] * bs }])
+          let opts = { in: d, offset: args[0] * bs }
+          if (args[2]) opts.curve = args[2]
+          await a.run(['fade', opts])
         }
       }
       return refresh()

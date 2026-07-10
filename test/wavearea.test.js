@@ -2118,6 +2118,166 @@ test.describe('opener & zoom', () => {
 
 });
 
+// --- Transport, keyboard nav, settings, sessions ---
+
+test.describe('transport & settings', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  test('timecode formats hours; jump accepts h:mm:ss', async ({ page }) => {
+    let tc = await page.evaluate(() => wa.timecode(Math.ceil(3661 * wa.sampleRate / wa.blockSize)));
+    expect(tc).toBe('1:01:01');
+    expect(await page.evaluate(() => wa.timecode(0))).toBe('0:00');
+
+    await page.keyboard.press('g');
+    await page.locator('#jump').fill('0:00:01');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    expect(await caretPos(page)).toBe(Math.round(44100 / 1024));
+    expect(errors).toEqual([]);
+  });
+
+  test('speed cycles and persists; volume + mute', async ({ page }) => {
+    await page.locator('#speed').dispatchEvent('mousedown');
+    expect(await page.evaluate(() => wa.speed)).toBe(1.25);
+    expect(await page.locator('#speed .fmt').textContent()).toBe('1.25×');
+    expect(await page.evaluate(() => localStorage.getItem('wavearea:speed'))).toBe('1.25');
+
+    await page.locator('#volume').fill('0.4');
+    expect(await page.evaluate(() => wa.volume)).toBe(0.4);
+    await page.locator('#mute').dispatchEvent('mousedown');
+    expect(await page.evaluate(() => wa.muted)).toBe(true);
+
+    // playback runs with transport applied
+    await page.keyboard.press('Control+Space');
+    await page.waitForTimeout(400);
+    await expect(page.locator('#editarea.playing')).toHaveCount(1);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('arrow keys move caret; shift extends; home/end', async ({ page }) => {
+    await setCaret(page, 10);
+    await page.keyboard.press('ArrowRight');
+    expect(await caretPos(page)).toBe(11);
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    expect(await caretPos(page)).toBe(9);
+
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
+    let sel = await page.evaluate(() => { let s = getSelection(); return s.toString().replace(/[\u0300\u0301\n]/g, '').length });
+    expect(sel).toBe(2);
+    expect(await page.evaluate(() => wa.loop)).toBe(true);
+
+    await page.keyboard.press('Home');
+    expect(await caretPos(page)).toBe(0);
+    await page.keyboard.press('End');
+    let total = await cleanLen(page);
+    expect(await caretPos(page)).toBe(total); // single line → line end = doc end
+    expect(errors).toEqual([]);
+  });
+
+  test('settings resolve into op params and replay', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    await page.locator('#settings-btn').dispatchEvent('mousedown');
+    await expect(page.locator('#settings')).toBeVisible();
+    await page.locator('#settings select').first().selectOption('cos');
+    await page.locator('#settings select').nth(1).selectOption('podcast');
+
+    await setSelection(page, 20, 50);
+    await page.locator('#fadein').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('fadein=20-50-cos'), { timeout: 8000 });
+
+    await page.locator('#normalize').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('norm=podcast'), { timeout: 8000 });
+    let text = await page.evaluate(() => document.querySelector('#editarea').textContent);
+
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await page.waitForFunction((t) => document.querySelector('#editarea')?.textContent === t, text, { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('theme setting applies and persists', async ({ page }) => {
+    await page.locator('#settings-btn').dispatchEvent('mousedown');
+    await page.locator('#settings select').nth(2).selectOption('dark');
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+    let bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(bg).toBe('rgb(21, 21, 21)');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('wavearea:settings')).theme)).toBe('dark');
+    expect(errors).toEqual([]);
+  });
+
+  test('long op chains park in a session; URL stays short', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    test.setTimeout(90000);
+    await setCaret(page, 10);
+    // 52 distinct silence inserts (no repeat flag → no merge)
+    for (let i = 0; i < 52; i++) {
+      await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', cancelable: true })));
+      await page.waitForTimeout(60);
+    }
+    let total = Math.ceil(3 * 44100 / 1024) + 52; // fixture ≈130 + 52... measured below
+    await page.waitForFunction(() => location.search.includes('session='), { timeout: 30000 });
+    expect(page.url()).not.toContain('sil=');
+    let len = await cleanLen(page);
+    let stored = await page.evaluate(() => {
+      let id = new URLSearchParams(location.search).get('session');
+      return JSON.parse(localStorage.getItem('wavearea:session:' + id)).ops.length;
+    });
+    expect(stored).toBeGreaterThan(50);
+
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await waitLen(page, len);
+    expect(page.url()).toContain('session=');
+
+    // undo brings the chain back under the limit → URL params return
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => !location.search.includes('session=') && location.search.includes('sil='), { timeout: 15000 });
+    expect(errors).toEqual([]);
+  });
+
+});
+
+test.describe('playback auto-scroll', () => {
+  test('caret drives scroll on a long doc; wheel pauses it', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    test.setTimeout(60000);
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await page.waitForFunction(() => window.wa, { timeout: 5000 });
+    await page.evaluate(() => {
+      document.querySelector('#wavearea').style.setProperty('--wavefont-spacing', '4px');
+      wa.openSilence(600);
+    });
+    await page.waitForFunction(() => !document.querySelector('#status') && wa.total > 25000, { timeout: 30000 });
+    await page.waitForTimeout(300);
+
+    await page.evaluate(() => { wa.jumpTo(0); wa.speed = 16 });
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => scrollY > 100, { timeout: 20000 });
+
+    // user wheel far enough to take the caret out of view pauses following
+    await page.mouse.wheel(0, -3000);
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => wa._userScrolled)).toBe(true);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+});
+
+
 // --- Markers, jump-to-time, minimap, recording ---
 
 test.describe('markers & navigation', () => {

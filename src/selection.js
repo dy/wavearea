@@ -14,8 +14,13 @@ export function createSelection(getEl, getBase = () => 0) {
 
       let base = getBase()
       let range = s.getRangeAt(0)
-      let start = base + cleanOffset(range.startContainer, range.startOffset, el)
-      let end = base + cleanOffset(range.endContainer, range.endOffset, el)
+      // an endpoint dragged outside the waveform clamps to the near edge
+      let edge = (node, before) => before ? 0 : cleanText(el.firstChild?.textContent ?? '').length
+      let side = (node, off) => el.contains(node)
+        ? cleanOffset(node, off, el)
+        : edge(node, node.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)
+      let start = base + side(range.startContainer, range.startOffset)
+      let end = base + side(range.endContainer, range.endOffset)
       if (start > end) [start, end] = [end, start]
 
       return { start, end, collapsed: s.isCollapsed, range }

@@ -78,8 +78,16 @@ export default function wavearea(el, {
     filename: '',
     // display block size (samples per char) — zoom level; all block coords use it
     blockSize: BLOCK_SIZE,
-    volume: initVolume,
-    speed: initSpeed,
+    volume: Math.max(0, Math.min(1, +(localStorage.getItem('wavearea:volume') ?? initVolume) || 1)),
+    speed: +(localStorage.getItem('wavearea:speed') ?? initSpeed) || 1,
+    muted: false,
+
+    // op defaults — resolved into each created op and serialized with it (no hidden state)
+    settings: (() => {
+      try { return { gap: 0.3, curve: 'linear', norm: 'peak', theme: 'auto', ...JSON.parse(localStorage.getItem('wavearea:settings') || '{}') } }
+      catch { return { gap: 0.3, curve: 'linear', norm: 'peak', theme: 'auto' } }
+    })(),
+    showSettings: false,
 
     // total waveform characters (excluding combining marks)
     total: 0,
@@ -227,7 +235,7 @@ export default function wavearea(el, {
       return this.loadAudio(new URL('birds-forest.mp3', location.href).href)
     },
 
-    async loadAudio(file, { save, ops, brs, marks, bs } = {}) {
+    async loadAudio(file, { save, ops, brs, marks, bs, session } = {}) {
       console.time('[loadAudio] loadAudio')
       this.loading = save ? 'Decoding' : 'Loading'
       this.error = null
@@ -238,6 +246,7 @@ export default function wavearea(el, {
       this._brs = []
       this.marks = []
       this._clip = null
+      this._session = session ?? null
       this._text = ''
       this._rawLines = []
       this._rawCursor = { raw: 0, blocks: 0 }
@@ -352,7 +361,7 @@ export default function wavearea(el, {
       let looping = this.loop
 
       this.selection.set(fromBlock)
-      player.setVolume(this.volume)
+      player.setVolume(this.muted ? 0 : this.volume)
       player.setSpeed(this.speed)
 
       player.onstarted = ({ block, time }) => {
@@ -370,6 +379,43 @@ export default function wavearea(el, {
       this.playing = true
 
       return () => this.stop()
+    },
+
+    // playback speed cycles through fixed steps; live on the running source
+    cycleSpeed() {
+      const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+      this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length]
+      localStorage.setItem('wavearea:speed', this.speed)
+      if (player && this.playing) {
+        // rebase interpolation — elapsed×speed assumes a constant rate
+        this._playStartBlock = this.caretOffset
+        this._playStartTime = player.currentTime
+        player.setSpeed(this.speed)
+      }
+    },
+
+    setVolume(v) {
+      this.volume = Math.max(0, Math.min(1, +v || 0))
+      if (this.volume > 0) this.muted = false
+      localStorage.setItem('wavearea:volume', this.volume)
+      player?.setVolume(this.muted ? 0 : this.volume)
+    },
+
+    toggleMute() {
+      this.muted = !this.muted
+      player?.setVolume(this.muted ? 0 : this.volume)
+    },
+
+    setSetting(k, v) {
+      this.settings = { ...this.settings, [k]: v }
+      localStorage.setItem('wavearea:settings', JSON.stringify(this.settings))
+      if (k === 'theme') this._applyTheme()
+    },
+
+    _applyTheme() {
+      let t = this.settings.theme
+      if (t === 'auto') delete document.documentElement.dataset.theme
+      else document.documentElement.dataset.theme = t
     },
 
     stop() {
@@ -410,7 +456,7 @@ export default function wavearea(el, {
       let ctx = cv.getContext('2d')
       ctx.scale(dpr, dpr)
       ctx.clearRect(0, 0, w, h)
-      ctx.fillStyle = 'rgb(0 0 0 / 55%)'
+      ctx.fillStyle = getComputedStyle(cv).color
       let n = maxs.length, bw = Math.max(1, w / n - 0.5)
       for (let i = 0; i < n; i++) {
         let y0 = (1 - Math.min(1, Math.max(-1, maxs[i]))) / 2 * h
@@ -432,6 +478,71 @@ export default function wavearea(el, {
       let up = () => { removeEventListener('pointermove', scroll); removeEventListener('pointerup', up) }
       addEventListener('pointermove', scroll)
       addEventListener('pointerup', up)
+    },
+
+    // keyboard caret: arrows by block/line, Home/End, Ctrl+Left/Right by line start,
+    // Shift extends from a sticky anchor
+    _anchor: null,
+    _head: null,
+    caretKey(e) {
+      if (!this.total) return
+      let k = e.key
+      // Ctrl/Cmd+Up/Down = marker navigation (separate handlers)
+      if ((e.ctrlKey || e.metaKey) && (k === 'ArrowUp' || k === 'ArrowDown')) return
+      e.preventDefault()
+      let cols = this.cols || 1
+      // live selection is the truth (clicks and programmatic moves don't sync state);
+      // the sticky head survives only while it still matches an end of the selection
+      let sel = this.selection.get()
+      let head = sel
+        ? (sel.collapsed ? sel.start
+          : (this._head === sel.start || this._head === sel.end ? this._head : sel.end))
+        : this.caretOffset
+      if (sel?.collapsed || !sel) this._anchor = e.shiftKey ? (this._anchor ?? head) : null
+      let li = this.lineFromBlock(head)
+      let lineStart = this.lineOffsets[li] ?? 0
+      let lineEnd = this.lineOffsets[li + 1] ?? this.total
+      let next = head
+      if (k === 'ArrowLeft') next = e.ctrlKey || e.metaKey ? (head > lineStart ? lineStart : (this.lineOffsets[li - 1] ?? 0)) : head - 1
+      else if (k === 'ArrowRight') next = e.ctrlKey || e.metaKey ? lineEnd : head + 1
+      else if (k === 'ArrowUp') next = li > 0 ? Math.min((this.lineOffsets[li - 1] ?? 0) + (head - lineStart), lineStart - 1) : 0
+      else if (k === 'ArrowDown') next = li + 1 < this.lineOffsets.length ? Math.min((this.lineOffsets[li + 1] ?? 0) + (head - lineStart), (this.lineOffsets[li + 2] ?? this.total) - 1) : this.total
+      else if (k === 'Home') next = e.ctrlKey || e.metaKey ? 0 : lineStart
+      else if (k === 'End') next = e.ctrlKey || e.metaKey ? this.total : lineEnd
+      else return
+      next = Math.max(0, Math.min(next, this.total))
+      if (e.shiftKey) {
+        this._anchor ??= head
+        this._head = next
+        this._setSelRange(this._anchor, next)
+      } else {
+        this._anchor = null
+        this._head = next
+        this._setCaret(next)
+      }
+    },
+
+    _setSelRange(anchor, head) {
+      let [s, e] = anchor <= head ? [anchor, head] : [head, anchor]
+      let line = this.lineFromBlock(head)
+      if (line < this.winStart || line >= this.winEnd) this._scrollToLine(line)
+      let sel = this.selection.set(s, e)
+      this.caretOffset = head
+      this.caretLine = line
+      this.clipStart = s
+      this.clipEnd = e
+      this.loop = true
+      let rects = sel?.range?.getClientRects()
+      let rect = rects?.length ? rects[head >= anchor ? rects.length - 1 : 0] : null
+      if (rect) { this.caretX = head >= anchor ? rect.right : rect.left; this.caretY = rect.top }
+    },
+
+    _scrollToLine(line) {
+      let ea = this.refs.editarea
+      if (!ea) return
+      let top = ea.getBoundingClientRect().top + scrollY
+      scrollTo({ top: Math.max(0, top + line * (this._lineH || 0) - innerHeight / 3) })
+      this.renderWindow()
     },
 
     // true unless the event targets a text field — global single-key shortcuts guard
@@ -477,11 +588,12 @@ export default function wavearea(el, {
       if (this.playing) this.seekTo(block)
     },
 
-    // 'g': jump to typed time (m:ss or seconds)
+    // 'g': jump to typed time (h:mm:ss, m:ss or seconds)
     jumpToTime(str) {
-      let m = String(str).trim().match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/)
+      let m = String(str).trim().match(/^(?:(\d+):)?(?:(\d+):)?(\d+(?:\.\d+)?)$/)
       if (!m) return
-      let t = (+(m[1] || 0)) * 60 + +m[2]
+      let [, a, b, c] = m
+      let t = b != null ? (+a) * 3600 + (+b) * 60 + +c : (+(a || 0)) * 60 + +c
       this.jumpTo(t * this.sampleRate / this.blockSize)
     },
 
@@ -710,34 +822,41 @@ export default function wavearea(el, {
       })
     },
 
-    // compress silent pauses (truncate silence) — selection or whole file
+    // compress silent pauses (truncate silence) — selection or whole file;
+    // gap default from settings, serialized with the op (ms)
     shrink() {
       if (!this.total) return
       let range = this._selRange()
+      let gapMs = Math.round((+this.settings.gap || 0.3) * 1000)
       return this._edit(async () => {
         this.stop()
-        let op = range ? ['shrink', range[0], range[1]] : ['shrink']
-        this._commit(op, await api.shrink(range?.[0], range?.[1]), range ? range[0] : 0)
+        let op = range ? ['shrink', range[0], range[1], gapMs] : ['shrink', gapMs]
+        this._commit(op, await api.shrink(range?.[0], range?.[1], gapMs / 1000), range ? range[0] : 0)
       })
     },
 
-    // peak-normalize the whole file
+    // normalize the whole file — target from settings (peak dB or LUFS preset)
     normalize() {
       if (!this.total) return
+      let t = this.settings.norm
       return this._edit(async () => {
         this.stop()
-        this._commit(['norm'], await api.normalize(), this.caretOffset)
+        let op = !t || t === 'peak' ? ['norm'] : ['norm', t]
+        this._commit(op, await api.normalize(op[1]), this.caretOffset)
       })
     },
 
-    // fade the selection — dir: 1 = in, -1 = out
+    // fade the selection — dir: 1 = in, -1 = out; curve from settings
     fade(dir) {
       let range = this._selRange()
       if (!range) return
+      let curve = this.settings.curve
       return this._edit(async () => {
         this.stop()
         let [from, to] = range
-        this._commit([dir > 0 ? 'fadein' : 'fadeout', from, to], await api.fadeRange(from, to, dir), from)
+        let op = [dir > 0 ? 'fadein' : 'fadeout', from, to]
+        if (curve && curve !== 'linear') op.push(curve)
+        this._commit(op, await api.fadeRange(from, to, dir, op[3]), from)
       })
     },
 
@@ -803,10 +922,13 @@ export default function wavearea(el, {
       })
     },
 
-    // rescale an op's block coords in place (cp keeps its chain index v, br its direction)
+    // rescale an op's block coords in place (cp keeps its chain index v, br its
+    // direction, shrink its gap, fades their curve)
     _scaleOp(op, s) {
       if (op[0] === 'cp') { op[1] = s(op[1]); op[2] = s(op[2]); op[4] = s(op[4]) }
       else if (op[0] === 'ins') { op[1] = s(op[1]); if (op.len) op.len = s(op.len) }
+      else if (op[0] === 'shrink') { if (op.length > 2) { op[1] = s(op[1]); op[2] = s(op[2]) } }
+      else if (op[0] === 'norm') {}
       else if (typeof op[1] === 'number') { op[1] = s(op[1]); if (typeof op[2] === 'number' && op[0] !== 'br') op[2] = s(op[2]) }
       if (op.brs) op.brs = op.brs.map(s)
       if (op.marks) op.marks = op.marks.map(s)
@@ -855,10 +977,10 @@ export default function wavearea(el, {
           : op[0] === 'sil' ? await api.insertSilence(op[1], op[2])
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
-          : op[0] === 'norm' ? await api.normalize()
-          : op[0] === 'shrink' ? await api.shrink(op[1], op[2])
-          : op[0] === 'fadein' ? await api.fadeRange(op[1], op[2], 1)
-          : op[0] === 'fadeout' ? await api.fadeRange(op[1], op[2], -1)
+          : op[0] === 'norm' ? await api.normalize(op[1])
+          : op[0] === 'shrink' ? (op.length > 2 ? await api.shrink(op[1], op[2], (op[3] ?? 300) / 1000) : await api.shrink(null, null, (op[1] ?? 300) / 1000))
+          : op[0] === 'fadein' ? await api.fadeRange(op[1], op[2], 1, op[3])
+          : op[0] === 'fadeout' ? await api.fadeRange(op[1], op[2], -1, op[3])
           : await api.pasteClip(op.clip, op[4])
         this._ops.push(op)
         this._brs = this._shiftBrs(op, op.brs ?? this._brs, r.total)
@@ -876,10 +998,23 @@ export default function wavearea(el, {
       if (src != null) url.searchParams.set('src', src)
       if (this.blockSize !== BLOCK_SIZE) url.searchParams.set('bs', this.blockSize)
       else url.searchParams.delete('bs')
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm', 'session']) url.searchParams.delete(k)
       for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
       if (this.marks.length) url.searchParams.set('m', this.marks.join('..'))
+      // long chains: park the ops in a stored session, keep the URL short
+      if (this._ops.length > 50 || url.search.length > 1500) {
+        for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
+        this._session ??= Date.now().toString(36)
+        localStorage.setItem('wavearea:session:' + this._session, JSON.stringify({
+          ops: this._ops.filter(o => o[0] !== 'br').map(o => [...o]),
+          brs: [...this._brs], marks: [...this.marks],
+        }))
+        url.searchParams.set('session', this._session)
+      } else if (this._session) {
+        localStorage.removeItem('wavearea:session:' + this._session)
+        this._session = null
+      }
       history.replaceState(null, '', url)
     },
 
@@ -920,14 +1055,7 @@ export default function wavearea(el, {
       this.caretOffset = caret
       this.caretLine = this.lineFromBlock(caret)
       // bring the caret's line into the rendered window
-      if (this.caretLine < this.winStart || this.caretLine >= this.winEnd) {
-        let ea = this.refs.editarea
-        if (ea) {
-          let top = ea.getBoundingClientRect().top + scrollY
-          scrollTo({ top: Math.max(0, top + this.caretLine * (this._lineH || 0) - innerHeight / 3) })
-          this.renderWindow()
-        }
-      }
+      if (this.caretLine < this.winStart || this.caretLine >= this.winEnd) this._scrollToLine(this.caretLine)
       this.clipStart = caret
       this.clipEnd = this.total
       this.loop = false
@@ -937,7 +1065,10 @@ export default function wavearea(el, {
       if (rect) { this.caretX = rect.right; this.caretY = rect.top }
     },
 
+    _userScrolled: false,
+
     _startCaretAnimation() {
+      this._userScrolled = false
       let mouseWait = 0
       let animate = () => {
         if (!this.playing || !player) return
@@ -971,6 +1102,12 @@ export default function wavearea(el, {
               this.caretX = rect.right
               this.caretY = rect.top
               this.caretLine = this.lineFromBlock(block)
+              // auto-scroll: follow the playing caret unless the user scrolled
+              // away; resume once the caret is back in view. (WebKit returns no
+              // rects for some collapsed ranges — no rect, no scroll decision.)
+              let vis = rect.top >= 0 && rect.bottom <= innerHeight - 40
+              if (vis) this._userScrolled = false
+              else if (!this._userScrolled) this._scrollToLine(this.lineFromBlock(block))
             }
           }
         }
@@ -988,8 +1125,9 @@ export default function wavearea(el, {
 
     timecode(block, ms = 0) {
       let time = block * this.blockSize / this.sampleRate || 0
-      let min = Math.floor(time / 60), sec = Math.floor(time) % 60
-      return `${min}:${String(sec).padStart(2, '0')}${ms ? `.${(time % 1).toFixed(ms).slice(2)}` : ''}`
+      let hr = Math.floor(time / 3600), min = Math.floor(time / 60) % 60, sec = Math.floor(time) % 60
+      let head = hr ? `${hr}:${String(min).padStart(2, '0')}` : `${min}`
+      return `${head}:${String(sec).padStart(2, '0')}${ms ? `.${(time % 1).toFixed(ms).slice(2)}` : ''}`
     },
 
     countLines(el) {
@@ -1038,18 +1176,33 @@ export default function wavearea(el, {
 
   state[Symbol.dispose] = () => cleanups.forEach(fn => fn())
 
+  state._applyTheme()
+
   // auto-load src from option or URL; op params reconstruct the edit chain
   let params = new URLSearchParams(location.search)
   src ??= params.get('src')
   if (src) {
-    const ARITY = { del: 2, sil: 2, clip: 2, cp: 4, fadein: 2, fadeout: 2 }
+    const ARITY = { del: 2, sil: 2, clip: 2, cp: 4 }
+    const CURVES = ['linear', 'exp', 'log', 'cos']
     let ops = []
     for (let [k, v] of params) {
-      if (k === 'norm') { ops.push(['norm']); continue }
+      if (k === 'norm') { ops.push(v ? ['norm', v] : ['norm']); continue }
       if (k === 'shrink') {
-        if (v === '') { ops.push(['shrink']); continue }
-        let nums = v.split('-').map(Number)
-        if (nums.length === 2 && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push(['shrink', ...nums])
+        // shrink=[gapMs] | f-t[-gapMs] (legacy: bare / f-t)
+        let nums = v === '' ? [] : v.split('-').map(Number)
+        if (!nums.every(n => Number.isInteger(n) && n >= 0)) continue
+        if (nums.length <= 1) ops.push(['shrink', nums[0] ?? 300])
+        else if (nums.length <= 3) ops.push(['shrink', nums[0], nums[1], nums[2] ?? 300])
+        continue
+      }
+      if (k === 'fadein' || k === 'fadeout') {
+        // f-t[-curve]
+        let parts = v.split('-')
+        let f = Number(parts[0]), t = Number(parts[1])
+        if (!Number.isInteger(f) || !Number.isInteger(t) || f < 0 || t < f) continue
+        let op = [k, f, t]
+        if (parts[2] && CURVES.includes(parts[2])) op.push(parts[2])
+        ops.push(op)
         continue
       }
       if (k === 'ins') {
@@ -1064,12 +1217,21 @@ export default function wavearea(el, {
       let nums = v.split('-').map(Number)
       if (nums.length === ARITY[k] && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push([k, ...nums])
     }
-    // a cp op may only reference the chain prefix before its own position
-    ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     let brs = (params.get('br') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n > 0)
     let marks = (params.get('m') || '').split('..').map(Number).filter(n => Number.isInteger(n) && n >= 0)
+    // parked session takes over the op chain
+    let session = params.get('session')
+    if (session) {
+      try {
+        let st = JSON.parse(localStorage.getItem('wavearea:session:' + session) || 'null')
+        if (!st) session = null
+        else { ops = st.ops; brs = st.brs || []; marks = st.marks || [] }
+      } catch {}
+    }
+    // a cp op may only reference the chain prefix before its own position
+    ops = ops.filter((op, i) => op[0] !== 'cp' || op[3] <= i)
     let bs = [1024, 2048, 4096, 8192].includes(+params.get('bs')) ? +params.get('bs') : undefined
-    state.loadAudio(src, { ops, brs, marks, bs })
+    state.loadAudio(src, { ops, brs, marks, bs, session })
   }
 
   return state
