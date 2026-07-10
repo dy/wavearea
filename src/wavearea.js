@@ -5,6 +5,7 @@ import sprae from 'sprae';
 import template from './wavearea.html';
 import { createSelection, cleanText, cleanToRaw, isBlock } from './selection.js';
 import createApi from './api.js';
+import { statsToWavefont } from './waveform.js';
 import { buildRawLines, windowRange } from './virtual.js';
 import createPlayer from './player.js';
 import { BLOCK_SIZE } from './constants.js';
@@ -93,6 +94,7 @@ export default function wavearea(el, {
       catch { return { ...DEFAULTS } }
     })(),
     showSettings: false,
+    showHelp: false,
 
     // absolute sample peak of the timeline — >1 clips on export
     peak: 0,
@@ -458,28 +460,52 @@ export default function wavearea(el, {
       this.viewFrac = Math.min(1, innerHeight / max)
     },
 
-    // redraw the whole-file minimap canvas from coarse stats
+    // re-query coarse whole-file stats, then redraw (edits change the audio)
     async _refreshMinimap() {
       let cv = this.refs.minimap
       if (!cv || !this.total) return
+      let w = cv.clientWidth || 300
+      this._ovr = await api.overview(Math.max(32, Math.min(Math.round(w / 2), 800)))
+      this._drawMinimap()
+      this._trackScroll()
+    },
+
+    // draw bars + overlays (selection band, segment breaks, markers) from cached
+    // stats — overlay-only changes redraw without an engine roundtrip
+    _drawMinimap() {
+      let cv = this.refs.minimap, data = this._ovr
+      if (!cv || !data || !this.total) return
       let w = cv.clientWidth || 300, h = cv.clientHeight || 24
       let dpr = devicePixelRatio || 1
       cv.width = Math.round(w * dpr)
       cv.height = Math.round(h * dpr)
-      let data = await api.overview(Math.max(32, Math.min(Math.round(w / 2), 800)))
-      if (!data) return
       let { mins, maxs } = data
       let ctx = cv.getContext('2d')
       ctx.scale(dpr, dpr)
       ctx.clearRect(0, 0, w, h)
-      ctx.fillStyle = getComputedStyle(cv).color
+      let fg = getComputedStyle(cv).color
+      let X = b => b / this.total * w
+      // selection band under the bars
+      if (this.loop && this.clipEnd != null && this.clipEnd > this.clipStart) {
+        ctx.globalAlpha = .25
+        ctx.fillStyle = fg
+        ctx.fillRect(X(this.clipStart), 0, Math.max(1, X(this.clipEnd) - X(this.clipStart)), h)
+        ctx.globalAlpha = 1
+      }
+      ctx.fillStyle = fg
       let n = maxs.length, bw = Math.max(1, w / n - 0.5)
       for (let i = 0; i < n; i++) {
         let y0 = (1 - Math.min(1, Math.max(-1, maxs[i]))) / 2 * h
         let y1 = (1 - Math.min(1, Math.max(-1, mins[i]))) / 2 * h
         ctx.fillRect(i / n * w, y0, bw, Math.max(1, y1 - y0))
       }
-      this._trackScroll()
+      // segment breaks: full-height hairlines
+      ctx.globalAlpha = .5
+      for (let b of this._brs) ctx.fillRect(X(b), 0, 1, h)
+      ctx.globalAlpha = 1
+      // markers: red top ticks
+      ctx.fillStyle = '#e33'
+      for (let b of this.marks) ctx.fillRect(X(b) - 1, 0, 2, h / 3)
     },
 
     // click/drag the minimap to scroll the document
@@ -564,6 +590,19 @@ export default function wavearea(el, {
     // true unless the event targets a text field — global single-key shortcuts guard
     _key(e) {
       return !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName)
+    },
+
+    // Escape: close popovers first, else collapse selection and drop the loop
+    // (playback continues unlooped from the caret)
+    esc() {
+      if (this.showSettings || this.showHelp) return (this.showSettings = this.showHelp = false)
+      if (!this.total) return
+      let at = this.caretOffset
+      this.loop = false
+      this.clipStart = at
+      this.clipEnd = null
+      this.selection.set(at)
+      if (this.playing) this.seekTo(at)
     },
 
     // markers — block offsets, shifted with edits like breaks; URL m=a..b
@@ -665,6 +704,14 @@ export default function wavearea(el, {
     _redoOps: [],
     _clip: null, // { from, to, v, clip } — invalidated when undo breaks the v prefix
 
+    // editing during playback: instead of stopping, capture the playhead —
+    // _commit remaps it through the op and rebuilds the playback window
+    _held: null,
+    _hold() {
+      if (!this.playing) { this.stop(); this._held = null; return }
+      this._held = { at: this.caretOffset }
+    },
+
     // finalize an op: snapshot & shift segment breaks + markers, push op, render, sync URL.
     // merged ops keep their original pre-burst snapshot and re-shift from it.
     _commit(op, r, caretAt, merge = false) {
@@ -674,6 +721,12 @@ export default function wavearea(el, {
       this._redoOps.length = 0
       this._applyEdit(r, caretAt)
       this._syncURL()
+      if (this._held) {
+        // playhead removed by the op resumes at the op start; loop is dropped
+        let at = this._shiftPos(op, this._held.at) ?? (typeof op[1] === 'number' ? op[1] : 0)
+        this._held = null
+        this.seekTo(Math.max(0, Math.min(at, r.total - 1)))
+      }
     },
 
     // remap one block offset through an op; null = position removed by the op
@@ -728,7 +781,7 @@ export default function wavearea(el, {
             else if (dir > 0 && from === last[1]) { merge = true; last[2] += to - from }
           }
         }
-        this.stop()
+        this._hold()
         if (!merge) last = ['del', from, to]
         this._commit(last, await api.removeRange(last[1], last[2], { replace: merge }), from, merge)
       })
@@ -742,7 +795,7 @@ export default function wavearea(el, {
         let at = sel ? sel.start : this.caretOffset
         let last = this._ops[this._ops.length - 1]
         let merge = last?.[0] === 'sil' && repeat && at === last[1] + last[2]
-        this.stop()
+        this._hold()
         if (merge) last[2]++
         else last = ['sil', at, 1]
         this._commit(last, await api.insertSilence(last[1], last[2], { replace: merge }), at + 1, merge)
@@ -762,7 +815,7 @@ export default function wavearea(el, {
 
     // visual-only break op: no engine edit, local re-render
     _break(at, dir) {
-      this.stop()
+      if (!this.playing) this.stop()
       let op = ['br', at, dir]
       op.brs = [...this._brs]
       op.marks = [...this.marks]
@@ -797,7 +850,7 @@ export default function wavearea(el, {
         let at = sel ? sel.start : this.caretOffset
         let op = ['cp', from, to, v, at]
         op.clip = clip
-        this.stop()
+        this._hold()
         this._commit(op, await api.pasteClip(clip, at), at + (to - from))
       })
     },
@@ -825,7 +878,7 @@ export default function wavearea(el, {
     // save a file to the store and insert it at block position (drop, recording)
     _insertFile(at, file) {
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         let prev = this.total
         let id = await api.saveFile(file, { name: file.name })
         let r = await api.insertFile(at, id)
@@ -836,8 +889,10 @@ export default function wavearea(el, {
       })
     },
 
-    // mic recording — toggles; stop inserts at caret, or opens as a new doc
+    // mic recording — toggles; stop inserts at caret, or opens as a new doc.
+    // recWave: live wavefont tail of the last ~90 blocks, shown in the status bar
     _recStop: null,
+    recWave: '',
     async record() {
       if (this._recStop) return this._recStop()
       if (this.loading) return
@@ -854,7 +909,20 @@ export default function wavearea(el, {
         let node = new AudioWorkletNode(ctx, 'rec', { numberOfOutputs: 0 })
         src.connect(node)
         let chunks = [], len = 0
-        node.port.onmessage = e => { chunks.push(e.data); len += e.data.length }
+        // live level monitor — auto-ranged to the session peak so quiet mics read
+        let min = 1, max = -1, acc = 0, peak = 0.01
+        this.recWave = ''
+        node.port.onmessage = e => {
+          chunks.push(e.data); len += e.data.length
+          for (let i = 0; i < e.data.length; i++) { let v = e.data[i]; if (v < min) min = v; if (v > max) max = v }
+          acc += e.data.length
+          if (acc >= BLOCK_SIZE) {
+            peak = Math.max(peak, max, -min)
+            // tail-slice may orphan leading combining marks — drop them
+            this.recWave = (this.recWave + statsToWavefont([min / peak], [max / peak])).slice(-180).replace(/^[^Ā-˿]+/, '')
+            acc = 0; min = 1; max = -1
+          }
+        }
         this.recording = '0:00'
         let timer = setInterval(() => {
           let sec = len / ctx.sampleRate
@@ -867,6 +935,7 @@ export default function wavearea(el, {
           stream.getTracks().forEach(t => t.stop())
           await ctx.close()
           this.recording = false
+          this.recWave = ''
           if (!len) return
           let samples = new Float32Array(len), off = 0
           for (let c of chunks) { samples.set(c, off); off += c.length }
@@ -887,7 +956,7 @@ export default function wavearea(el, {
       let range = this._selRange()
       if (!range) return
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         this._commit(['clip', range[0], range[1]], await api.cropRange(range[0], range[1]), 0)
       })
     },
@@ -901,7 +970,7 @@ export default function wavearea(el, {
       let gapMs = Math.round((+this.settings.gap || 0.3) * 1000)
       let thr = this.settings.thr == null || this.settings.thr === '' ? null : Math.min(0, +this.settings.thr) || null
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         let op = range ? ['shrink', range[0], range[1], gapMs] : ['shrink', gapMs]
         if (thr != null) op.push(thr)
         this._commit(op, await api.shrink(range?.[0], range?.[1], gapMs / 1000, thr), range ? range[0] : 0)
@@ -925,7 +994,7 @@ export default function wavearea(el, {
       db = Math.max(-24, Math.min(24, db))
       this.setSetting('gainDb', db)
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         this._commit(['gain', range[0], range[1], db], await api.gain(range[0], range[1], db), range[0])
       })
     },
@@ -935,7 +1004,7 @@ export default function wavearea(el, {
       if (!this.total) return
       let t = this.settings.norm
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         let op = !t || t === 'peak' ? ['norm'] : ['norm', t]
         this._commit(op, await api.normalize(op[1]), this.caretOffset)
       })
@@ -947,7 +1016,7 @@ export default function wavearea(el, {
       if (!range) return
       let curve = this.settings.curve
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         let [from, to] = range
         let op = [dir > 0 ? 'fadein' : 'fadeout', from, to]
         if (curve && curve !== 'linear') op.push(curve)
@@ -997,6 +1066,17 @@ export default function wavearea(el, {
       this.loading = false
     },
 
+    // Ctrl+scroll / trackpad pinch (browsers report pinch as ctrl+wheel) —
+    // accumulate deltas into discrete zoom steps; caret position is preserved
+    _pinchAcc: 0,
+    pinch(e) {
+      this._pinchAcc += e.deltaY
+      if (Math.abs(this._pinchAcc) < 50) return
+      let dir = this._pinchAcc < 0 ? 1 : -1
+      this._pinchAcc = 0
+      this.zoom(dir)
+    },
+
     // zoom: change display block size (samples per char); coords rescale.
     // levels start at engine stats granularity (1024) — finer needs raw PCM stats
     zoom(dir) {
@@ -1006,7 +1086,7 @@ export default function wavearea(el, {
       let ni = Math.max(0, Math.min(LEVELS.length - 1, i - dir))
       if (ni === i || i < 0) return
       return this._edit(async () => {
-        this.stop()
+        this._hold()
         let ratio = this.blockSize / LEVELS[ni]
         this.blockSize = LEVELS[ni]
         api.setBlockSize(this.blockSize)
@@ -1020,6 +1100,12 @@ export default function wavearea(el, {
         if (this._clip) this._clip = { ...this._clip, from: scale(this._clip.from), to: scale(this._clip.to) }
         this._applyEdit(await api.rerender(), scale(this.caretOffset))
         this._syncURL()
+        // zoom during playback: resume at the same audio position in new coords
+        if (this._held) {
+          let at = scale(this._held.at)
+          this._held = null
+          this.seekTo(Math.max(0, Math.min(at, this.total - 1)))
+        }
       })
     },
 

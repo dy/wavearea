@@ -12,8 +12,11 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return
     if (e.key === 'm') mark()
     else if (e.key === 'g' && total) { refs.jump.hidden = false; refs.jump.value = ''; refs.jump.focus() }
+    else if (e.key === '?') showHelp = !showHelp
   }"
+  :onkeydown.document.esc="e => (_key(e) || showSettings || showHelp) && esc()"
   :onwheel.window:ontouchmove.window="() => playing && (_userScrolled = true)"
+  :onwheel="e => e.ctrlKey && total && !loading && (e.preventDefault(), pinch(e))"
   :onkeydown.document.ctrl-arrowup.prevent:onkeydown.document.meta-arrowup.prevent="() => markJump(-1)"
   :onkeydown.document.ctrl-arrowdown.prevent:onkeydown.document.meta-arrowdown.prevent="() => markJump(1)"
   :onkeydown.document.ctrl-c:onkeydown.document.meta-c="() => copy()"
@@ -224,7 +227,8 @@
     <div id="mini-wave"
       :ref="refs.minimapBox"
       :onpointerdown.prevent="e => minimapSeek(e)"
-      :resize.throttle-raf="() => _refreshMinimap()">
+      :resize.throttle-raf="() => _refreshMinimap()"
+      :fx="marks, _brs, loop, clipStart, clipEnd; _drawMinimap()">
       <canvas :ref="refs.minimap"></canvas>
       <span id="viewport" :style="{ left: scrollFrac * 100 + '%', width: viewFrac * 100 + '%' }"></span>
     </div>
@@ -254,6 +258,10 @@
       :onkeydown.enter.prevent.stop="e => (e.target.blur(), jumpToTime(e.target.value))"
       :onkeydown.esc.stop="e => e.target.blur()"
       :onblur="e => e.target.hidden = true" />
+    <button id="help-btn" class="op" aria-label="Keyboard shortcuts"
+      title="Keyboard shortcuts (?)"
+      :onmousedown.stop.prevent="() => showHelp = !showHelp"
+      tabindex="-1"><span class="fmt">?</span></button>
     <button id="settings-btn" class="op" aria-label="Settings"
       title="Settings"
       :onmousedown.stop.prevent="() => showSettings = !showSettings"
@@ -370,9 +378,30 @@
       </select></label>
   </div>
 
+  <div id="help" :if="showHelp" :onmousedown.stop="e=>e">
+    <b>wavearea</b> — textarea for audio
+    <dl>
+      <dt>Space</dt><dd>insert silence</dd>
+      <dt>Ctrl+Space</dt><dd>play / pause</dd>
+      <dt>Backspace</dt><dd>delete block / join segments</dd>
+      <dt>Enter</dt><dd>split segment</dd>
+      <dt>← → ↑ ↓</dt><dd>move caret (+Shift select, +Ctrl line edge)</dd>
+      <dt>Home / End</dt><dd>line start / end (+Ctrl doc)</dd>
+      <dt>Ctrl+Z / +Shift</dt><dd>undo / redo</dd>
+      <dt>Ctrl+C X V</dt><dd>copy · cut · paste</dd>
+      <dt>m</dt><dd>toggle marker (dblclick to label)</dd>
+      <dt>Ctrl+↑ ↓</dt><dd>previous / next marker</dd>
+      <dt>g</dt><dd>go to time</dd>
+      <dt>Ctrl+scroll</dt><dd>zoom</dd>
+      <dt>Esc</dt><dd>clear selection / close</dd>
+    </dl>
+    <p><a href="https://github.com/audio-lab/wavearea" target="_blank" rel="noopener">github</a> · ॐ</p>
+  </div>
+
   <div id="progressbar" :if="progress != null" :style="{width: progress * 100 + '%'}"></div>
 
-  <div id="status" :if="loading || recording" :text="recording ? `● ${recording}` : `${loading}${progress != null ? ` ${Math.round(progress * 100)}%` : ''}${total ? ' · ' + timecode(total) : ''}`"></div>
+  <!-- #status is white-space:pre — spans must stay adjacent, whitespace renders -->
+  <div id="status" :if="loading || recording"><span :text="recording ? `● ${recording}` : `${loading}${progress != null ? ` ${Math.round(progress * 100)}%` : ''}${total ? ' · ' + timecode(total) : ''}`"></span><span id="rec-wave" class="wavefont" :if="recording" :text="recWave"></span></div>
 
   <div id="error" :if="error" :text="error">
   </div>

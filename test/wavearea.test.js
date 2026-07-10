@@ -2357,6 +2357,49 @@ test.describe('transport & settings', () => {
     expect(errors).toEqual([]);
   });
 
+  test('escape clears selection and closes popovers', async ({ page }) => {
+    await selectLoop(page, 20, 50);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => wa.loop === false, { timeout: 3000 });
+    expect(await page.evaluate(() => { let s = getSelection(); return s.rangeCount ? s.getRangeAt(0).collapsed : true })).toBe(true);
+
+    // popovers close first, selection untouched
+    await selectLoop(page, 20, 50);
+    await page.locator('#settings-btn').dispatchEvent('mousedown');
+    await expect(page.locator('#settings')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#settings')).toHaveCount(0);
+    expect(await page.evaluate(() => wa.loop)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('? opens shortcuts help; esc closes', async ({ page }) => {
+    await page.keyboard.press('?');
+    await expect(page.locator('#help')).toBeVisible();
+    expect(await page.locator('#help').textContent()).toContain('play / pause');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#help')).toHaveCount(0);
+
+    await page.locator('#help-btn').dispatchEvent('mousedown');
+    await expect(page.locator('#help')).toBeVisible();
+    await page.locator('#help-btn').dispatchEvent('mousedown');
+    await expect(page.locator('#help')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('ctrl+scroll zooms around the caret', async ({ page }) => {
+    let total = await cleanLen(page);
+    // pinch/ctrl-wheel accumulates past the threshold → one zoom-out step
+    await page.locator('#waveform').dispatchEvent('wheel', { ctrlKey: true, deltaY: 60, bubbles: true, cancelable: true });
+    await waitLen(page, Math.ceil(total / 2));
+    expect(page.url()).toContain('bs=2048');
+
+    await page.locator('#waveform').dispatchEvent('wheel', { ctrlKey: true, deltaY: -60, bubbles: true, cancelable: true });
+    await waitLen(page, total);
+    await page.waitForFunction(() => !location.search.includes('bs='), { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
   test('long op chains park in a session; URL stays short', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     test.setTimeout(90000);
@@ -2423,6 +2466,61 @@ test.describe('playback auto-scroll', () => {
   });
 });
 
+
+test.describe('edit during playback', () => {
+  let errors;
+
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await loadFile(page);
+    await page.locator('#editarea').click({ position: { x: 5, y: 5 } });
+  });
+
+  test('backspace while playing keeps playback running, playhead shifts', async ({ page }) => {
+    let total = await cleanLen(page);
+    await setCaret(page, 30);
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => wa.playing === true, { timeout: 5000 });
+    await page.waitForTimeout(300);
+
+    await page.keyboard.press('Backspace');
+    await waitLen(page, total - 1);
+    expect(page.url()).toContain('del=');
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+
+    // caret keeps advancing from the shifted playhead
+    let a = await page.evaluate(() => wa.caretOffset);
+    await page.waitForFunction((x) => wa.caretOffset > x, a, { timeout: 5000 });
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('processing a looped selection keeps playing', async ({ page }) => {
+    await selectLoop(page, 20, 60);
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => wa.playing === true, { timeout: 5000 });
+
+    await page.locator('#fadein').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('fadein=20-60'), { timeout: 8000 });
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
+  test('escape during looped playback drops the loop, playback continues', async ({ page }) => {
+    await selectLoop(page, 20, 40);
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => wa.playing === true, { timeout: 5000 });
+
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => wa.loop === false, { timeout: 3000 });
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+});
 
 // --- Markers, jump-to-time, minimap, recording ---
 
@@ -2592,6 +2690,59 @@ test.describe('markers & navigation', () => {
     await page.waitForFunction((t) =>
       document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C\n]/g, '').length > t, total, { timeout: 10000 });
     expect(page.url()).toMatch(/ins=10-.+recording/);
+    expect(errors).toEqual([]);
+  });
+
+  test('recording shows a live waveform preview (fake mic)', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'fake media device flags are chromium-only');
+    await page.locator('#record').dispatchEvent('mousedown');
+    // fake mic streams a tone \u2014 the status bar grows a wavefont tail
+    await page.waitForFunction(() => wa.recWave.length > 3, { timeout: 8000 });
+    await expect(page.locator('#rec-wave')).toBeVisible();
+    let wave = await page.evaluate(() => wa.recWave);
+    expect([...wave].some(c => c >= '\u0100' && c < '\u0180')).toBe(true);
+    await page.locator('#record').dispatchEvent('mousedown');
+    await page.waitForFunction(() => !wa.recording, { timeout: 10000 });
+    expect(await page.evaluate(() => wa.recWave)).toBe('');
+    expect(errors).toEqual([]);
+  });
+
+  test('minimap overlays markers, breaks and selection', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // silence doc: bars are a thin center line, overlays stand out
+    await page.evaluate(() => wa.openSilence(3));
+    await page.waitForFunction(() => !document.querySelector('#status') && wa.total > 100, { timeout: 15000 });
+
+    let px = () => page.evaluate(() => {
+      let cv = document.querySelector('#minimap canvas');
+      let d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      let red = 0, top = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] === 0) continue;
+        if (d[i] > 150 && d[i + 1] < 100) red++;
+        else if (Math.floor(i / 4 / cv.width) < cv.height / 4) top++; // non-red paint in the top band
+      }
+      return { red, top };
+    });
+    let before = await px();
+    expect(before.red).toBe(0);
+
+    // marker \u2192 red tick
+    await setCaret(page, 30);
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => location.search.includes('m=30'), { timeout: 5000 });
+    await page.waitForFunction(async () => {
+      let cv = document.querySelector('#minimap canvas');
+      let d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] > 150 && d[i + 1] < 100) return true;
+      return false;
+    }, { timeout: 5000 });
+
+    // selection \u2192 translucent band reaches the top rows
+    await selectLoop(page, 40, 90);
+    await page.waitForTimeout(200);
+    let withSel = await px();
+    expect(withSel.top).toBeGreaterThan(before.top);
     expect(errors).toEqual([]);
   });
 
