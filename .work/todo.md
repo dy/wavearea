@@ -5,22 +5,25 @@
 
 ## Next
 
-* [ ] Undo/redo during playback (edits hold the playhead now; undo still pauses)
-* [ ] Loop-range visual tint; played-region highlight refinement
-* [ ] Click timecode gutter to add a marker at that line
-* [ ] Export re-import differential test (encode → decode → same stats)
-* [ ] Network-source resilience: retry + clear error for `?src=url`
-* [ ] Mobile layout: touch targets, floater/toolbar placement, 320–768px checks
+* [ ] A11y: roles + screen-reader announcements (playback state, time), keyboard access for op buttons, axe audit
+* [ ] Perf: waveform delta re-render instead of full stat re-query per edit (~100ms at 8h scale)
+* [ ] Visible glyphs: `¶` for segment breaks, `·` for silence blocks?
+* [ ] Delete-all edge: empty doc state, undo from opener
+* [ ] Offline/PWA verification on deployed https (SW registered there only)
+* [ ] Stress: 8h real-file soak (decode minutes, OPFS quota), rapid-ops E2E
 
-Done this wave (wavefont 3.6.0 published + consumed):
-* [x] Trim edge silence — toolbar button, first/last block above settings threshold, commits as plain `clip` op
-* [x] Paste/insert flash (CSS Custom Highlight API) + drop-target affordance (dashed outline)
-* [x] Opener: sort select (date/name/size), two-step clear-all, file list state moved into the component
-* [x] Per-segment ops — double-click selects the segment; gain/fade/trim apply (normalize needs engine range stats)
-* [x] Gapless playback — next window prefetched and start()-scheduled at the seam; block-aligned cap removed the per-seam sample skip
-* [x] Storage-quota failures surface an actionable notice (edits + background saves)
+Done this wave:
+* [x] Undo/redo during playback — inverse playhead remap (`_unshiftPos`), window rebuild; br undo/redo doesn't pause
+* [x] Loop-range tint — fixed winBase mapping in loop-highlight (was wrong on virtualized docs), theme-fg color
+* [x] Gutter `+` on hover toggles a marker at the line (caret row defers to the play button)
+* [x] Network retry — failed `?src=url` shows a retry button, replays the op chain
+* [x] Narrow screens — compact toolbar ≤480px, fits 320px; mobile suite checks it
+* [x] Export re-import differential test (WAV roundtrip ±1 amplitude level)
+* [x] Test memory capped — 64MB engine budget per page (was ~20GB peak → ~4GB), upstream detectBudget cap 2GB→512MB
+* [x] Fixed: unhandled rejection on backend startup failure; `.tc` gutter painting over the play button (FF click intercept); `store: 'idb'|'memory'` string option never mapped to an adapter
 
 Previous waves:
+* [x] Wavefont 3.6.0 · trim edges · paste flash + drop affordance · opener sort/clear-all · segment dblclick · gapless windows · quota notice
 * [x] Escape · edit-during-playback · pinch zoom · minimap overlays · live rec preview · `?` help
 * [x] Gain by dB + clip warning · shrink threshold · export progress + FLAC · marker labels · opener delete/usage
 * [x] Firefox CI project + iPhone-13 webkit smoke — physical iOS/Android pass still open
@@ -33,8 +36,6 @@ Previous waves:
 
 ### Editing
 * [ ] Breaks/markers positions are kept-but-clamped across `shrink` (multi-remove op) — remap them through the emitted removes
-* [ ] Visible glyphs: `¶` for segment breaks, `·` for silence blocks?
-* [ ] Delete-all edge: empty doc state, undo from opener
 
 ### Processing (engine has the ops — needs UI)
 * [ ] Normalize: RMS/LUFS targets; per-selection (needs range-scoped stats resolve)
@@ -50,12 +51,8 @@ Previous waves:
 * [ ] Theme system: CSS vars presets (light/dark/high-contrast), wavefont weight/roundness tuning, color ramps; respect prefers-color-scheme
 
 ### Robustness
-* [ ] Physical-device pass: iOS Safari, Android Chrome (CI now covers Firefox + emulated iPhone webkit)
-* [ ] Mobile layout: touch targets, floater/toolbar placement, 320–768px checks
-* [ ] A11y: roles + screen-reader announcements (playback state, time), keyboard access design for op buttons (command palette?), axe-core audit
-* [ ] Offline/PWA verification on deployed https (SW is registered there only)
-* [ ] Perf: waveform delta re-render instead of full stat re-query per edit (~100ms at 8h scale today); profile decode/render/latency targets
-* [ ] Stress: 8h real-file soak (decode minutes, OPFS quota), rapid-ops E2E
+* [ ] Physical-device pass: iOS Safari, Android Chrome (CI now covers Firefox + emulated iPhone webkit + 320px checks)
+* [ ] Touch targets ≥44px on coarse pointers (compact ≤480px layout shipped)
 
 ## Ideas
 
@@ -134,3 +131,9 @@ Polish wave (2026-07-10, wavefont 3.6.0): trim edge silence (clip op via stats) 
 paste flash + drop affordance · opener sort/clear-all (file state → component) ·
 segment double-click select · gapless playback windows (prefetch + seam schedule,
 block-aligned cap) · quota notice · 392 e2e green.
+
+Resilience wave (2026-07-10): undo/redo during playback (inverse remap) · loop-tint
+winBase fix · gutter + markers · network retry · 320px fit · WAV re-import differential
+test · font via FontFace from the npm package · test memory 20GB→4GB (64MB engine
+budget/page; upstream detectBudget 2GB→512MB) · fixed unhandled play rejection, gutter
+z-order click intercept, store-string option · 407 e2e green in 2.9min.
