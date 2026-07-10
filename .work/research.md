@@ -584,3 +584,9 @@ Mitigation: comprehensive test matrix for onbeforeinput across browsers.
 Fallback: compare before/after text content to detect what changed.
 -> Test onbeforeinput coverage in Phase 0 Playwright tests (Chrome, Firefox, WebKit).
    Document which inputTypes we handle and which we block.
+
+
+## Competitors
+
+* audiomass.co
+* wavcity.com

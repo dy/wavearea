@@ -1045,12 +1045,12 @@ test.describe('bufferPlayer backend', () => {
     await expect(page.locator('#editarea.playing')).toHaveCount(1);
 
     let total = await page.evaluate(() =>
-      document.querySelector('#editarea').textContent.replace(/[\u0300\u0301]/g, '').length
+      document.querySelector('#editarea').textContent.replace(/[\u0300-\u030C]/g, '').length
     );
     let getCleanPos = () => page.evaluate(() => {
       let s = window.getSelection(), r = s.rangeCount ? s.getRangeAt(0) : null;
       if (!r) return 0;
-      return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301]/g, '').length;
+      return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300-\u030C]/g, '').length;
     });
 
     // sample 3 times over 2s — all should stay within selection range
@@ -1296,12 +1296,12 @@ const FORCE_AUDIO_EL = () => {
 // --- Editing: delete, undo/redo ---
 
 const cleanLen = (page) => page.evaluate(() =>
-  document.querySelector('#editarea').textContent.replace(/[\u0300\u0301\n]/g, '').length);
+  document.querySelector('#editarea').textContent.replace(/[\u0300-\u030C\n]/g, '').length);
 
 const caretPos = (page) => page.evaluate(() => {
   let s = window.getSelection(), r = s.rangeCount ? s.getRangeAt(0) : null;
   if (!r) return null;
-  return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300\u0301\n]/g, '').length;
+  return r.startContainer.textContent.slice(0, r.startOffset).replace(/[\u0300-\u030C\n]/g, '').length;
 });
 
 const setCaret = (page, block) => page.evaluate((b) => {
@@ -1423,7 +1423,7 @@ test.describe('editing', () => {
 
     let [selStart, selLen] = await page.evaluate(() => {
       let s = window.getSelection(), r = s.getRangeAt(0);
-      let clean = (str) => str.replace(/[\u0300\u0301]/g, '');
+      let clean = (str) => str.replace(/[\u0300-\u030C]/g, '');
       let start = clean(r.startContainer.textContent.slice(0, r.startOffset)).length;
       let len = clean(r.toString()).length;
       return [start, len];
@@ -1665,7 +1665,7 @@ test.describe('editing', () => {
 
     // fixture length is not block-aligned — measure the grown length instead of assuming 2×
     await page.waitForFunction((t) =>
-      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length > t,
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C]/g, '').length > t,
       total, { timeout: 10000 });
     let grown = await cleanLen(page);
     expect(grown).toBeGreaterThanOrEqual(total * 2 - 1);
@@ -1695,7 +1695,7 @@ test.describe('editing', () => {
     });
     await page.dispatchEvent('#editarea', 'drop', { dataTransfer: dt });
     await page.waitForFunction((t) =>
-      document.querySelector('#editarea')?.textContent.replace(/[\u0300\u0301]/g, '').length > t,
+      document.querySelector('#editarea')?.textContent.replace(/[\u0300-\u030C]/g, '').length > t,
       total, { timeout: 10000 });
     let grown = await cleanLen(page);
     await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });

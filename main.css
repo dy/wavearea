@@ -64,7 +64,7 @@ body {
   font-size: var(--wavefont-size, 50px);
   line-height: var(--wavefont-lh);
   letter-spacing: var(--wavefont-spacing, 0px);
-  font-variation-settings: 'wght' var(--wavefont-wght, 25), 'ROND' var(--wavefont-rond, 100), 'YALN' var(--wavefont-yaln, 0);
+  font-variation-settings: 'wght' var(--wavefont-wght, 100), 'ROND' var(--wavefont-rond, 100), 'YELA' var(--wavefont-yela, 0);
   text-rendering: optimizeSpeed;
   font-smooth: antialiased;
   -webkit-font-smoothing: antialiased;
@@ -89,11 +89,11 @@ body {
   flex-direction: column;
   /* --wavefont-size: max(4rem, min(10.8vw, 6rem)); */
   --wavefont-size: 50px;
-  --wavefont-lh: calc(var(--wavefont-size) * 1.4);
+  --wavefont-lh: calc(var(--wavefont-size) * 1.6); /* caret span is -30..130 in wavefont 3.6+ */
   --wavefont-spacing: 0px;
-  --wavefont-wght: 25;
+  --wavefont-wght: 100; /* wavefont 3.6+ user-space: 100 ≙ 25/1000 em bar width */
   --wavefont-rond: 0;
-  --wavefont-yaln: 0;
+  --wavefont-yela: 0; /* center alignment — shift marks offset bars from middle */
   --secondary: rgb(from var(--fg) r g b / 33%);
   --primary: var(--fg);
 
