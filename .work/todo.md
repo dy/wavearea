@@ -5,39 +5,39 @@
 
 ## Next
 
-* [ ] Escape clears selection and stops loop (quick keyboard win)
-* [ ] Edit during playback: rebuild window when edit is at/behind playhead, clamp position (arch notes below)
-* [ ] Ctrl+scroll / pinch zoom, centered on caret
-* [ ] Recording: live waveform preview while recording (pushable instance streams stats)
-* [ ] Minimap: show markers/breaks/selection; current-window shading polish
-* [ ] Keyboard shortcuts reference + about (support/github/ॐ)
+* [ ] Trim silence at edges (engine trim op + threshold setting, unexposed)
+* [ ] Paste visual feedback (brief highlight); drop-on-waveform affordance
+* [ ] Opener: clear-all storage, sort control
+* [ ] Per-segment operations (normalize/gain one segment)
+* [ ] Gapless window transitions: schedule next source before current ends
+* [ ] Storage quota exceeded: surface a warning, not just console
 
 Done this wave:
-* [x] Gain selection by dB — floater input + dB button, `gain=f-t-db`, engine stat-derive (fast)
-* [x] Clip indicator — timeline peak tracked, `▲ +N.NdB` warning in transport, click = normalize
-* [x] Silence threshold setting → shrink op (`shrink=gapMs_thr`, thr dB below 0; engine trim op still unexposed)
-* [x] Export progress — engine `progress` events → top progressbar + % in status
-* [x] FLAC export button (libflac via @audio/encode, chunk-split lazy load)
-* [x] Marker labels — dblclick to edit, red chip render, `m=b-label` URL/session, WAV cue `labl` export, shift/undo/zoom-safe
-* [x] Opener file management — per-file delete, storage usage line (KB/MB of quota)
-* [x] Firefox project in CI (126 green; fixed drop position via `caretPositionFromPoint`) + iPhone-13 webkit smoke suite — physical iOS/Android pass still open
+* [x] Escape — closes popovers, else clears selection/loop (playback continues unlooped)
+* [x] Edit during playback — ops hold the playhead, remap it through the op (`_shiftPos`), rebuild the window; zoom rescales it
+* [x] Ctrl+scroll / trackpad-pinch zoom (ctrl+wheel accumulate → discrete steps, caret preserved)
+* [x] Recording live preview — auto-ranged wavefont tail in the status bar
+* [x] Minimap overlays — selection band, break hairlines, red marker ticks; cached stats redraw without engine roundtrip
+* [x] Keyboard shortcuts reference (`?` key + toolbar button) with about/github/ॐ
+
+Previous wave:
+* [x] Gain by dB + clip warning (`▲ +N.NdB` → click normalizes) · silence threshold → shrink (`_thr`)
+* [x] Export progress bar + FLAC · marker labels (URL/session/WAV labl) · opener delete + storage usage
+* [x] Firefox CI project + iPhone-13 webkit smoke — physical iOS/Android pass still open
 
 ## Backlog
 
 ### Playback
-* [ ] Gapless window transitions: schedule next source before current ends (10s window auto-continue can dip)
 * [ ] Highlight of played region refinement; loop-range visual tint
 * [ ] Consider facade transport (engine worker playback + live varispeed) as a player backend — would replace player.js window pump
+* [ ] Undo/redo during playback (edits hold the playhead now; undo still pauses)
 
 ### Editing
-* [ ] Per-segment operations (normalize/gain one segment)
-* [ ] Paste visual feedback (brief highlight)
 * [ ] Breaks/markers positions are kept-but-clamped across `shrink` (multi-remove op) — remap them through the emitted removes
 * [ ] Visible glyphs: `¶` for segment breaks, `·` for silence blocks?
 * [ ] Delete-all edge: empty doc state, undo from opener
 
 ### Processing (engine has the ops — needs UI)
-* [ ] Trim silence at edges (engine trim op + threshold setting, unexposed)
 * [ ] Normalize: RMS/LUFS targets; per-selection (needs range-scoped stats resolve)
 * [ ] Adjustable fade length/curve per use (settings default shipped)
 * [ ] EQ (3-band via engine filter), noise gate / denoise (dynamics atoms from the 2.4+ plugin registry)
@@ -49,14 +49,11 @@ Done this wave:
 * [ ] Click gutter to add marker at line
 
 ### Files & export
-* [ ] Opener: clear-all storage, sort control
 * [ ] Export re-import differential test (encode → decode → same stats)
-* [ ] Drop-on-waveform visual affordance (dragover style exists, needs design)
 * [ ] Network-source resilience: retry + clear error for `?src=url`
 
 ### Settings & theming
 * [ ] Theme system: CSS vars presets (light/dark/high-contrast), wavefont weight/roundness tuning, color ramps; respect prefers-color-scheme
-* [ ] Storage quota exceeded: surface a warning, not just console
 
 ### Robustness
 * [ ] Physical-device pass: iOS Safari, Android Chrome (CI now covers Firefox + emulated iPhone webkit)
@@ -133,3 +130,8 @@ Processing wave (2026-07-10): gain by dB + clip warning · shrink silence thresh
 export progress bar + FLAC · marker labels (URL/session/WAV labl) · opener delete +
 storage usage · Firefox CI project + iPhone-webkit smoke · 353 e2e green across 4
 browser projects.
+
+Live wave (2026-07-10): edit during playback (playhead remap + window rebuild) ·
+Escape (popovers → selection → loop) · ctrl+scroll/pinch zoom · minimap overlays
+(selection/breaks/markers, cached redraw) · live recording level tail · `?` shortcuts
+help · WebKit hidden-input focus fix · 374 e2e green.
