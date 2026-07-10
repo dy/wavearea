@@ -23,3 +23,5 @@ image
 /test-results
 .DS_Store
 /.claude
+.DS_Store
+/.playwright-mcp
