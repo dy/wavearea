@@ -710,6 +710,17 @@ export default function wavearea(el, {
       })
     },
 
+    // compress silent pauses (truncate silence) — selection or whole file
+    shrink() {
+      if (!this.total) return
+      let range = this._selRange()
+      return this._edit(async () => {
+        this.stop()
+        let op = range ? ['shrink', range[0], range[1]] : ['shrink']
+        this._commit(op, await api.shrink(range?.[0], range?.[1]), range ? range[0] : 0)
+      })
+    },
+
     // peak-normalize the whole file
     normalize() {
       if (!this.total) return
@@ -845,6 +856,7 @@ export default function wavearea(el, {
           : op[0] === 'clip' ? await api.cropRange(op[1], op[2])
           : op[0] === 'ins' ? await api.pasteClip(op.src, op[1])
           : op[0] === 'norm' ? await api.normalize()
+          : op[0] === 'shrink' ? await api.shrink(op[1], op[2])
           : op[0] === 'fadein' ? await api.fadeRange(op[1], op[2], 1)
           : op[0] === 'fadeout' ? await api.fadeRange(op[1], op[2], -1)
           : await api.pasteClip(op.clip, op[4])
@@ -864,7 +876,7 @@ export default function wavearea(el, {
       if (src != null) url.searchParams.set('src', src)
       if (this.blockSize !== BLOCK_SIZE) url.searchParams.set('bs', this.blockSize)
       else url.searchParams.delete('bs')
-      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
+      for (let k of ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'shrink', 'fadein', 'fadeout', 'br', 'm']) url.searchParams.delete(k)
       for (let op of this._ops) if (op[0] !== 'br') url.searchParams.append(op[0], op.slice(1).join('-'))
       if (this._brs.length) url.searchParams.set('br', this._brs.join('..'))
       if (this.marks.length) url.searchParams.set('m', this.marks.join('..'))
@@ -1034,6 +1046,12 @@ export default function wavearea(el, {
     let ops = []
     for (let [k, v] of params) {
       if (k === 'norm') { ops.push(['norm']); continue }
+      if (k === 'shrink') {
+        if (v === '') { ops.push(['shrink']); continue }
+        let nums = v.split('-').map(Number)
+        if (nums.length === 2 && nums.every(n => Number.isInteger(n) && n >= 0)) ops.push(['shrink', ...nums])
+        continue
+      }
       if (k === 'ins') {
         // ins=<at>-<store id> — the id itself may contain dashes
         let i = v.indexOf('-')

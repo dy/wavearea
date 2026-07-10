@@ -227,6 +227,16 @@
         <rect :else x="6" y="6" width="12" height="12" fill="#e33" />
       </svg>
     </button>
+    <button id="shrink" class="op"
+      aria-label="Shrink pauses"
+      title="Shrink pauses (selection or whole file)"
+      :onmousedown.stop.prevent="() => shrink()"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M8 19h3v3h2v-3h3l-4-4-4 4zm8-14h-3V2h-2v3H8l4 4 4-4zM4 10v2h16v-2H4z" />
+      </svg>
+    </button>
     <button id="normalize" class="op"
       aria-label="Normalize loudness"
       title="Normalize loudness"

@@ -1912,6 +1912,43 @@ test.describe('processing & export', () => {
     expect(errors).toEqual([]);
   });
 
+  test('shrink compresses silence to the default gap', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // a pure-silence doc shrinks to ~0.3s (the default gap)
+    await page.evaluate(() => wa.openSilence(3));
+    await page.waitForFunction(() => !document.querySelector('#status') && wa.total > 100, { timeout: 15000 });
+    let total = await cleanLen(page);
+
+    await page.locator('#shrink').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('shrink='), { timeout: 8000 });
+    let shrunk = await cleanLen(page);
+    // 0.3s gap ≈ 13 blocks @44.1kHz
+    expect(shrunk).toBeLessThan(20);
+    expect(shrunk).toBeGreaterThan(5);
+
+    // undo restores full length
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total);
+    expect(page.url()).not.toContain('shrink=');
+    expect(errors).toEqual([]);
+  });
+
+  test('shrink is a no-op on loud audio; reload replays shrink', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // sine fixture has no silence — length must not change (op still recorded)
+    let total = await cleanLen(page);
+    await page.locator('#shrink').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('shrink='), { timeout: 8000 });
+    expect(await cleanLen(page)).toBe(total);
+
+    // replay from URL keeps the same result
+    await page.waitForFunction(() => location.search.includes('src='), { timeout: 10000 });
+    await page.reload();
+    await waitLen(page, total);
+    expect(page.url()).toContain('shrink=');
+    expect(errors).toEqual([]);
+  });
+
   test('reload replays normalize + fade from URL', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
     await page.locator('#normalize').dispatchEvent('mousedown');

@@ -95,6 +95,14 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
+    // compress silent pauses to the default gap — whole file or range
+    async shrink(fromBlock, toBlock) {
+      let opts = {}
+      if (fromBlock != null) { opts.offset = fromBlock * bs; opts.length = (toBlock - fromBlock) * bs }
+      await a.run(['shrink', opts])
+      return refresh()
+    },
+
     // fade over a range — dir: 1 = in, -1 = out
     async fadeRange(fromBlock, toBlock, dir) {
       await a.run(['fade', { in: dir * (toBlock - fromBlock) * bs / a.sampleRate, offset: fromBlock * bs }])
@@ -176,6 +184,11 @@ export default function createApi({ store } = {}) {
           await a.run(['insert', { source: b, offset: args[0] * bs }])
         }
         else if (type === 'norm') await a.run(['normalize', {}])
+        else if (type === 'shrink') {
+          let opts = {}
+          if (args.length) { opts.offset = args[0] * bs; opts.length = (args[1] - args[0]) * bs }
+          await a.run(['shrink', opts])
+        }
         else if (type === 'fadein' || type === 'fadeout') {
           let d = (type === 'fadein' ? 1 : -1) * (args[1] - args[0]) * bs / sr
           await a.run(['fade', { in: d, offset: args[0] * bs }])
