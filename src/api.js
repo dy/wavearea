@@ -122,6 +122,18 @@ export default function createApi({ store } = {}) {
       return refresh()
     },
 
+    // [first, last) block exceeding the silence threshold (dB) — trim-edges bounds
+    async edges(thr = -60) {
+      let total = Math.ceil(a.length / bs)
+      if (!total) return null
+      let [mins, maxs] = await a.stat(['min', 'max'], { bins: total, channel: 0 })
+      let lim = 10 ** (thr / 20)
+      let f = 0, t = total
+      while (f < total && Math.max(maxs[f], -mins[f]) < lim) f++
+      while (t > f && Math.max(maxs[t - 1], -mins[t - 1]) < lim) t--
+      return [f, t]
+    },
+
     // fade over a range — dir: 1 = in, -1 = out; optional curve name
     async fadeRange(fromBlock, toBlock, dir, curve) {
       let opts = { in: dir * (toBlock - fromBlock) * bs / a.sampleRate, offset: fromBlock * bs }
@@ -238,6 +250,10 @@ export default function createApi({ store } = {}) {
 
     async deleteFile(id) {
       return store.deleteFile(id);
+    },
+
+    async clearFiles() {
+      return store.clearAll();
     },
 
     // storage usage/quota estimate — null when the adapter can't tell

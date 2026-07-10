@@ -28,6 +28,10 @@ const silentFile = (sec = 3, sr = 44100) => wavFile(new Float32Array(sec * sr), 
 // URL query keys owned by the op chain
 const OP_PARAMS = ['del', 'sil', 'clip', 'cp', 'ins', 'norm', 'gain', 'shrink', 'fadein', 'fadeout', 'br', 'm']
 
+// storage-quota failures deserve an actionable message, not a DOMException dump
+const isQuota = e => e?.name === 'QuotaExceededError' || /quota/i.test(e?.message || '')
+const QUOTA_MSG = 'Storage is full — the file couldn\'t be saved locally. Delete stored files in the opener to free space.'
+
 export default function wavearea(el, {
   src,
   readonly = true,
@@ -103,6 +107,15 @@ export default function wavearea(el, {
 
     // total waveform characters (excluding combining marks)
     total: 0,
+
+    // opener file list
+    files: [],
+    sortBy: 'date',
+    usage: null,
+    async refreshFiles() {
+      this.files = await api.getFiles({ sortBy: this.sortBy }).catch(() => [])
+      this.usage = await api.storeInfo().catch(() => null)
+    },
 
     // selection
     clipStart: 0,
@@ -335,10 +348,16 @@ export default function wavearea(el, {
         onload?.({ duration: meta.duration, sampleRate: meta.sampleRate, channels: meta.channels })
         // reopened stored file / remote URL — reflect source in URL
         if (typeof file === 'string') this._syncURL(file)
-        // save in background — don't block UI
+        // save in background — don't block UI; quota failures surface as a notice
         if (save) api.saveFile(file, { name: file.name, duration: meta.duration })
           .then(id => this._syncURL(id))
-          .catch(e => console.warn('[store] save failed:', e.message))
+          .catch(e => {
+            console.warn('[store] save failed:', e.message)
+            if (isQuota(e)) {
+              this.error = QUOTA_MSG
+              setTimeout(() => { if (this.error === QUOTA_MSG) this.error = null }, 8000)
+            }
+          })
       } catch (err) {
         console.error('Failed to load file:', err)
         this.error = err.message || 'Failed to load file'
@@ -693,7 +712,7 @@ export default function wavearea(el, {
       if (this.loading) return
       return this._editQ = (this._editQ || Promise.resolve()).then(fn).catch(e => {
         console.error(e)
-        this.error = e.message || 'Edit failed'
+        this.error = isQuota(e) ? QUOTA_MSG : e.message || 'Edit failed'
       })
     },
 
@@ -852,15 +871,27 @@ export default function wavearea(el, {
         op.clip = clip
         this._hold()
         this._commit(op, await api.pasteClip(clip, at), at + (to - from))
+        this._flash(at, at + (to - from))
       })
     },
 
-    // insert a dropped audio file at the drop point (fallback: caret)
-    drop(e) {
-      let file = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith('audio'))
-      if (!file || !this.total) return
-      let at = this.caretOffset
-      // WebKit/Blink ship caretRangeFromPoint, Firefox the standard caretPositionFromPoint
+    // brief highlight of an inserted range — CSS Custom Highlight API, no-op elsewhere
+    _flash(from, to) {
+      if (typeof Highlight === 'undefined' || !CSS.highlights) return
+      let node = this.refs.editarea?.firstChild
+      if (node?.nodeType !== 3) return
+      let text = node.textContent
+      let r = new Range()
+      r.setStart(node, cleanToRaw(text, Math.max(0, from - this.winBase)))
+      r.setEnd(node, cleanToRaw(text, Math.max(0, to - this.winBase)))
+      CSS.highlights.set('flash', new Highlight(r))
+      clearTimeout(this._flashT)
+      this._flashT = setTimeout(() => CSS.highlights.delete('flash'), 700)
+    },
+
+    // block offset under a pointer event, null when off the waveform
+    // (WebKit/Blink ship caretRangeFromPoint, Firefox the standard caretPositionFromPoint)
+    _blockFromPoint(e) {
       let node, off
       if (document.caretRangeFromPoint) {
         let r = document.caretRangeFromPoint(e.clientX, e.clientY)
@@ -869,10 +900,25 @@ export default function wavearea(el, {
         let p = document.caretPositionFromPoint(e.clientX, e.clientY)
         if (p) { node = p.offsetNode; off = p.offset }
       }
-      let ea = this.refs.editarea
-      if (node?.nodeType === 3 && ea?.contains(node))
-        at = this.winBase + cleanText(node.textContent.slice(0, off)).length
-      return this._insertFile(at, file)
+      if (node?.nodeType === 3 && this.refs.editarea?.contains(node))
+        return this.winBase + cleanText(node.textContent.slice(0, off)).length
+      return null
+    },
+
+    // insert a dropped audio file at the drop point (fallback: caret)
+    drop(e) {
+      let file = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith('audio'))
+      if (!file || !this.total) return
+      return this._insertFile(this._blockFromPoint(e) ?? this.caretOffset, file)
+    },
+
+    // double-click: select the segment (between breaks) around the clicked block
+    selectSegment(e) {
+      if (!this.total) return
+      let b = this._blockFromPoint(e) ?? this.caretOffset
+      let from = 0, to = this.total
+      for (let x of this._brs) { if (x <= b) from = x; else { to = x; break } }
+      this._setSelRange(from, to)
     },
 
     // save a file to the store and insert it at block position (drop, recording)
@@ -886,6 +932,7 @@ export default function wavearea(el, {
         op.src = r.src
         op.len = r.total - prev
         this._commit(op, r, at + op.len)
+        this._flash(at, at + op.len)
       })
     },
 
@@ -974,6 +1021,19 @@ export default function wavearea(el, {
         let op = range ? ['shrink', range[0], range[1], gapMs] : ['shrink', gapMs]
         if (thr != null) op.push(thr)
         this._commit(op, await api.shrink(range?.[0], range?.[1], gapMs / 1000, thr), range ? range[0] : 0)
+      })
+    },
+
+    // crop away silent edges — keep [first, last) blocks above the silence
+    // threshold (settings.thr, default −60dB); commits as a plain clip op
+    trimSilence() {
+      if (!this.total) return
+      let thr = this.settings.thr == null || this.settings.thr === '' ? -60 : Math.min(0, +this.settings.thr) || -60
+      return this._edit(async () => {
+        let [f, t] = await api.edges(thr) || []
+        if (f == null || t <= f || (f === 0 && t === this.total)) return
+        this._hold()
+        this._commit(['clip', f, t], await api.cropRange(f, t), 0)
       })
     },
 

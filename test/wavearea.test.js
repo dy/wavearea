@@ -900,6 +900,29 @@ test.describe('bufferPlayer backend', () => {
     expect(playNode?.stopped || true).toBe(true); // stop is deferred via setTimeout
   });
 
+  test('window transitions are gapless: next source scheduled at the seam', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    test.setTimeout(60000);
+    let errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    // 25s doc: >2 windows at the 10s cap; speed 4 → seam every ~2.5s wall
+    await page.evaluate(() => wa.openSilence(25));
+    await page.waitForFunction(() => !document.querySelector('#status') && wa.total > 1000, { timeout: 20000 });
+    await page.evaluate(() => { wa.jumpTo(0); wa.speed = 4 });
+    await page.keyboard.press('Control+Space');
+    await page.waitForFunction(() => wa.playing === true, { timeout: 5000 });
+
+    // the continuation window is prefetched and start(when)-scheduled ahead
+    await page.waitForFunction(() =>
+      window.__audioSpy.calls.filter(c => c.method === 'source.start' && c.args[0] > 0).length >= 1, { timeout: 15000 });
+
+    // seam crossed: still playing, interpolation rebased to the second window
+    await page.waitForFunction(() => wa._playStartBlock > 400, { timeout: 15000 });
+    expect(await page.evaluate(() => wa.playing)).toBe(true);
+    await page.keyboard.press('Control+Space');
+    expect(errors).toEqual([]);
+  });
+
   test('buffer duration matches fixture (~3s)', async ({ page }) => {
     let errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -1590,6 +1613,21 @@ test.describe('editing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('paste flashes the inserted range (highlight API)', async ({ page }) => {
+    test.skip(await page.evaluate(() => typeof Highlight === 'undefined'), 'CSS Custom Highlight API unavailable');
+    await setSelection(page, 10, 30);
+    await page.keyboard.press('Control+c');
+    await page.waitForFunction(() => wa._clip, { timeout: 5000 });
+    await setCaret(page, 50);
+    let total = await cleanLen(page);
+    await page.keyboard.press('Control+v');
+    await waitLen(page, total + 20);
+    expect(await page.evaluate(() => CSS.highlights.has('flash'))).toBe(true);
+    // and it clears shortly after
+    await page.waitForFunction(() => !CSS.highlights.has('flash'), { timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+
   test('cut removes selection, paste restores it elsewhere', async ({ page }) => {
     let total = await cleanLen(page);
 
@@ -1830,6 +1868,23 @@ test.describe('segments', () => {
     expect(errors).toEqual([]);
   });
 
+  test('double-click selects the segment around the click', async ({ page }) => {
+    // two breaks → three segments
+    await setCaret(page, 40);
+    await page.keyboard.press('Enter');
+    await setCaret(page, 80);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.search.includes('br=40..80'), { timeout: 5000 });
+
+    // dblclick inside the middle segment selects [40, 80)
+    let box = await page.locator('#editarea').boundingBox();
+    await page.mouse.dblclick(box.x + 10, box.y + box.height / 2);
+    await page.waitForFunction(() => wa.loop === true, { timeout: 3000 });
+    let [s, e] = await page.evaluate(() => [wa.clipStart, wa.clipEnd]);
+    expect([s, e]).toEqual([40, 80]);
+    expect(errors).toEqual([]);
+  });
+
   test('playback works across a segment break', async ({ page }) => {
     await setCaret(page, 50);
     await page.keyboard.press('Enter');
@@ -1996,6 +2051,36 @@ test.describe('processing & export', () => {
     let ascii = buf.toString('latin1');
     expect(ascii).toContain('cue ');
     expect(ascii).toContain('adtl');
+    expect(errors).toEqual([]);
+  });
+
+  test('trim edges crops leading/trailing silence as a clip op', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    let total = await cleanLen(page);
+    // prepend silence — trim-edges should cut exactly that
+    await setCaret(page, 0);
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', cancelable: true })));
+      await page.waitForTimeout(80);
+    }
+    await waitLen(page, total + 3);
+
+    await page.locator('#trim-edges').dispatchEvent('mousedown');
+    await page.waitForFunction(() => location.search.includes('clip='), { timeout: 8000 });
+    // sine fixture is loud throughout — only the inserted silence goes
+    expect(await cleanLen(page)).toBe(total);
+
+    await page.keyboard.press('Control+z');
+    await waitLen(page, total + 3);
+    expect(errors).toEqual([]);
+  });
+
+  test('trim edges is a no-op on loud audio', async ({ page }) => {
+    let total = await cleanLen(page);
+    await page.locator('#trim-edges').dispatchEvent('mousedown');
+    await page.waitForTimeout(400);
+    expect(await cleanLen(page)).toBe(total);
+    expect(page.url()).not.toContain('clip=');
     expect(errors).toEqual([]);
   });
 
@@ -2205,6 +2290,55 @@ test.describe('opener & zoom', () => {
     let buf = Buffer.concat(chunks);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 4).toString('ascii')).toBe('fLaC');
+    expect(errors).toEqual([]);
+  });
+
+  test('opener sorts files and clears all storage', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'OPFS save is flaky in Playwright WebKit (transient UnknownError)');
+    // two stored files with distinct names/dates: sine fixture + silence doc
+    await loadFile(page);
+    await waitForSave(page);
+    await page.evaluate(() => wa.openSilence(3));
+    await page.waitForFunction(() => location.search.includes('silence.wav'), { timeout: 15000 });
+
+    await page.goto('/');
+    await page.waitForFunction(() => document.querySelectorAll('#files li').length === 2, { timeout: 10000 });
+    // date (default): silence saved last → first
+    expect(await page.locator('#files .file-name').first().textContent()).toBe('silence.wav');
+    // name: descending localeCompare → sine before silence
+    await page.locator('#sort').selectOption('name');
+    await page.waitForFunction(() =>
+      document.querySelector('#files .file-name')?.textContent === 'sine-3s.mp3', { timeout: 5000 });
+
+    // clear-all asks once, then wipes list + storage
+    await page.locator('#clear-all').click();
+    expect(await page.locator('#clear-all').textContent()).toBe('sure?');
+    await page.locator('#clear-all').click();
+    await page.waitForFunction(() => !document.querySelector('#files li'), { timeout: 5000 });
+    expect(await page.evaluate(async () => {
+      let { createStore } = await import('/src/store/index.js');
+      return (await createStore().getFiles()).length;
+    })).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('storage quota error surfaces an actionable message', async ({ page }) => {
+    // inject a store adapter that always hits quota
+    await page.addInitScript(() => {
+      window.__store = {
+        addFile: () => Promise.reject(new DOMException('quota', 'QuotaExceededError')),
+        getFiles: async () => [],
+        getFile: async () => { throw new Error('empty') },
+        deleteFile: async () => {},
+        clearAll: async () => {},
+        getStoreInfo: async () => null,
+      };
+    });
+    await page.goto('/');
+    await loadFile(page);
+    // waveform loaded fine; the failed background save shows a friendly notice
+    await page.waitForFunction(() => document.querySelector('#error')?.textContent.includes('Storage is full'), { timeout: 10000 });
+    expect(await cleanLen(page)).toBeGreaterThan(50);
     expect(errors).toEqual([]);
   });
 

@@ -56,9 +56,86 @@ function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
   }
 
   let source = null
+  let nextSrc = null   // prefetched continuation window, start()-scheduled at the seam
+  let chainGen = 0     // invalidates in-flight prefetches
   let speed = 1
   let loopStartBlock = 0, loopEndBlock = 0, isLooping = false
   let playAbort = false // flag to cancel pending async play
+
+  // fetch a window into a ready-to-start source node (capped at MAX_BUFFER_SEC,
+  // block-aligned so consecutive windows are sample-contiguous at the seam)
+  async function makeSource(fromBlock, toBlock, loop) {
+    let fromSample = fromBlock * gbs()
+    let toSample = toBlock != null ? toBlock * gbs() : undefined
+    let maxSamples = loop ? undefined : Math.floor(MAX_BUFFER_SEC * sr / gbs()) * gbs()
+    if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
+    else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
+
+    let pcm = getWindow(fromSample, toSample)
+    if (pcm?.then) pcm = await pcm
+    if (!pcm || !pcm[0]?.length) return null
+
+    let frames = pcm[0].length
+    let buf = ctx.createBuffer(ch, frames, sr)
+    for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
+
+    let s = ctx.createBufferSource()
+    s.buffer = buf
+    s.playbackRate.value = speed
+    s.loop = loop
+    if (loop) { s.loopStart = 0; s.loopEnd = frames / sr }
+    s.connect(gain)
+    s._fromBlock = fromBlock
+    s._endBlock = toSample != null ? Math.ceil(toSample / gbs()) : toBlock
+    s._frames = frames
+    return s
+  }
+
+  let killSrc = s => { if (!s) return; s.onended = null; try { s.stop() } catch {}; try { s.disconnect() } catch {} }
+
+  // prefetch the next contiguous window and start() it at the exact seam —
+  // gapless steady state; a mid-window speed change drops the schedule and
+  // that one seam falls back to fetch-on-end
+  function scheduleNext(cur) {
+    let gen = ++chainGen
+    makeSource(cur._endBlock, loopEndBlock, false).then(s => {
+      if (!s) return
+      if (gen !== chainGen || playAbort || source !== cur || player.state !== 'playing') return killSrc(s)
+      let endAt = cur._startAt + cur._frames / sr / speed
+      s._startAt = Math.max(endAt, ctx.currentTime)
+      s._scheduled = true
+      s.onended = () => onWindowEnd(s)
+      s.start(s._startAt)
+      nextSrc = s
+    }).catch(() => {})
+  }
+
+  function dropScheduled() {
+    chainGen++
+    killSrc(nextSrc)
+    nextSrc = null
+  }
+
+  function onWindowEnd(s) {
+    if (player.state !== 'playing' || s !== source) return
+    // seam: the scheduled next window is already sounding — promote it
+    if (nextSrc?._scheduled) {
+      source = nextSrc
+      nextSrc = null
+      player.onstarted?.({ block: source._fromBlock, time: source._startAt })
+      if (source._endBlock != null && loopEndBlock != null && source._endBlock < loopEndBlock) scheduleNext(source)
+      return
+    }
+    // no schedule (dropped by a speed change) — refetch, small one-time gap
+    if (s._endBlock != null && loopEndBlock != null && s._endBlock < loopEndBlock) {
+      player.play(s._endBlock, loopEndBlock, false)
+      return
+    }
+    player.state = 'stopped'
+    source = null
+    player.onended?.()
+  }
+
   let player = {
     state: 'stopped',
     onstarted: null,
@@ -72,6 +149,7 @@ function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
       if (playAbort) return
 
       // fade out + stop previous without triggering onended
+      dropScheduled()
       if (source) {
         fadeTo(0)
         source.onended = null
@@ -82,59 +160,27 @@ function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
       loopEndBlock = toBlock
       isLooping = loop
 
-      let fromSample = fromBlock * gbs()
-      let toSample = toBlock != null ? toBlock * gbs() : undefined
+      let s = await makeSource(fromBlock, toBlock, loop)
+      if (playAbort) return killSrc(s)
+      if (!s) return
 
-      // cap buffer size for responsiveness
-      let maxSamples = loop ? undefined : MAX_BUFFER_SEC * sr
-      if (maxSamples && toSample != null && toSample - fromSample > maxSamples) toSample = fromSample + maxSamples
-      else if (maxSamples && toSample == null) toSample = fromSample + maxSamples
-
-      let pcm = getWindow(fromSample, toSample)
-      if (pcm?.then) pcm = await pcm
-      if (playAbort) return
-      if (!pcm || !pcm[0]?.length) return
-
-      let frames = pcm[0].length
-      let buf = ctx.createBuffer(ch, frames, sr)
-      for (let i = 0; i < ch; i++) buf.copyToChannel(pcm[i] || pcm[0], i)
-
-      source = ctx.createBufferSource()
-      source.buffer = buf
-      source.playbackRate.value = speed
-      source.loop = loop
-      if (loop) {
-        source.loopStart = 0
-        source.loopEnd = frames / sr
-      }
-      source.connect(gain)
-
-      let cappedEnd = toSample != null ? Math.ceil(toSample / gbs()) : toBlock
-      source.onended = () => {
-        if (player.state === 'playing') {
-          if (loop) return
-          // if we capped the buffer, auto-continue from where we left off
-          if (cappedEnd && loopEndBlock && cappedEnd < loopEndBlock) {
-            player.play(cappedEnd, loopEndBlock, false)
-            return
-          }
-          player.state = 'stopped'
-          source = null
-          player.onended?.()
-        }
-      }
+      source = s
+      s._startAt = ctx.currentTime
+      s.onended = () => onWindowEnd(s)
 
       // fade in from silence
       gain.gain.setValueAtTime(0, ctx.currentTime)
       fadeTo(vol)
-      source.start(0)
+      s.start(s._startAt)
       console.timeEnd('[bufferPlayer.play]')
       player.state = 'playing'
-      player.onstarted?.({ block: fromBlock, time: ctx.currentTime })
+      player.onstarted?.({ block: fromBlock, time: s._startAt })
+      if (!loop && s._endBlock != null && toBlock != null && s._endBlock < toBlock) scheduleNext(s)
     },
 
     pause() {
       playAbort = true
+      dropScheduled()
       if (source && player.state === 'playing') {
         // fade out then disconnect (click-free stop)
         fadeTo(0)
@@ -149,6 +195,7 @@ function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
 
     seek(block) {
       let wasPlaying = player.state === 'playing'
+      dropScheduled()
       if (source) { try { source.stop() } catch {} }
       source = null
       if (wasPlaying) player.play(block)
@@ -167,9 +214,12 @@ function bufferPlayer(getWindow, sr, ch, gbs = () => BLOCK_SIZE) {
     setSpeed(r) {
       speed = r
       if (source) source.playbackRate.value = r
+      // projected seam moved — drop the schedule, that boundary refetches
+      dropScheduled()
     },
 
     destroy() {
+      dropScheduled()
       if (source) { source.onended = null; try { source.stop() } catch {} }
       source = null
       ctx.close()

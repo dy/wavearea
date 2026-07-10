@@ -68,6 +68,7 @@
       :ondragenter..ondragleave:ondragenter..ondrop="e=>(editarea.classList.add('dragover'),e=>editarea.classList.remove('dragover'))"
       :ondragover.prevent="e=>e"
       :ondrop.prevent="e => drop(e)"
+      :ondblclick.prevent="e => selectSegment(e)"
       ></div>
 
     <div id="marks">
@@ -163,8 +164,7 @@
 
   <div id="opener"
     :if="!total && !loading"
-    :scope="{files: [], sortBy: 'date', usage: null}"
-    :fx="async () => {files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null)}"
+    :fx="refreshFiles()"
     :ondragover.prevent="e=>e"
     :ondrop.prevent="e => { let f = [...e.dataTransfer.files].find(f => f.type.startsWith('audio')); f && loadAudio(f, { save: true }) }">
     <nav>
@@ -196,7 +196,7 @@
     </nav>
     <p id="drop-hint">or drop an audio file anywhere</p>
 
-    <div id="files" :if="files?.length">
+    <div id="files" :if="files?.length" :scope="{confirmClear: false}">
       <ul>
         <li :each="fileInfo in files">
           <button class="file-button"
@@ -207,13 +207,23 @@
           </button>
           <button class="delete-button" aria-label="Delete stored file"
             :title="`Delete ${fileInfo.name} from storage`"
-            :onclick.stop="async () => { await api.deleteFile(fileInfo.id).catch(() => {}); files = await api.getFiles({sortBy}).catch(() => []); usage = await api.storeInfo().catch(() => null) }">
+            :onclick.stop="async () => { await api.deleteFile(fileInfo.id).catch(() => {}); refreshFiles() }">
             <span>×</span>
           </button>
         </li>
       </ul>
-      <p id="storage" :if="usage?.usage"
-        :text="`${usage.usage >= 1048576 ? (usage.usage / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(usage.usage / 1024)) + ' KB'} used${usage.quota ? ` of ${(usage.quota / 1073741824).toFixed(1)} GB` : ''}`"></p>
+      <p id="files-foot">
+        <select id="sort" aria-label="Sort files"
+          :onchange="e => (sortBy = e.target.value, refreshFiles())">
+          <option :each="s in ['date','name','size']" :value="s" :text="s" :selected="sortBy === s"></option>
+        </select>
+        <button id="clear-all" :class="{confirm: confirmClear}"
+          :text="confirmClear ? 'sure?' : 'clear all'"
+          :onclick="async () => { if (!confirmClear) return confirmClear = true; confirmClear = false; await api.clearFiles().catch(() => {}); refreshFiles() }"
+          :onblur="() => confirmClear = false"></button>
+        <span id="storage" :if="usage?.usage"
+          :text="`${usage.usage >= 1048576 ? (usage.usage / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(usage.usage / 1024)) + ' KB'} used${usage.quota ? ` of ${(usage.quota / 1073741824).toFixed(1)} GB` : ''}`"></span>
+      </p>
     </div>
   </div>
 
@@ -299,6 +309,16 @@
       <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px">
         <circle :if="!recording" cx="12" cy="12" r="7" fill="#e33" />
         <rect :else x="6" y="6" width="12" height="12" fill="#e33" />
+      </svg>
+    </button>
+    <button id="trim-edges" class="op"
+      aria-label="Trim edge silence"
+      title="Trim silence at start and end"
+      :onmousedown.stop.prevent="() => trimSilence()"
+      tabindex="-1">
+      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#000000">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path d="M7 6h2v12H7zm8 0h2v12h-2zM3 11h3v2H3zm15 0h3v2h-3zm-7-2h2v6h-2z" />
       </svg>
     </button>
     <button id="shrink" class="op"

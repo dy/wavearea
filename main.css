@@ -118,6 +118,13 @@ body {
     }
   }
 
+  /* drop target affordance while dragging a file over the waveform */
+  #editarea.dragover {
+    outline: 2px dashed var(--secondary);
+    outline-offset: 6px;
+    background: rgb(from var(--fg) r g b / 5%);
+  }
+
 
   /* played samples dimmer */
   #editarea.playing:before,
@@ -730,12 +737,39 @@ body {
       }
     }
 
-    #storage {
+    #files-foot {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin: .25rem 0 0;
       font-family: sans-serif;
       font-size: .7rem;
-      color: var(--secondary);
-      text-align: right;
-      margin: .25rem 0 0;
+
+      #sort {
+        font-size: .7rem;
+        background: var(--bg);
+        color: var(--secondary);
+        border: 1px solid var(--secondary);
+        border-radius: .25rem;
+        padding: .1rem .25rem;
+      }
+
+      #clear-all {
+        appearance: none;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: .7rem;
+        color: var(--secondary);
+        padding: .1rem .25rem;
+
+        &:hover, &.confirm { color: #e33; }
+      }
+
+      #storage {
+        margin-left: auto;
+        color: var(--secondary);
+      }
     }
   }
 }
@@ -758,4 +792,9 @@ body {
 :focus-visible {
   outline: 2px solid rgb(0 0 0 / 40%);
   outline-offset: 2px;
+}
+
+/* brief highlight of freshly pasted/inserted audio */
+::highlight(flash) {
+  background-color: rgb(from var(--fg) r g b / 30%);
 }
