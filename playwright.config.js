@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test',
@@ -16,11 +16,14 @@ export default defineConfig({
     reuseExistingServer: false,
   },
   projects: [
-    { name: 'chromium', use: {
+    { name: 'chromium', testIgnore: ['**/unit/**', '**/mobile.test.js'], use: {
       browserName: 'chromium',
       permissions: ['microphone'],
       launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
     } },
-    { name: 'webkit', use: { browserName: 'webkit' }, timeout: 60000 },
+    { name: 'webkit', testIgnore: ['**/unit/**', '**/mobile.test.js'], use: { browserName: 'webkit' }, timeout: 60000 },
+    { name: 'firefox', testIgnore: ['**/unit/**', '**/mobile.test.js'], use: { browserName: 'firefox' }, timeout: 60000 },
+    // iOS Safari approximation (webkit + iPhone viewport/touch) — real-device pass still applies
+    { name: 'mobile-safari', testMatch: '**/mobile.test.js', use: { ...devices['iPhone 13'] }, timeout: 60000 },
   ],
 });

@@ -2407,10 +2407,15 @@ test.describe('playback auto-scroll', () => {
 
     await page.evaluate(() => { wa.jumpTo(0); wa.speed = 16 });
     await page.keyboard.press('Control+Space');
-    await page.waitForFunction(() => scrollY > 100, { timeout: 20000 });
+    // deep enough that wheeling to the top leaves the caret below the fold —
+    // otherwise the visible caret re-arms following and the flag resets by design
+    await page.waitForFunction(() => scrollY > 800, { timeout: 20000 });
 
     // user wheel far enough to take the caret out of view pauses following
+    // (headless Firefox delivers the wheel event but skips its default scroll —
+    // apply the viewport move the wheel would have performed)
     await page.mouse.wheel(0, -3000);
+    await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(150);
     expect(await page.evaluate(() => wa._userScrolled)).toBe(true);
     await page.keyboard.press('Control+Space');
@@ -2894,9 +2899,10 @@ test.describe('decode layer', () => {
     await fileBtn.waitFor({ state: 'visible', timeout: 10000 });
     await fileBtn.click();
 
+    // decode is progressive — wait for it to finish, not just start
     await page.waitForFunction(() => {
       let el = document.querySelector('#editarea');
-      return el && el.textContent.length > 10;
+      return el && el.textContent.length > 10 && !document.querySelector('#status');
     }, { timeout: 15000 });
 
     // should decode to same length as original

@@ -807,10 +807,18 @@ export default function wavearea(el, {
       let file = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith('audio'))
       if (!file || !this.total) return
       let at = this.caretOffset
-      let range = document.caretRangeFromPoint?.(e.clientX, e.clientY)
+      // WebKit/Blink ship caretRangeFromPoint, Firefox the standard caretPositionFromPoint
+      let node, off
+      if (document.caretRangeFromPoint) {
+        let r = document.caretRangeFromPoint(e.clientX, e.clientY)
+        if (r) { node = r.startContainer; off = r.startOffset }
+      } else if (document.caretPositionFromPoint) {
+        let p = document.caretPositionFromPoint(e.clientX, e.clientY)
+        if (p) { node = p.offsetNode; off = p.offset }
+      }
       let ea = this.refs.editarea
-      if (range && ea?.contains(range.startContainer) && range.startContainer.nodeType === 3)
-        at = this.winBase + cleanText(range.startContainer.textContent.slice(0, range.startOffset)).length
+      if (node?.nodeType === 3 && ea?.contains(node))
+        at = this.winBase + cleanText(node.textContent.slice(0, off)).length
       return this._insertFile(at, file)
     },
 
